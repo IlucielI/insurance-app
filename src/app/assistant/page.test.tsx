@@ -239,6 +239,72 @@ describe('AssistantPage & AssistantWorkbench', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Failed to send message', expect.any(Error));
     });
 
+    // Verify optimistic user message was rolled back from UI
+    expect(screen.queryByText('Halo test error')).toBeNull();
+
+    // Test send message succeeds but getChatSession fails (resilient fallback)
+    vi.spyOn(assistantService, 'sendMessage').mockResolvedValueOnce({
+      id: 'msg-success-fallback',
+      sender: 'assistant',
+      content: 'Respon AI berhasil via fallback langsung',
+      timestamp: 'Baru saja',
+    });
+    vi.spyOn(assistantService, 'getChatSession').mockRejectedValueOnce(
+      new Error('Failed to refresh session')
+    );
+
+    fireEvent.change(input, { target: { value: 'Pertanyaan fallback' } });
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Respon AI berhasil via fallback langsung')).toBeDefined();
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('blocks unsafe URL schemes (e.g. javascript:) on download action buttons', async () => {
+    const maliciousSession = {
+      id: 'sess-malicious',
+      title: '💬 Sesi Keamanan',
+      lastActive: 'Aktif',
+      previewText: 'Uji keamanan skema URL',
+      messages: [
+        {
+          id: 'msg-sec-01',
+          sender: 'assistant' as const,
+          content: 'Peringatan keamanan dokumen',
+          timestamp: 'Baru saja',
+          actionButtons: [
+            {
+              label: 'Unduh Dokumen Berbahaya',
+              actionType: 'download' as const,
+              target: 'javascript:alert(document.cookie)',
+            },
+          ],
+        },
+      ],
+    };
+
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <AssistantWorkbench
+        initialSessions={[maliciousSession]}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const maliciousBtn = screen.getByRole('button', { name: /Unduh Dokumen Berbahaya/i });
+    fireEvent.click(maliciousBtn);
+
+    // Verify invalid scheme was blocked and no download notice was rendered
+    expect(consoleSpy).toHaveBeenCalledWith('Invalid URL scheme blocked:', 'javascript:');
+    expect(screen.queryByText(/berhasil diunduh/i)).toBeNull();
+
     consoleSpy.mockRestore();
   });
 });

@@ -67,14 +67,14 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
     setIsSending(true);
 
     messageCounterRef.current += 1;
+    const tempId = `temp-${messageCounterRef.current}`;
     // Optimistically append user message to UI
     const tempUserMsg: ChatMessage = {
-      id: `temp-${messageCounterRef.current}`,
+      id: tempId,
       sender: 'user',
       content: textToSend,
       timestamp: 'Baru saja',
     };
-
 
     setSessions((prev) =>
       prev.map((s) => {
@@ -94,31 +94,48 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         textToSend
       );
 
-      // Replace with updated session messages from service
-      const refreshedSession = await assistantService.getChatSession(
-        activeSession.id
-      );
+      // Attempt to refresh updated session with refreshed metadata (e.g. title)
+      try {
+        const refreshedSession = await assistantService.getChatSession(
+          activeSession.id
+        );
 
-      if (refreshedSession) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === activeSession.id ? refreshedSession : s))
-        );
-      } else {
-        // Fallback: append response directly
-        setSessions((prev) =>
-          prev.map((s) => {
-            if (s.id === activeSession.id) {
-              return {
-                ...s,
-                messages: [...s.messages, aiResponse],
-              };
-            }
-            return s;
-          })
-        );
+        if (refreshedSession) {
+          setSessions((prev) =>
+            prev.map((s) => (s.id === activeSession.id ? refreshedSession : s))
+          );
+          return;
+        }
+      } catch (refreshErr) {
+        console.error('Failed to refresh session, applying fallback', refreshErr);
       }
+
+      // Fallback: append response directly if refresh unavailable
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id === activeSession.id) {
+            return {
+              ...s,
+              messages: [...s.messages, aiResponse],
+            };
+          }
+          return s;
+        })
+      );
     } catch (error) {
       console.error('Failed to send message', error);
+      // Rollback optimistic user message to prevent UI inconsistency on failure
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id === activeSession.id) {
+            return {
+              ...s,
+              messages: s.messages.filter((m) => m.id !== tempId),
+            };
+          }
+          return s;
+        })
+      );
     } finally {
       setIsSending(false);
     }
@@ -141,26 +158,42 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const handleActionClick = (target: string, actionType: 'navigate' | 'download') => {
     if (actionType === 'download') {
-      const fileName = target.split('/').pop() || 'dokumen-resmi.pdf';
-      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-        try {
+      try {
+        // Validate URL scheme against dangerous schemes like javascript:
+        let validUrl: string;
+        if (target.startsWith('/') || target.startsWith('./')) {
+          validUrl = target;
+        } else {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+          const parsed = new URL(target, origin);
+          if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+            console.error('Invalid URL scheme blocked:', parsed.protocol);
+            return;
+          }
+          validUrl = parsed.toString();
+        }
+
+        const fileName = validUrl.split('/').pop()?.split('?')[0] || 'dokumen-resmi.pdf';
+        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
           const link = document.createElement('a');
-          link.href = target;
+          link.href = validUrl;
           link.setAttribute('download', fileName);
           link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-        } catch {
-          // Graceful fallback if browser restricts programmatic anchor clicks
         }
+
+        setDownloadNotice(
+          validUrl.includes('klaim')
+            ? 'Formulir Klaim Resmi (PDF) berhasil diunduh ke perangkat Anda.'
+            : `Dokumen Resmi (${fileName}) berhasil diunduh ke perangkat Anda.`
+        );
+        setTimeout(() => setDownloadNotice(null), 4000);
+      } catch (err) {
+        console.error('Failed to process download URL', err);
       }
-      setDownloadNotice(
-        target.includes('klaim')
-          ? 'Formulir Klaim Resmi (PDF) berhasil diunduh ke perangkat Anda.'
-          : `Dokumen Resmi (${fileName}) berhasil diunduh ke perangkat Anda.`
-      );
-      setTimeout(() => setDownloadNotice(null), 4000);
     }
   };
 
