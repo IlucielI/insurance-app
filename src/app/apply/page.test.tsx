@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import ApplyPage from './page';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { productService } from '@/server/di';
@@ -18,23 +18,35 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     window.scrollTo = vi.fn();
   });
 
-  it('renders Server Component ApplyPage with Step 1 (Identitas Dukcapil) as initial step', async () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders Server Component ApplyPage with Step 1 (Identitas KTP) as initial step', async () => {
     const Component = await ApplyPage({});
     render(Component);
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /Pendaftaran Polis Asuransi Digital/i })
+      screen.getByRole('heading', { level: 1, name: /Pengajuan Aplikasi Polis Digital/i })
     ).toBeDefined();
 
-    expect(screen.getAllByText(/Pilar 01/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/01\. Identitas KTP/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/Nomor Induk Kependudukan/i)).toBeDefined();
+    expect(screen.getByText(/✓ Terverifikasi Dukcapil Online/i)).toBeDefined();
   });
 
   it('blocks navigation to step 2 when Step 1 fields are empty or invalid', async () => {
     const products = await productService.getProducts();
     render(<ApplicationWorkbench initialProducts={products} />);
 
-    const nextBtn = screen.getByRole('button', { name: /Lanjut ke Pilar 02/i });
+    // Clear NIK & Name to trigger validation
+    const nikInput = screen.getByLabelText(/Nomor Induk Kependudukan/i);
+    fireEvent.change(nikInput, { target: { value: '' } });
+
+    const nameInput = screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i);
+    fireEvent.change(nameInput, { target: { value: '' } });
+
+    const nextBtn = screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i });
     fireEvent.click(nextBtn);
 
     // Validation errors should appear
@@ -51,108 +63,94 @@ describe('ApplyPage & ApplicationWorkbench', () => {
           productId: products[0].id,
           sumAssured: 500_000_000,
           termYears: 10,
-          frequency: 'monthly',
-          applicantAge: 28,
+          frequency: 'annually',
+          applicantAge: 32,
           isSmoker: false,
           selectedRiders: ['rider-ci'],
         }}
       />
     );
 
-    // STEP 1: FILL IDENTITAS
+    // STEP 1: IDENTITAS KTP
     fireEvent.change(screen.getByLabelText(/Nomor Induk Kependudukan/i), {
-      target: { value: '3201123456780001' },
+      target: { value: '3174051208940003' },
     });
     fireEvent.change(screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i), {
-      target: { value: 'Budi Santoso' },
+      target: { value: 'Bayu Pratama Kusuma' },
     });
-    fireEvent.change(screen.getByLabelText(/Nomor WhatsApp/i), {
-      target: { value: '081234567890' },
+    fireEvent.change(screen.getByLabelText(/Nomor Handphone \(Aktif\):/i), {
+      target: { value: '+62 812-3456-7890' },
     });
-    fireEvent.change(screen.getByLabelText(/Alamat Email Korespondensi/i), {
-      target: { value: 'budi@example.com' },
+    fireEvent.change(screen.getByLabelText(/Alamat Email Terdaftar:/i), {
+      target: { value: 'bayu.pratama@email.com' },
     });
 
     // Advance to Step 2
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 02/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
 
-    // STEP 2: FINANSIAL & DSR
-    expect(screen.getByText(/Profil Pekerjaan & Debt-to-Service Ratio/i)).toBeDefined();
-    expect(screen.getByText(/Indikator Beban Finansial \(DSR\)/i)).toBeDefined();
+    // STEP 2: FINANSIAL & KERJA
+    expect(screen.getByText(/Pilar 2: Profil Pekerjaan & Kapasitas Finansial/i)).toBeDefined();
+    expect(screen.getByText(/Analisis Rasio Beban Premi/i)).toBeDefined();
 
     // Advance to Step 3
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 03/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
 
     // STEP 3: MEDIS & GAYA HIDUP
-    expect(screen.getByText(/Indeks Massa Tubuh \(BMI\) & Kuesioner Medis/i)).toBeDefined();
-    expect(screen.getByText(/Deklarasi Riwayat Kesehatan Calon Tertanggung/i)).toBeDefined();
+    expect(screen.getByText(/Pilar 3: Skrining Medis & Deklarasi Kesehatan Mandiri/i)).toBeDefined();
+    expect(screen.getByText(/Indeks Massa Tubuh \(BMI\)/i)).toBeDefined();
 
     // Advance to Step 4
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 04/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
 
-    // STEP 4: AHLI WARIS & LEGALITAS
-    expect(screen.getByText(/Data Ahli Waris & Otorisasi e-Policy/i)).toBeDefined();
+    // STEP 4: REVIEW & POLIS
+    expect(screen.getByText(/Pilar 4: Review & Persetujuan Polis/i)).toBeDefined();
+    expect(screen.getByText(/Penerima Manfaat Utama \(Ahli Waris Polis\):/i)).toBeDefined();
 
-    // Fill Step 4
-    fireEvent.change(screen.getByLabelText(/Nama Lengkap Ahli Waris Utama/i), {
-      target: { value: 'Siti Rahayu' },
+    // Fill Ahli Waris fields
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap Ahli Waris:/i), {
+      target: { value: 'Ratna Dewi Kusuma' },
     });
-    fireEvent.change(screen.getByLabelText(/Nomor KTP \/ NIK Ahli Waris/i), {
-      target: { value: '3201123456780002' },
+    fireEvent.change(screen.getByLabelText(/NIK Ahli Waris \(16 Digit\):/i), {
+      target: { value: '3174055609950002' },
     });
 
-    // Check agreements
-    fireEvent.click(screen.getByLabelText(/Persetujuan Pemrosesan Data Pribadi/i));
+    // Check legal statements
     fireEvent.click(screen.getByLabelText(/Pernyataan Kebenaran Data Underwriting/i));
+    fireEvent.click(screen.getByLabelText(/Persetujuan Klausul Polis & Izin Autodebet/i));
 
     // Submit form
-    const submitBtn = screen.getByRole('button', { name: /Kirim Pengajuan Polis Digital/i });
+    const submitBtn = screen.getByRole('button', {
+      name: /Kirim Pengajuan & Terbitkan Polis Instan/i,
+    });
     fireEvent.click(submitBtn);
 
-    // Wait for Success Receipt Screen
+    // Wait for Success Screen
     await waitFor(() => {
-      expect(screen.getByText(/Pengajuan Polis Berhasil Dikirim!/i)).toBeDefined();
+      expect(screen.getByText(/Selamat! Polis Elektronik Anda Siap Diterbitkan/i)).toBeDefined();
     });
 
     // Check Receipt Content
-    expect(screen.getByText(/Hasil Verifikasi 4 Pilar Otomatis OJK/i)).toBeDefined();
-    expect(screen.getByText(/Nomor Registrasi Aplikasi/i)).toBeDefined();
-    expect(screen.getByText(/PILAR 01/i)).toBeDefined();
-    expect(screen.getByText(/PILAR 02/i)).toBeDefined();
-    expect(screen.getByText(/PILAR 03/i)).toBeDefined();
-    expect(screen.getByText(/PILAR 04/i)).toBeDefined();
+    expect(screen.getByText(/Nomor Referensi Aplikasi/i)).toBeDefined();
+    expect(screen.getByText(/APPROVED & ACTIVE/i)).toBeDefined();
 
     // Click tracking button
-    const trackingBtn = screen.getByRole('button', { name: /Lacak Status Polis di Tracking Portal/i });
+    const trackingBtn = screen.getByRole('button', { name: /Lacak Status di Tracking Portal/i });
     fireEvent.click(trackingBtn);
 
     expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls[0][0]).toContain('/tracking?applicationId=APP-2026-');
+    expect(mockPush.mock.calls[0][0]).toContain('/tracking?query=');
   });
 
   it('allows user to navigate back to previous steps using the back button', async () => {
     const products = await productService.getProducts();
     render(<ApplicationWorkbench initialProducts={products} />);
 
-    // Fill valid Step 1
-    fireEvent.change(screen.getByLabelText(/Nomor Induk Kependudukan/i), {
-      target: { value: '3201123456780001' },
-    });
-    fireEvent.change(screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i), {
-      target: { value: 'Budi Santoso' },
-    });
-    fireEvent.change(screen.getByLabelText(/Nomor WhatsApp/i), {
-      target: { value: '081234567890' },
-    });
-    fireEvent.change(screen.getByLabelText(/Alamat Email Korespondensi/i), {
-      target: { value: 'budi@example.com' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 02/i }));
-    expect(screen.getByText(/Profil Pekerjaan & Debt-to-Service Ratio/i)).toBeDefined();
+    // Advance to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+    expect(screen.getByText(/Pilar 2: Profil Pekerjaan & Kapasitas Finansial/i)).toBeDefined();
 
     // Click Back to Step 1
-    fireEvent.click(screen.getByRole('button', { name: /Kembali ke Pilar 01/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Kembali ke Step 1/i }));
     expect(screen.getByLabelText(/Nomor Induk Kependudukan/i)).toBeDefined();
   });
 
@@ -164,93 +162,72 @@ describe('ApplyPage & ApplicationWorkbench', () => {
         termYears: '15',
         frequency: 'annually',
         age: '35',
+        gender: 'female',
         isSmoker: 'true',
+        occupationRisk: 'high',
         riders: 'rider-ci,rider-hospital',
       }),
     });
     render(Component);
 
-    expect(screen.getByText(/Critical Illness Shield/i)).toBeDefined();
-    expect(screen.getByText(/Tahunan/i)).toBeDefined();
+    expect(screen.getAllByText(/Critical Illness Shield/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Tahunan/i).length).toBeGreaterThan(0);
   });
 
   it('validates step 2, step 3, and step 4 field requirements', async () => {
     const products = await productService.getProducts();
     render(<ApplicationWorkbench initialProducts={products} />);
 
-    // Step 1: Valid identity
-    fireEvent.change(screen.getByLabelText(/Nomor Induk Kependudukan/i), {
-      target: { value: '3201123456780001' },
-    });
-    fireEvent.change(screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i), {
-      target: { value: 'Budi Santoso' },
-    });
-    fireEvent.change(screen.getByLabelText(/Nomor WhatsApp/i), {
-      target: { value: '081234567890' },
-    });
-    fireEvent.change(screen.getByLabelText(/Alamat Email Korespondensi/i), {
-      target: { value: 'budi@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Jenis Kelamin/i), {
-      target: { value: 'female' },
-    });
+    // Step 1: Valid initial identity -> Go to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 02/i }));
-
-    // Step 2: Set monthlyIncome to 0 and attempt next
-    fireEvent.change(screen.getByLabelText(/Penghasilan Bulanan Bersih/i), {
-      target: { value: '0' },
+    // Step 2: Clear company name and attempt next
+    fireEvent.change(screen.getByLabelText(/Nama Perusahaan \/ Institusi:/i), {
+      target: { value: '' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 03/i }));
-    expect(screen.getByText(/Penghasilan bulanan wajib diisi/i)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+    expect(screen.getByText(/Nama institusi\/perusahaan wajib diisi/i)).toBeDefined();
 
     // Fix Step 2
-    fireEvent.change(screen.getByLabelText(/Penghasilan Bulanan Bersih/i), {
-      target: { value: '20000000' },
+    fireEvent.change(screen.getByLabelText(/Nama Perusahaan \/ Institusi:/i), {
+      target: { value: 'PT Teknologi Solusi Bangsa' },
     });
-    fireEvent.change(screen.getByLabelText(/Pekerjaan \/ Bidang Profesi/i), {
-      target: { value: 'Profesional' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 03/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
 
     // Step 3: Set invalid height and weight
-    fireEvent.change(screen.getByLabelText(/Tinggi Badan \(cm\)/i), {
+    fireEvent.change(screen.getByLabelText(/Tinggi Badan \(cm\):/i), {
       target: { value: '50' },
     });
-    fireEvent.change(screen.getByLabelText(/Berat Badan \(kg\)/i), {
+    fireEvent.change(screen.getByLabelText(/Berat Badan \(kg\):/i), {
       target: { value: '10' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 04/i }));
-    expect(screen.getByText(/Tinggi badan harus di antara/i)).toBeDefined();
-    expect(screen.getByText(/Berat badan harus di antara/i)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
+    expect(screen.getByText(/Tinggi badan harus antara 100 cm s\/d 250 cm/i)).toBeDefined();
+    expect(screen.getByText(/Berat badan harus antara 30 kg s\/d 200 kg/i)).toBeDefined();
 
-    // Fix Step 3 & toggle medical checkboxes
-    fireEvent.change(screen.getByLabelText(/Tinggi Badan \(cm\)/i), {
+    // Fix Step 3
+    fireEvent.change(screen.getByLabelText(/Tinggi Badan \(cm\):/i), {
       target: { value: '175' },
     });
-    fireEvent.change(screen.getByLabelText(/Berat Badan \(kg\)/i), {
-      target: { value: '70' },
+    fireEvent.change(screen.getByLabelText(/Berat Badan \(kg\):/i), {
+      target: { value: '68' },
     });
-    fireEvent.click(screen.getByLabelText(/Riwayat Penyakit Kritis/i));
-    fireEvent.click(screen.getByLabelText(/Riwayat Rawat Inap/i));
-    fireEvent.click(screen.getByLabelText(/Status Perokok Aktif/i));
-    fireEvent.click(screen.getByLabelText(/Riwayat Herediter Penyakit/i));
-    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Pilar 04/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
 
-    // Step 4: Attempt submit without filling beneficiary and agreements
-    fireEvent.click(screen.getByRole('button', { name: /Kirim Pengajuan Polis Digital/i }));
+    // Step 4: Clear beneficiary name and attempt submit
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap Ahli Waris:/i), {
+      target: { value: '' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+    );
     expect(screen.getByText(/Nama lengkap ahli waris wajib diisi/i)).toBeDefined();
-    expect(screen.getByText(/Nomor KTP \/ NIK ahli waris wajib diisi/i)).toBeDefined();
-    expect(screen.getByText(/Anda wajib menyetujui kebijakan privasi data/i)).toBeDefined();
-    expect(screen.getByText(/Anda wajib menyetujui kebenaran data underwriting/i)).toBeDefined();
-
-    // Change payment method and autodebet
-    fireEvent.click(screen.getByRole('radio', { name: /Mandiri Virtual Account/i }));
-    fireEvent.click(screen.getByLabelText(/Aktifkan Autodebet Otomatis/i));
+    expect(screen.getByText(/Pernyataan kebenaran data wajib disetujui/i)).toBeDefined();
+    expect(screen.getByText(/Persetujuan ketentuan polis wajib dicentang/i)).toBeDefined();
   });
 
   it('handles empty products array gracefully', () => {
     render(<ApplicationWorkbench initialProducts={[]} />);
-    expect(screen.getByText(/Memuat data pengajuan polis digital.../i)).toBeDefined();
+    expect(screen.getByText(/Memuat data pendaftaran polis asuransi.../i)).toBeDefined();
   });
 });
