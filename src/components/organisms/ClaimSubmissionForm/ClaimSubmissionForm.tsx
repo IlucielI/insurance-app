@@ -9,6 +9,7 @@ import { Button } from '@/components/atoms/Button';
 import { Callout } from '@/components/molecules/Callout';
 
 export interface ClaimFormData {
+  claimId?: string;
   policyNumber: string;
   claimType: string;
   incidentDate: string;
@@ -57,7 +58,9 @@ export const ClaimSubmissionForm: React.FC<ClaimSubmissionFormProps> = ({
     }
     timerRef.current = setTimeout(() => {
       setIsSubmitting(false);
+      const generatedClaimId = `CLM-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       onSubmitSuccess?.({
+        claimId: generatedClaimId,
         policyNumber,
         claimType,
         incidentDate,
