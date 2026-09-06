@@ -9,7 +9,6 @@ import {
   KnowledgeEngineStatus,
 } from '@/types/assistant.types';
 import { Card } from '@/components/atoms/Card';
-import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';
 import { Spinner } from '@/components/atoms/Spinner';
@@ -232,13 +231,13 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
             onClick={handleCreateNewSession}
             variant="primary"
             size="md"
-            className="w-full justify-center h-11 font-bold shadow-md shadow-blue-500/20"
+            className="w-full justify-center h-11 font-bold shadow-md shadow-blue-500/20 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
           >
             + Percakapan Baru
           </Button>
 
-          {/* Session History */}
-          <Card className="p-4 sm:p-5 bg-white border border-slate-200 shadow-sm space-y-4">
+          {/* Session History & Topics */}
+          <Card className="p-4 sm:p-5 bg-white border border-slate-200 shadow-sm rounded-xl space-y-4">
             <span className="text-[11px] font-bold text-slate-400 tracking-wider block uppercase">
               RIWAYAT PERCAKAPAN
             </span>
@@ -250,21 +249,29 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                     key={session.id}
                     type="button"
                     onClick={() => setActiveSessionId(session.id)}
-                    className={`w-full text-left p-3 rounded-xl transition-all border ${
+                    className={`w-full text-left p-3 rounded-lg transition-all border ${
                       isActive
-                        ? 'bg-blue-50/70 border-blue-300 shadow-xs'
-                        : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'bg-blue-50 border-blue-200 shadow-2xs'
+                        : 'bg-slate-50/80 border-slate-100 hover:border-slate-300 hover:bg-slate-100/70'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-bold text-slate-900 truncate block">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span
+                        className={`text-xs truncate block ${
+                          isActive ? 'font-bold text-blue-800' : 'font-semibold text-slate-700'
+                        }`}
+                      >
                         {session.title}
                       </span>
                       {isActive && (
                         <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-500 block truncate mt-0.5">
+                    <span
+                      className={`text-[11px] block truncate mt-0.5 ${
+                        isActive ? 'text-blue-600 font-medium' : 'text-slate-500'
+                      }`}
+                    >
                       {session.lastActive}
                     </span>
                   </button>
@@ -272,7 +279,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
               })}
             </div>
 
-            <div className="border-t border-slate-100 pt-4 space-y-3">
+            <div className="border-t border-slate-200 pt-4 space-y-3">
               <span className="text-[11px] font-bold text-slate-400 tracking-wider block uppercase">
                 TOPIK BANTUAN POPULER
               </span>
@@ -282,7 +289,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                     key={topic.id}
                     type="button"
                     onClick={() => handleSendMessage(topic.prompt)}
-                    className="w-full text-left p-2.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50/60 transition-colors flex items-center gap-2.5 border border-transparent hover:border-blue-100"
+                    className="w-full text-left py-2 px-3 rounded-md text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50/60 transition-colors flex items-center gap-2.5 bg-white border border-slate-100 hover:border-blue-200"
                   >
                     <span className="text-sm shrink-0">{topic.icon}</span>
                     <span className="truncate">{topic.title}</span>
@@ -290,50 +297,49 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                 ))}
               </div>
             </div>
-
           </Card>
 
           {/* Grounding Engine Widget */}
-          <Card className="p-5 bg-linear-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl border border-slate-800 shadow-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-blue-400 tracking-wider">
+          <div className="p-4 sm:p-5 bg-slate-900 text-white rounded-xl border border-slate-800 shadow-md space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold text-sky-400 tracking-wider uppercase">
                 {initialEngineStatus.version}
               </span>
-              <Badge variant="emerald" size="sm">
+              <span className="px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40 text-[10px] font-bold">
                 🟢 {initialEngineStatus.status === 'online' ? 'Online & Grounded' : 'Offline'}
-              </Badge>
+              </span>
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white">Basis Pengetahuan Resmi OJK</h4>
-              <ul className="text-[11px] text-slate-300 space-y-1 mt-2">
+              <h4 className="text-xs sm:text-sm font-bold text-white">Basis Pengetahuan Resmi OJK</h4>
+              <ul className="text-[11px] text-slate-400 space-y-1.5 mt-2 leading-relaxed">
                 <li>• {initialEngineStatus.indexedDocsCount}+ Dokumen Polis Baku Terindeks</li>
                 <li>• Semantic Search pgvector (HNSW {initialEngineStatus.vectorDimension}-d)</li>
                 <li>• SLA Response: {initialEngineStatus.avgSlaMs}ms (Avg)</li>
               </ul>
             </div>
-          </Card>
+          </div>
         </aside>
 
         {/* Right Rail / Main Chat Area */}
         <section className="lg:col-span-8 space-y-4 text-left">
-          <Card className="flex flex-col h-[750px] bg-white border border-slate-200 shadow-lg overflow-hidden">
+          <Card className="flex flex-col h-[750px] sm:h-[840px] bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             {/* Chat Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/20">
+                <div className="w-[42px] h-[42px] rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-xl shrink-0">
                   🤖
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-black text-slate-900">
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
                       Bayu Insurance AI Underwriting Assistant
                     </h3>
-                    <Badge variant="emerald" size="sm">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold whitespace-nowrap">
                       🟢 Siaga 24/7 (SLA &lt;1s)
-                    </Badge>
+                    </span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Terdaftar & Diawasi OJK • Grounding Dokumen Polis Baku
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Terdaftar & Diawasi OJK • Grounding Dokumen Polis Baku • SLA Respon &lt; 1 Detik
                   </p>
                 </div>
               </div>
@@ -342,7 +348,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                 onClick={handleClearChat}
                 variant="outline"
                 size="sm"
-                className="text-xs border-slate-200 text-slate-600 hover:text-slate-900"
+                className="text-xs bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 rounded-md font-semibold shrink-0"
               >
                 Bersihkan Chat 🔄
               </Button>
@@ -360,7 +366,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                 >
                   ✕
                 </button>
-
               </div>
             )}
 
@@ -377,26 +382,26 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   >
                     {/* Avatar Icon */}
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                      className={`w-[34px] h-[34px] rounded-full flex items-center justify-center text-sm shrink-0 ${
                         isUser
                           ? 'bg-blue-600 text-white'
-                          : 'bg-emerald-100 text-emerald-700'
+                          : 'bg-blue-50 border border-blue-200 text-blue-600'
                       }`}
                     >
                       {isUser ? '👤' : '✨'}
                     </div>
 
                     {/* Bubble Content */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <div
-                        className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                        className={`p-4 rounded-2xl text-xs sm:text-[13px] leading-relaxed ${
                           isUser
-                            ? 'bg-blue-600 text-white rounded-tr-xs shadow-md shadow-blue-600/10'
+                            ? 'bg-blue-600 text-white rounded-tr-xs shadow-sm'
                             : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-xs'
                         }`}
                       >
                         {!isUser && (
-                          <div className="flex items-center gap-1.5 font-bold text-[11px] text-emerald-800 mb-1.5">
+                          <div className="flex items-center gap-1.5 font-bold text-xs text-blue-600 mb-1.5">
                             <span>Bayu Insurance AI • Resmi OJK</span>
                           </div>
                         )}
@@ -404,11 +409,11 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
                         {/* Checklist Card */}
                         {msg.checklistCard && (
-                          <div className="mt-3 p-3.5 rounded-xl bg-white border border-amber-200 shadow-xs space-y-2 text-left">
-                            <span className="text-xs font-bold text-amber-900 block">
+                          <div className="mt-3 p-3.5 sm:p-4 rounded-lg bg-white border border-slate-300 shadow-2xs space-y-2 text-left">
+                            <span className="text-[11px] font-bold text-slate-900 block uppercase tracking-tight">
                               {msg.checklistCard.title}
                             </span>
-                            <ul className="text-xs text-slate-700 space-y-1.5 pl-1">
+                            <ul className="text-xs text-slate-700 space-y-1.5 pl-0">
                               {msg.checklistCard.items.map((item, i) => (
                                 <li key={i} className="leading-normal">
                                   {item}
@@ -422,9 +427,12 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                         {msg.tags && msg.tags.length > 0 && (
                           <div className="mt-2.5 flex flex-wrap gap-1.5">
                             {msg.tags.map((tag, i) => (
-                              <Badge key={i} variant="amber" size="sm">
+                              <span
+                                key={i}
+                                className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold"
+                              >
                                 {tag}
-                              </Badge>
+                              </span>
                             ))}
                           </div>
                         )}
@@ -435,20 +443,22 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                             {msg.actionButtons.map((btn, i) =>
                               btn.actionType === 'navigate' ? (
                                 <Link key={i} href={btn.target}>
-                                  <Button size="sm" variant="primary" className="text-xs font-semibold">
+                                  <button
+                                    type="button"
+                                    className="h-9 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                                  >
                                     {btn.label}
-                                  </Button>
+                                  </button>
                                 </Link>
                               ) : (
-                                <Button
+                                <button
                                   key={i}
+                                  type="button"
                                   onClick={() => handleActionClick(btn.target, btn.actionType)}
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs border-slate-300 font-semibold bg-white"
+                                  className="h-9 px-4 rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-xs transition-colors"
                                 >
                                   {btn.label}
-                                </Button>
+                                </button>
                               )
                             )}
                           </div>
@@ -456,11 +466,11 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
                         {/* Citations */}
                         {msg.citations && msg.citations.length > 0 && (
-                          <div className="mt-3 pt-2 border-t border-slate-200/80 flex flex-wrap gap-1.5">
+                          <div className="mt-3 pt-2.5 border-t border-slate-200 flex flex-wrap gap-1.5">
                             {msg.citations.map((cit) => (
                               <span
                                 key={cit.id}
-                                className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md"
+                                className="inline-flex items-center gap-1 text-[11px] text-blue-700 font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md"
                               >
                                 📚 {cit.source}
                               </span>
@@ -483,7 +493,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
               {isSending && (
                 <div className="flex gap-3 mr-auto max-w-md items-center">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shrink-0">
+                  <div className="w-[34px] h-[34px] rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-sm shrink-0">
                     ✨
                   </div>
                   <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
@@ -496,7 +506,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
             </div>
 
             {/* Prompt Suggestion Chips */}
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2 shrink-0">
+            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2 shrink-0">
               {promptChips.map((chip, idx) => (
                 <button
                   key={idx}
@@ -507,7 +517,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   {chip}
                 </button>
               ))}
-
             </div>
 
             {/* Input Box Form */}
@@ -524,7 +533,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Ketik pertanyaan seputar produk, syarat klaim, simulasi premi, atau polis..."
-                    className="text-xs sm:text-sm h-11 pr-10"
+                    className="text-xs sm:text-sm h-11 pr-10 border-slate-300 rounded-xl"
                     disabled={isSending}
                   />
                   <span className="absolute right-3 top-3 text-slate-400 text-sm">
@@ -536,13 +545,13 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   variant="primary"
                   size="md"
                   disabled={isSending || !inputText.trim()}
-                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold"
+                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {isSending ? <Spinner size="sm" /> : 'Kirim ➔'}
                 </Button>
               </form>
 
-              <p className="text-[10px] text-slate-400 text-center">
+              <p className="text-[11px] text-slate-400 text-center">
                 🔒 Percakapan ini dienkripsi secara aman. Jawaban disintesis langsung dari basis data polis
                 resmi Bayu Insurance yang diawasi OJK.
               </p>
