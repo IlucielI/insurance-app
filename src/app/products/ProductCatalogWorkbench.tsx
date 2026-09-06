@@ -251,58 +251,49 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
 
   // Combine Penpot canonical products with any server-provided initial products
   const allProducts: CanonicalProductItem[] = useMemo(() => {
-    const list = [...PENPOT_CANONICAL_PRODUCTS];
-
-    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
-      // Pre-index existing IDs and lowercase titles into O(1) Sets to prevent O(N*M) nested lookups
-      const existingIds = new Set<string>();
-      const existingTitles = new Set<string>();
-
-      for (let i = 0; i < list.length; i++) {
-        existingIds.add(list[i].id);
-        existingIds.add(list[i].slug);
-        existingTitles.add(list[i].title.toLowerCase());
-      }
-
-      for (let i = 0; i < initialProducts.length; i++) {
-        const p = initialProducts[i];
-        const pTitleLower = p.title.toLowerCase();
-
-        if (!existingIds.has(p.id) && !existingTitles.has(pTitleLower)) {
-          existingIds.add(p.id);
-          existingTitles.add(pTitleLower);
-
-          list.push({
-            id: p.id,
-            slug: p.id,
-            categoryKey: p.categoryKey,
-            category: p.category.toUpperCase(),
-            title: p.title,
-            tagline: p.description,
-            startingPrice: p.startingPrice,
-            coverageAmount: p.coverageAmount,
-            coverageTerm: p.coverageTerm,
-            features: p.features,
-            isPopular: p.isPopular,
-            badge: p.badge,
-            badgeVariant: p.badgeVariant,
-            baseRate: p.baseRate,
-            minAge: p.minAge,
-            maxAge: p.maxAge,
-            minSumAssured: p.minSumAssured,
-            maxSumAssured: p.maxSumAssured,
-            waitingPeriodDays: p.waitingPeriodDays,
-            claimMethod: p.claimMethod,
-            underwritingNote: p.underwritingNote,
-            apiEndpoint: `POST /products/${p.id}/quotes`,
-            benefitsDetailed: p.benefitsDetailed || [],
-            riders: p.riders || [],
-          });
-        }
-      }
+    if (!Array.isArray(initialProducts) || initialProducts.length === 0) {
+      return PENPOT_CANONICAL_PRODUCTS;
     }
 
-    return list;
+    // Pre-index canonical IDs, slugs, and lowercase titles into O(1) Sets
+    const existingIds = new Set(
+      PENPOT_CANONICAL_PRODUCTS.flatMap((c) => [c.id, c.slug])
+    );
+    const existingTitles = new Set(
+      PENPOT_CANONICAL_PRODUCTS.map((c) => c.title.toLowerCase())
+    );
+
+    // Eager batch filter and transform non-duplicate initial products
+    const additionalProducts: CanonicalProductItem[] = initialProducts
+      .filter((p) => !existingIds.has(p.id) && !existingTitles.has(p.title.toLowerCase()))
+      .map((p) => ({
+        id: p.id,
+        slug: p.id,
+        categoryKey: p.categoryKey,
+        category: p.category.toUpperCase(),
+        title: p.title,
+        tagline: p.description,
+        startingPrice: p.startingPrice,
+        coverageAmount: p.coverageAmount,
+        coverageTerm: p.coverageTerm,
+        features: p.features,
+        isPopular: p.isPopular,
+        badge: p.badge,
+        badgeVariant: p.badgeVariant,
+        baseRate: p.baseRate,
+        minAge: p.minAge,
+        maxAge: p.maxAge,
+        minSumAssured: p.minSumAssured,
+        maxSumAssured: p.maxSumAssured,
+        waitingPeriodDays: p.waitingPeriodDays,
+        claimMethod: p.claimMethod,
+        underwritingNote: p.underwritingNote,
+        apiEndpoint: `POST /products/${p.id}/quotes`,
+        benefitsDetailed: p.benefitsDetailed || [],
+        riders: p.riders || [],
+      }));
+
+    return [...PENPOT_CANONICAL_PRODUCTS, ...additionalProducts];
   }, [initialProducts]);
 
   // Filtered products
