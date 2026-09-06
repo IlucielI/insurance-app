@@ -28,6 +28,11 @@ describe('ProductService', () => {
     maxAge: 60,
     minSumAssured: 100_000_000,
     maxSumAssured: 2_500_000_000,
+    waitingPeriodDays: 0,
+    claimMethod: 'instant_transfer',
+    underwritingNote: 'Otomatis',
+    benefitsDetailed: [{ title: 'Manfaat', description: 'Deskripsi' }],
+    riders: [],
   };
 
   beforeEach(() => {
@@ -49,11 +54,17 @@ describe('ProductService', () => {
   });
 
   describe('getProducts', () => {
-    it('delegates to repository getProducts with categoryKey', async () => {
-      const result = await service.getProducts('life');
+    it('delegates to repository getProducts with categoryKey and trimmed search', async () => {
+      const result = await service.getProducts('life', '  guard  ');
 
-      expect(repository.getProducts).toHaveBeenCalledWith('life');
+      expect(repository.getProducts).toHaveBeenCalledWith('life', 'guard');
       expect(result).toEqual([mockProduct]);
+    });
+
+    it('passes undefined when search is not provided or empty whitespace', async () => {
+      await service.getProducts('all', '   ');
+
+      expect(repository.getProducts).toHaveBeenCalledWith('all', undefined);
     });
   });
 
