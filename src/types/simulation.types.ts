@@ -8,6 +8,8 @@ export interface SimulationInput {
   isSmoker: boolean;
   frequency: 'monthly' | 'annually';
   selectedRiderIds: string[];
+  gender?: 'male' | 'female';
+  occupationRisk?: 'low' | 'standard' | 'high';
 }
 
 export interface RiderCostItem {
@@ -22,6 +24,9 @@ export interface ActuarialBreakdown {
   baseRate: number;
   ageFactor: number;
   smokerFactor: number;
+  genderFactor: number;
+  occupationFactor: number;
+  annualDiscountPercent: number;
   baseAnnualPremium: number;
   ridersAnnualTotal: number;
   ridersBreakdown: RiderCostItem[];
@@ -37,6 +42,8 @@ export interface SimulationResult {
   applicantAge: number;
   isSmoker: boolean;
   frequency: 'monthly' | 'annually';
+  gender: 'male' | 'female';
+  occupationRisk: 'low' | 'standard' | 'high';
   monthlyPremium: number;
   annualPremium: number;
   annualSavings: number;
