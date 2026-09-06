@@ -10,7 +10,9 @@ interface ApplyPageProps {
     termYears?: string;
     frequency?: string;
     age?: string;
+    gender?: string;
     isSmoker?: string;
+    occupationRisk?: string;
     riders?: string;
   }> | {
     productId?: string;
@@ -18,7 +20,9 @@ interface ApplyPageProps {
     termYears?: string;
     frequency?: string;
     age?: string;
+    gender?: string;
     isSmoker?: string;
+    occupationRisk?: string;
     riders?: string;
   };
 }
@@ -33,7 +37,9 @@ export default async function ApplyPage({ searchParams }: ApplyPageProps) {
     termYears: resolvedParams?.termYears ? Number(resolvedParams.termYears) : undefined,
     frequency: (resolvedParams?.frequency as 'monthly' | 'annually') || undefined,
     applicantAge: resolvedParams?.age ? Number(resolvedParams.age) : undefined,
+    gender: (resolvedParams?.gender as 'male' | 'female') || undefined,
     isSmoker: resolvedParams?.isSmoker === 'true',
+    occupationRisk: (resolvedParams?.occupationRisk as 'low' | 'standard' | 'high') || undefined,
     selectedRiders: resolvedParams?.riders ? resolvedParams.riders.split(',').filter(Boolean) : undefined,
   };
 

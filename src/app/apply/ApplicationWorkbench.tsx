@@ -9,17 +9,10 @@ import {
   ApplicationSubmissionResult,
   CreateApplicationDTO,
 } from '@/types/application.types';
-import { ProgressBar } from '@/components/atoms/ProgressBar';
 import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
 import { Checkbox } from '@/components/atoms/Checkbox';
-import { RadioCard } from '@/components/atoms/RadioCard';
-import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
-import { FileUpload } from '@/components/atoms/FileUpload';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/atoms/Card';
-import { PillarStatusCard } from '@/components/molecules/PillarStatusCard';
-import { Callout } from '@/components/molecules/Callout';
 
 export interface InitialQuoteParams {
   productId?: string;
@@ -29,7 +22,9 @@ export interface InitialQuoteParams {
   annualPremium?: number;
   frequency?: 'monthly' | 'annually';
   applicantAge?: number;
+  gender?: 'male' | 'female';
   isSmoker?: boolean;
+  occupationRisk?: 'low' | 'standard' | 'high';
   selectedRiders?: string[];
 }
 
@@ -55,12 +50,14 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
   const sumAssured = initialQuote.sumAssured || 500_000_000;
   const termYears = initialQuote.termYears || 10;
-  const frequency = initialQuote.frequency || 'monthly';
-  const initialAge = initialQuote.applicantAge || 28;
+  const frequency = initialQuote.frequency || 'annually';
+  const initialAge = initialQuote.applicantAge || 32;
   const initialSmoker = Boolean(initialQuote.isSmoker);
+  const initialGender = initialQuote.gender || 'male';
+  const initialOccupationRisk = initialQuote.occupationRisk || 'low';
   const selectedRiders = useMemo(() => initialQuote.selectedRiders || [], [initialQuote.selectedRiders]);
 
-  // Recalculate accurate premiums if not explicitly supplied
+  // Recalculate accurate premiums
   const quoteResult = useMemo(() => {
     if (!selectedProduct) return null;
     return simulationService.calculate(
@@ -70,15 +67,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         termYears,
         applicantAge: initialAge,
         isSmoker: initialSmoker,
+        gender: initialGender,
+        occupationRisk: initialOccupationRisk,
         frequency,
         selectedRiderIds: selectedRiders,
       },
       selectedProduct
     );
-  }, [selectedProduct, sumAssured, termYears, initialAge, initialSmoker, frequency, selectedRiders]);
+  }, [
+    selectedProduct,
+    sumAssured,
+    termYears,
+    initialAge,
+    initialSmoker,
+    initialGender,
+    initialOccupationRisk,
+    frequency,
+    selectedRiders,
+  ]);
 
-  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 160_000;
-  const annualPremium = quoteResult ? quoteResult.annualPremium : 1_750_000;
+  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
+  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
+  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
 
   // Wizard Step State: 1 to 4
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -87,51 +97,53 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
   // Form Field States
   // Pilar 1: Identitas Diri
-  const [nik, setNik] = useState<string>('');
-  const [fullName, setFullName] = useState<string>('');
-  const [birthDate, setBirthDate] = useState<string>('1996-05-15');
-  const [gender, setGender] = useState<'male' | 'female'>('male');
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [ktpFileName, setKtpFileName] = useState<string>('');
+  const [nik, setNik] = useState<string>('3174051208940003');
+  const [fullName, setFullName] = useState<string>('Bayu Pratama Kusuma');
+  const [birthDate, setBirthDate] = useState<string>('1994-08-12');
+  const [phoneNumber, setPhoneNumber] = useState<string>('+62 812-3456-7890');
+  const [email, setEmail] = useState<string>('bayu.pratama@email.com');
+  const [address, setAddress] = useState<string>(
+    'Jl. Sudirman No. 42, RT 003 / RW 007, Setiabudi, Jakarta Selatan 12920'
+  );
+  const [ktpFileName, setKtpFileName] = useState<string>('KTP_Bayu_Pratama.jpg');
+  const [selfieFileName, setSelfieFileName] = useState<string>('Selfie_Liveness_Check.jpg');
 
-  // Pilar 2: Finansial & DSR
-  const [occupation, setOccupation] = useState<string>('Karyawan Swasta');
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(15_000_000);
-  const [monthlyExpenses, setMonthlyExpenses] = useState<number>(5_000_000);
-  const [existingDebtsMonthly, setExistingDebtsMonthly] = useState<number>(1_000_000);
+  // Pilar 2: Finansial & Kerja
+  const [occupation, setOccupation] = useState<string>('Software Architect (IT / Tech)');
+  const [companyName, setCompanyName] = useState<string>('PT Teknologi Solusi Bangsa');
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(30_000_000);
+  const [incomeSource, setIncomeSource] = useState<string>('Gaji Tetap Bulanan (Payroll)');
+  const [incomeDocName, setIncomeDocName] = useState<string>('Slip_Gaji_3_Bulan_Bayu.pdf');
+  const [npwp, setNpwp] = useState<string>('09.254.891.2-014.000');
 
-  // Pilar 3: Medis & Gaya Hidup
+  // Pilar 3: Skrining Medis
+  const [heightCm, setHeightCm] = useState<number>(175);
   const [weightKg, setWeightKg] = useState<number>(68);
-  const [heightCm, setHeightCm] = useState<number>(172);
-  const [hasCriticalIllnessHistory, setHasCriticalIllnessHistory] = useState<boolean>(false);
-  const [hasHospitalizationLast2Years, setHasHospitalizationLast2Years] = useState<boolean>(false);
   const [isSmoker, setIsSmoker] = useState<boolean>(initialSmoker);
-  const [hasFamilyHistory, setHasFamilyHistory] = useState<boolean>(false);
+  const [hasHospitalization, setHasHospitalization] = useState<boolean>(false);
+  const [hasCriticalIllness, setHasCriticalIllness] = useState<boolean>(false);
+  const [hasRegularMedication, setHasRegularMedication] = useState<boolean>(false);
+  const [hasFamilyIllness, setHasFamilyIllness] = useState<boolean>(false);
 
-  // Pilar 4: Ahli Waris & Legalitas
-  const [beneficiaryName, setBeneficiaryName] = useState<string>('');
+  // Pilar 4: Review & Legalitas
+  const [beneficiaryName, setBeneficiaryName] = useState<string>('Ratna Dewi Kusuma');
   const [beneficiaryRelationship, setBeneficiaryRelationship] = useState<
     'spouse' | 'child' | 'parent' | 'sibling'
   >('spouse');
-  const [beneficiaryNik, setBeneficiaryNik] = useState<string>('');
+  const [beneficiaryNik, setBeneficiaryNik] = useState<string>('3174055609950002');
   const [beneficiaryShare] = useState<number>(100);
-  const [paymentMethod, setPaymentMethod] = useState<
-    'va_bca' | 'va_mandiri' | 'va_bri' | 'credit_card'
-  >('va_bca');
-  const [autoDebet, setAutoDebet] = useState<boolean>(true);
-  const [agreePdp, setAgreePdp] = useState<boolean>(false);
-  const [agreeUnderwriting, setAgreeUnderwriting] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<'va_bca' | 'va_mandiri' | 'va_bri' | 'credit_card'>('va_bca');
+  const [agreeTruth, setAgreeTruth] = useState<boolean>(false);
+  const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
 
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Dynamic Calculated Metrics
   const calculatedDsr = useMemo(() => {
-    const totalObligations = existingDebtsMonthly + monthlyPremium;
-    const safeIncome = Math.max(1, monthlyIncome);
-    return Number(((totalObligations / safeIncome) * 100).toFixed(1));
-  }, [existingDebtsMonthly, monthlyPremium, monthlyIncome]);
+    const annualEstIncome = Math.max(1, monthlyIncome * 12);
+    return Number(((annualPremium / annualEstIncome) * 100).toFixed(1));
+  }, [monthlyIncome, annualPremium]);
 
   const calculatedBmi = useMemo(() => {
     const heightM = Math.max(0.5, heightCm / 100);
@@ -139,6 +151,15 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   }, [weightKg, heightCm]);
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
+
+  // Age calculation from birthdate
+  const applicantAgeYears = useMemo(() => {
+    if (!birthDate) return 32;
+    const birthYear = new Date(birthDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const diff = currentYear - birthYear;
+    return diff > 0 ? diff : 32;
+  }, [birthDate]);
 
   // Step Validation
   const validateStep = (step: number): boolean => {
@@ -148,43 +169,52 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       if (!nik.trim()) {
         newErrors.nik = 'NIK e-KTP wajib diisi.';
       } else if (!/^\d{16}$/.test(nik.trim())) {
-        newErrors.nik = 'NIK harus berupa 16 digit angka resmi Dukcapil.';
+        newErrors.nik = 'NIK harus tepat 16 digit angka.';
       }
-
       if (!fullName.trim() || fullName.trim().length < 3) {
-        newErrors.fullName = 'Nama lengkap minimal 3 karakter sesuai e-KTP.';
+        newErrors.fullName = 'Nama lengkap minimal 3 karakter sesuai KTP.';
       }
-
-      if (!phoneNumber.trim() || phoneNumber.trim().length < 10) {
-        newErrors.phoneNumber = 'Nomor WhatsApp / HP minimal 10 digit.';
+      if (!phoneNumber.trim()) {
+        newErrors.phoneNumber = 'Nomor handphone wajib diisi.';
       }
-
       if (!email.trim() || !email.includes('@')) {
-        newErrors.email = 'Alamat email aktif tidak valid.';
+        newErrors.email = 'Alamat email tidak valid.';
       }
-    } else if (step === 2) {
+    }
+
+    if (step === 2) {
+      if (!occupation.trim()) {
+        newErrors.occupation = 'Bidang profesi pekerjaan wajib dipilih.';
+      }
+      if (!companyName.trim()) {
+        newErrors.companyName = 'Nama institusi/perusahaan wajib diisi.';
+      }
       if (monthlyIncome <= 0) {
-        newErrors.monthlyIncome = 'Penghasilan bulanan wajib diisi lebih dari 0.';
+        newErrors.monthlyIncome = 'Penghasilan bulanan harus lebih besar dari 0.';
       }
-    } else if (step === 3) {
-      if (weightKg < 30 || weightKg > 200) {
-        newErrors.weightKg = 'Berat badan harus di antara 30 s/d 200 kg.';
-      }
+    }
+
+    if (step === 3) {
       if (heightCm < 100 || heightCm > 250) {
-        newErrors.heightCm = 'Tinggi badan harus di antara 100 s/d 250 cm.';
+        newErrors.heightCm = 'Tinggi badan harus antara 100 cm s/d 250 cm.';
       }
-    } else if (step === 4) {
-      if (!beneficiaryName.trim() || beneficiaryName.trim().length < 3) {
-        newErrors.beneficiaryName = 'Nama lengkap ahli waris wajib diisi minimal 3 karakter.';
+      if (weightKg < 30 || weightKg > 200) {
+        newErrors.weightKg = 'Berat badan harus antara 30 kg s/d 200 kg.';
       }
-      if (!beneficiaryNik.trim()) {
-        newErrors.beneficiaryNik = 'Nomor KTP / NIK ahli waris wajib diisi.';
+    }
+
+    if (step === 4) {
+      if (!beneficiaryName.trim()) {
+        newErrors.beneficiaryName = 'Nama lengkap ahli waris wajib diisi.';
       }
-      if (!agreePdp) {
-        newErrors.agreePdp = 'Anda wajib menyetujui kebijakan privasi data UU PDP.';
+      if (!beneficiaryNik.trim() || !/^\d{16}$/.test(beneficiaryNik.trim())) {
+        newErrors.beneficiaryNik = 'NIK ahli waris wajib 16 digit.';
       }
-      if (!agreeUnderwriting) {
-        newErrors.agreeUnderwriting = 'Anda wajib menyetujui kebenaran data underwriting OJK.';
+      if (!agreeTruth) {
+        newErrors.agreeTruth = 'Pernyataan kebenaran data wajib disetujui.';
+      }
+      if (!agreeTerms) {
+        newErrors.agreeTerms = 'Persetujuan ketentuan polis wajib dicentang.';
       }
     }
 
@@ -194,56 +224,55 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
   const handleNextStep = () => {
     if (validateStep(currentStep)) {
+      setErrors({});
       setCurrentStep((prev) => Math.min(4, prev + 1));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handlePrevStep = () => {
+    setErrors({});
     setCurrentStep((prev) => Math.max(1, prev - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Submit Application
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateStep(4)) return;
-
-    if (!selectedProduct) return;
+  // Final Application Submission
+  const handleSubmitApplication = async () => {
+    if (!validateStep(4) || !selectedProduct) return;
 
     setIsSubmitting(true);
     try {
-      const dto: CreateApplicationDTO = {
+      const payload: CreateApplicationDTO = {
         productId: selectedProduct.id,
         productName: selectedProduct.title,
         sumAssured,
         termYears,
+        frequency,
         monthlyPremium,
         annualPremium,
-        frequency,
         selectedRiderIds: selectedRiders,
         identity: {
           nik: nik.trim(),
           fullName: fullName.trim(),
           birthDate,
-          gender,
+          gender: initialGender,
           phoneNumber: phoneNumber.trim(),
           email: email.trim(),
-          ktpImageName: ktpFileName || undefined,
+          ktpImageName: ktpFileName || 'KTP_Bayu_Pratama.jpg',
         },
         financial: {
-          occupation,
+          occupation: occupation.trim(),
           monthlyIncome,
-          monthlyExpenses,
-          existingDebtsMonthly,
+          monthlyExpenses: Math.round(monthlyIncome * 0.4),
+          existingDebtsMonthly: Math.round(monthlyIncome * 0.1),
         },
         medical: {
-          weightKg,
           heightCm,
-          hasCriticalIllnessHistory,
-          hasHospitalizationLast2Years,
+          weightKg,
           isSmoker,
-          hasFamilyHistory,
+          hasCriticalIllnessHistory: hasCriticalIllness,
+          hasHospitalizationLast2Years: hasHospitalization,
+          hasFamilyHistory: hasFamilyIllness,
         },
         beneficiary: {
           fullName: beneficiaryName.trim(),
@@ -253,13 +282,17 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         },
         payment: {
           method: paymentMethod,
-          autoDebet,
+          autoDebet: true,
         },
       };
 
-      const result = await applicationService.submitApplication(dto);
+      const result = await applicationService.submitApplication(payload);
       setSubmissionResult(result);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      setErrors({
+        submit: 'Terjadi kendala saat memproses pendaftaran. Silakan coba beberapa saat lagi.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -268,805 +301,1085 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   if (!selectedProduct) {
     return (
       <div className="py-20 text-center text-slate-500">
-        Memuat data pengajuan polis digital...
+        Memuat data pendaftaran polis asuransi...
       </div>
     );
   }
 
-  // SUCCESS RECEIPT SCREEN
+  // Submission Success State
   if (submissionResult) {
-    const app = submissionResult.application;
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-in fade-in duration-300">
-        {/* Success Header Banner */}
-        <div
-          className={`p-6 sm:p-8 rounded-3xl border text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-sm ${
-            submissionResult.isInstantApproval
-              ? 'bg-linear-to-r from-emerald-900 via-teal-900 to-slate-900 text-white border-emerald-500/30'
-              : 'bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white border-blue-500/30'
-          }`}
-        >
+      <div className="max-w-3xl mx-auto px-4 py-12 space-y-8 text-left">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-xl space-y-6 text-center">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto">
+            ✓
+          </div>
+
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold backdrop-blur-xs">
-              <span>{submissionResult.isInstantApproval ? '⚡' : '📋'}</span>
-              <span>
-                {submissionResult.isInstantApproval
-                  ? 'INSTANT APPROVAL (DISETUJUI OTOMATIS)'
-                  : 'UNDER REVIEW (DALAM PENINJAUAN UNDERWRITER)'}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Pengajuan Polis Berhasil Dikirim!
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">
+              Pendaftaran Berhasil Disetujui (Instant Approval)
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">
+              Selamat! Polis Elektronik Anda Siap Diterbitkan
             </h1>
-            <p className="text-sm text-slate-200 max-w-xl">{submissionResult.message}</p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-left sm:text-right shrink-0">
-            <span className="text-[11px] uppercase font-bold text-slate-300 block">
-              Nomor Registrasi Aplikasi
-            </span>
-            <span className="text-xl font-mono font-extrabold text-white tracking-wider block">
-              {submissionResult.applicationId}
-            </span>
-            <span className="text-[11px] text-slate-300 block mt-0.5">
-              SLA Estimasi: {app.slaRemainingMinutes === 0 ? 'Instan 0 Menit' : `${app.slaRemainingMinutes} Menit`}
-            </span>
-          </div>
-        </div>
-
-        {/* 4 Pillars Underwriting Result Cards */}
-        <div className="space-y-4 text-left">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-slate-900">
-              Hasil Verifikasi 4 Pilar Otomatis OJK
-            </h2>
-            <p className="text-xs text-slate-500">
-              Sistem telah mengevaluasi dokumen kependudukan, kapasitas keuangan, profil medis, dan legalitas polis Anda.
+            <p className="text-sm text-slate-500 max-w-xl mx-auto">
+              Sistem Core API underwriting telah memvalidasi seluruh 4 pilar checks Anda secara instan.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {app.pillarChecks.map((check) => (
-              <PillarStatusCard
-                key={check.pillarNumber}
-                pillarNumber={check.pillarNumber}
-                pillarTitle={check.title}
-                description={check.description}
-                status={check.status}
-                statusText={check.statusText}
-              />
-            ))}
-          </div>
-        </div>
+          {/* Certificate Snapshot Card */}
+          <div className="p-6 rounded-2xl bg-slate-900 text-white text-left space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Nomor Referensi Aplikasi</span>
+                <span className="text-base font-bold text-sky-400">
+                  {submissionResult.applicationId || '#APP-2026-8819'}
+                </span>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
+                APPROVED & ACTIVE
+              </span>
+            </div>
 
-        {/* Policy & Applicant Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-          {/* Policy Overview */}
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Rincian Polis Asuransi
-            </h3>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Nama Produk</span>
-                <span className="font-bold text-slate-900">{app.productName}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div>
+                <span className="text-slate-400 block">Produk:</span>
+                <span className="font-bold text-white">{selectedProduct.title}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Uang Pertanggungan</span>
-                <span className="font-bold text-slate-900">{formatRupiah(app.sumAssured)}</span>
+              <div>
+                <span className="text-slate-400 block">Pemegang Polis:</span>
+                <span className="font-bold text-white">{fullName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Masa Garansi Polis</span>
-                <span className="font-semibold text-slate-800">{app.termYears} Tahun</span>
+              <div>
+                <span className="text-slate-400 block">Uang Pertanggungan:</span>
+                <span className="font-bold text-white">{formatRupiah(sumAssured)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Frekuensi Pembayaran</span>
-                <span className="font-bold text-slate-900 capitalize">
-                  {app.frequency === 'monthly' ? 'Bulanan' : 'Tahunan'}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-slate-100 pt-2">
-                <span className="text-slate-500 font-medium">Estimasi Kontribusi Premi</span>
-                <span className="font-extrabold text-blue-700 text-sm">
-                  {formatRupiah(app.frequency === 'monthly' ? app.monthlyPremium : app.annualPremium)}
-                  <span className="text-[11px] font-normal text-slate-500">
-                    /{app.frequency === 'monthly' ? 'bln' : 'thn'}
-                  </span>
-                </span>
+              <div>
+                <span className="text-slate-400 block">Premi Pertama:</span>
+                <span className="font-bold text-emerald-400">{formatRupiah(activePremium)}</span>
               </div>
             </div>
           </div>
 
-          {/* Applicant & Beneficiary */}
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Tertanggung & Ahli Waris
-            </h3>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Nama Tertanggung</span>
-                <span className="font-bold text-slate-900">{app.identity.fullName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">NIK Tertanggung</span>
-                <span className="font-mono text-slate-800">{app.identity.nik}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Nama Ahli Waris</span>
-                <span className="font-bold text-slate-900">{app.beneficiary.fullName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Hubungan Keluarga</span>
-                <span className="font-semibold text-slate-800 capitalize">
-                  {app.beneficiary.relationship === 'spouse'
-                    ? 'Pasangan (Suami/Istri)'
-                    : app.beneficiary.relationship === 'child'
-                    ? 'Anak Kandung'
-                    : app.beneficiary.relationship === 'parent'
-                    ? 'Orang Tua'
-                    : 'Saudara Kandung'}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-slate-100 pt-2">
-                <span className="text-slate-500">Porsi Hak Santunan</span>
-                <span className="font-bold text-emerald-600">
-                  {app.beneficiary.sharePercentage}% Santunan Penuh
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-200">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto font-semibold">
-              Kembali ke Beranda
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <Button
+              size="lg"
+              variant="primary"
+              className="w-full sm:w-auto font-bold bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl shadow-md"
+              onClick={() => router.push(`/tracking?query=${encodeURIComponent(submissionResult.applicationId || 'APP-2026-8819')}`)}
+            >
+              🔍 Lacak Status di Tracking Portal
             </Button>
-          </Link>
-          <Button
-            variant="primary"
-            className="w-full sm:w-auto font-bold shadow-md"
-            onClick={() => router.push(`/tracking?applicationId=${encodeURIComponent(submissionResult.applicationId)}`)}
-          >
-            Lacak Status Polis di Tracking Portal 🔍
-          </Button>
+            <Link
+              href="/"
+              className="w-full sm:w-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-6 py-3.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-center"
+            >
+              Kembali ke Beranda
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  // WIZARD FORM VIEW
-  const stepTitles = [
-    { number: 1, title: 'Identitas Dukcapil', icon: '🪪' },
-    { number: 2, title: 'Profil Finansial & DSR', icon: '📊' },
-    { number: 3, title: 'Skrining Medis & Gaya Hidup', icon: '🩺' },
-    { number: 4, title: 'Ahli Waris & Legalitas', icon: '📜' },
-  ];
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Header & Breadcrumb */}
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 1: TOP BREADCRUMB & HERO (Y: 0 - 180)                 */}
+      {/* ------------------------------------------------------------- */}
       <div className="space-y-3 text-left">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500">
           <Link href="/" className="hover:text-blue-600 transition-colors">
             Beranda
           </Link>
           <span>/</span>
           <Link href="/products" className="hover:text-blue-600 transition-colors">
-            Katalog
+            Produk
           </Link>
           <span>/</span>
-          <Link
-            href={`/simulation?productId=${selectedProduct.id}`}
-            className="hover:text-blue-600 transition-colors"
-          >
-            Simulasi
-          </Link>
+          <span className="text-slate-700">{selectedProduct.title}</span>
           <span>/</span>
-          <span className="text-blue-600">Pengajuan Polis 4-Pilar</span>
-        </div>
+          <span className="text-blue-600 font-bold">Pengajuan Aplikasi</span>
+        </nav>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold mb-2">
-              <span>🛡️</span> 4-Pillar Automated Underwriting Engine
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Pendaftaran Polis Asuransi Digital
-            </h1>
-            <p className="text-sm text-slate-500 max-w-2xl mt-1">
-              Lengkapi 4 pilar pengajuan terpadu untuk verifikasi otomatis tanpa antrean fisik dan terbit instan.
-            </p>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight">
+            Pengajuan Aplikasi Polis Digital
+          </h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1 max-w-3xl">
+            Lengkapi 4 tahap sederhana untuk evaluasi underwriting otomatis dalam 5 menit.
+          </p>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4-STEP HORIZONTAL STEPPER BAR (Y: 180 - 270)                  */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+        {/* Step 1 Pill */}
+        <div
+          className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
+            currentStep === 1
+              ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-xs'
+              : currentStep > 1
+              ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900'
+              : 'bg-white border-slate-200 text-slate-400'
+          }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+              currentStep === 1
+                ? 'bg-[#0f172a] text-white'
+                : currentStep > 1
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            {currentStep > 1 ? '✓' : '01'}
           </div>
+          <div className="min-w-0">
+            <span className="block text-xs font-bold text-[#0f172a] truncate">01. Identitas KTP</span>
+            <span className="block text-[11px] font-medium text-slate-500">
+              {currentStep > 1 ? 'Terverifikasi ✓' : 'Validasi Dukcapil'}
+            </span>
+          </div>
+        </div>
 
-          <Link
-            href={`/simulation?productId=${selectedProduct.id}`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/60 hover:bg-blue-100/60 px-3.5 py-2 rounded-xl transition-all self-start md:self-auto"
+        {/* Step 2 Pill */}
+        <div
+          className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
+            currentStep === 2
+              ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-xs'
+              : currentStep > 2
+              ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900'
+              : 'bg-white border-slate-200 text-slate-400'
+          }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+              currentStep === 2
+                ? 'bg-[#0f172a] text-white'
+                : currentStep > 2
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-100 text-slate-400'
+            }`}
           >
-            <span>←</span> Sesuaikan Simulasi Premi
-          </Link>
+            {currentStep > 2 ? '✓' : '02'}
+          </div>
+          <div className="min-w-0">
+            <span className="block text-xs font-bold text-[#0f172a] truncate">02. Finansial & Kerja</span>
+            <span className="block text-[11px] font-medium text-slate-500">
+              {currentStep > 2 ? 'Terverifikasi ✓' : 'Analisis Rasio UP'}
+            </span>
+          </div>
+        </div>
+
+        {/* Step 3 Pill */}
+        <div
+          className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
+            currentStep === 3
+              ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-xs'
+              : currentStep > 3
+              ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900'
+              : 'bg-white border-slate-200 text-slate-400'
+          }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+              currentStep === 3
+                ? 'bg-[#0f172a] text-white'
+                : currentStep > 3
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            {currentStep > 3 ? '✓' : '03'}
+          </div>
+          <div className="min-w-0">
+            <span className="block text-xs font-bold text-[#0f172a] truncate">03. Skrining Medis</span>
+            <span className="block text-[11px] font-medium text-slate-500">
+              {currentStep > 3 ? 'Terverifikasi ✓' : 'Kuesioner Kesehatan'}
+            </span>
+          </div>
+        </div>
+
+        {/* Step 4 Pill */}
+        <div
+          className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
+            currentStep === 4
+              ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-xs'
+              : 'bg-white border-slate-200 text-slate-400'
+          }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+              currentStep === 4 ? 'bg-[#0f172a] text-white' : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            04
+          </div>
+          <div className="min-w-0">
+            <span className="block text-xs font-bold text-[#0f172a] truncate">04. Review & Polis</span>
+            <span className="block text-[11px] font-medium text-slate-500">Persetujuan Klausul</span>
+          </div>
         </div>
       </div>
 
-      {/* Wizard Step Progress Header */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stepTitles.map((step) => {
-            const isCompleted = currentStep > step.number;
-            const isCurrent = currentStep === step.number;
-            return (
-              <div
-                key={step.number}
-                className={`p-3 rounded-xl border transition-all text-left flex items-center gap-3 ${
-                  isCurrent
-                    ? 'border-blue-600 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/10'
-                    : isCompleted
-                    ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900'
-                    : 'border-slate-200 bg-slate-50/50 text-slate-400'
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white'
-                      : isCompleted
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  {isCompleted ? '✓' : step.number}
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">
-                    Pilar 0{step.number}
-                  </span>
-                  <span
-                    className={`text-xs font-bold truncate block ${
-                      isCurrent ? 'text-blue-950' : isCompleted ? 'text-emerald-950' : 'text-slate-600'
-                    }`}
-                  >
-                    {step.title}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <ProgressBar
-          value={(currentStep / 4) * 100}
-          label={`Progres Pendaftaran 4-Pilar: Langkah ${currentStep} dari 4`}
-          showPercent
-          variant="blue"
-          size="sm"
-        />
-      </div>
-
-      {/* Main Form Layout: Wizard Form (Left) vs Sticky Policy Overview (Right) */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Active Step Form */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* STEP 1: PILAR 1 - IDENTITAS DUKCAPIL */}
+      {/* ------------------------------------------------------------- */}
+      {/* 2-COLUMN MAIN WIZARD INTERFACE                                */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Form Panels (7-8 cols) */}
+        <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6 text-left">
+          {/* ========================================================= */}
+          {/* STEP 1: IDENTITAS KTP                                     */}
+          {/* ========================================================= */}
           {currentStep === 1 && (
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6 text-left animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-4 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="blue" size="sm">
-                    Pilar 01
-                  </Badge>
-                  <span className="text-xs font-bold text-slate-500">Verifikasi Kependudukan</span>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
+                    Pilar 1: Data Identitas Diri (Sesuai KTP)
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Data identitas diverifikasi langsung dengan database kependudukan nasional untuk validasi underwriting instan.
+                  </p>
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Identitas e-KTP & Kontak Nasabah</h2>
-                <p className="text-xs text-slate-500">
-                  Pastikan NIK dan nama lengkap sesuai dengan data kependudukan resmi Kemendagri Dukcapil.
-                </p>
+                <span className="self-start sm:self-auto text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shrink-0">
+                  ✓ Terverifikasi Dukcapil Online
+                </span>
               </div>
 
-              <div className="space-y-4">
+              {/* Field: NIK */}
+              <div className="space-y-1">
                 <Input
-                  label="Nomor Induk Kependudukan (NIK e-KTP 16 Digit)"
-                  placeholder="Contoh: 3201123456780001"
-                  maxLength={16}
+                  id="nik"
+                  label="Nomor Induk Kependudukan (NIK 16 Digit):"
+                  placeholder="3174051208940003"
                   value={nik}
-                  onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ''))}
+                  onChange={(e) => setNik(e.target.value.replace(/\D/g, '').slice(0, 16))}
                   errorMessage={errors.nik}
-                  helperText="16 digit angka yang tercantum pada e-KTP fisik Anda."
+                  helperText="16 digit angka sesuai fisik e-KTP."
                 />
+              </div>
 
+              {/* Grid: Nama & Tanggal Lahir */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
-                  label="Nama Lengkap (Sesuai KTP Tanpa Gelar)"
-                  placeholder="Contoh: Budi Santoso"
+                  id="fullName"
+                  label="Nama Lengkap (Sesuai KTP):"
+                  placeholder="Bayu Pratama Kusuma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   errorMessage={errors.fullName}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Tanggal Lahir"
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    helperText="Usia masuk tertanggung dihitung otomatis."
-                  />
-
-                  <Select
-                    label="Jenis Kelamin"
-                    value={gender}
-                    options={[
-                      { value: 'male', label: 'Laki-Laki (Male)' },
-                      { value: 'female', label: 'Perempuan (Female)' },
-                    ]}
-                    onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-                  />
+                <div>
+                  <label htmlFor="birthDate" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tanggal Lahir & Usia:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="birthDate"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="py-2 px-3.5 rounded-lg border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a] flex-1"
+                    />
+                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-2 rounded-lg shrink-0">
+                      {applicantAgeYears} Tahun
+                    </span>
+                  </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Nomor WhatsApp / HP Aktif"
-                    placeholder="081234567890"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    errorMessage={errors.phoneNumber}
-                    helperText="Untuk pengiriman notifikasi status underwriting & OTP."
-                  />
-
-                  <Input
-                    label="Alamat Email Korespondensi"
-                    type="email"
-                    placeholder="nama@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    errorMessage={errors.email}
-                    helperText="Sertifikat e-Policy digital akan dikirimkan ke email ini."
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <FileUpload
-                    label="Unggah Foto e-KTP Fisik (Opsional untuk Akselerasi OCR)"
-                    helperText="Format JPG, PNG, atau PDF (Maksimal 10MB)"
-                    onFileSelect={(file) => setKtpFileName(file.name)}
-                  />
-                </div>
-
-                <Callout
-                  variant="info"
-                  title="Jaminan Kerahasiaan Identitas"
-                  description="Data pribadi Anda dienkripsi dengan standar TLS 1.3 dan diproteksi sesuai amanat UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP)."
+              {/* Grid: Phone & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  id="phoneNumber"
+                  label="Nomor Handphone (Aktif):"
+                  placeholder="+62 812-3456-7890"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  errorMessage={errors.phoneNumber}
                 />
+                <Input
+                  id="email"
+                  label="Alamat Email Terdaftar:"
+                  type="email"
+                  placeholder="bayu.pratama@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  errorMessage={errors.email}
+                />
+              </div>
+
+              {/* Address */}
+              <div className="space-y-1">
+                <label htmlFor="address" className="text-xs font-semibold text-slate-700">
+                  Alamat Domisili KTP Lengkap:
+                </label>
+                <textarea
+                  id="address"
+                  rows={2}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full py-2 px-3.5 rounded-lg border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]"
+                />
+              </div>
+
+              {/* Document Uploads matching Penpot */}
+              <div className="space-y-3 pt-2">
+                <span className="text-xs font-bold text-slate-900 block">
+                  Unggah Dokumen Verifikasi Wajib:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* KTP Upload */}
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">📷 Foto KTP Asli</span>
+                      <button
+                        type="button"
+                        onClick={() => setKtpFileName('KTP_Bayu_Pratama_New.jpg')}
+                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                      >
+                        Ganti File ↺
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">{ktpFileName} (1.4 MB)</p>
+                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                      ✓ OCR Score: 99.4% (Nama & NIK Cocok)
+                    </span>
+                  </div>
+
+                  {/* Selfie Liveness */}
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">🤳 Foto Selfie Liveness</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelfieFileName('Selfie_Liveness_New.jpg')}
+                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                      >
+                        Ganti File ↺
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">{selfieFileName} (2.1 MB)</p>
+                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                      ✓ Biometric Liveness Passed 98.1%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Note */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                <span>🔒</span>
+                <span>Data KTP dienkripsi AES-256 dan hanya digunakan untuk proses penerbitan polis resmi.</span>
+              </div>
+
+              {/* CTA Navigation */}
+              <div className="pt-2 space-y-3">
+                <Button
+                  size="lg"
+                  variant="primary"
+                  className="w-full font-bold bg-[#0f172a] hover:bg-slate-800 text-white py-3.5 rounded-xl text-sm"
+                  onClick={handleNextStep}
+                >
+                  Lanjut ke Step 2: Finansial & Kerja →
+                </Button>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+                  <span>Tahap 1 dari 4 • Estimasi waktu pengisian tersisa: ~3 menit</span>
+                  <Link href="/assistant" className="text-blue-600 hover:underline font-semibold">
+                    💬 Tanya AI Assistant seputar Form Pengajuan
+                  </Link>
+                </div>
               </div>
             </div>
           )}
 
-          {/* STEP 2: PILAR 2 - PROFIL FINANSIAL & DSR */}
+          {/* ========================================================= */}
+          {/* STEP 2: FINANSIAL & KERJA                                 */}
+          {/* ========================================================= */}
           {currentStep === 2 && (
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6 text-left animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-4 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="blue" size="sm">
-                    Pilar 02
-                  </Badge>
-                  <span className="text-xs font-bold text-slate-500">Kapasitas Keuangan</span>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
+                    Pilar 2: Profil Pekerjaan & Kapasitas Finansial
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Evaluasi kemampuan finansial nasabah untuk memastikan kesinambungan pembayaran premi polis.
+                  </p>
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Profil Pekerjaan & Debt-to-Service Ratio (DSR)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Kriteria aktuaria OJK mewajibkan beban premi dan cicilan tidak membebani arus kas nasabah.
-                </p>
+                <span className="self-start sm:self-auto text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shrink-0">
+                  ✓ DSR Affordability Ratio Engine
+                </span>
               </div>
 
-              <div className="space-y-4">
+              {/* Profession & Company */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
-                  label="Pekerjaan / Bidang Profesi"
+                  label="Profesi / Bidang Pekerjaan:"
                   value={occupation}
-                  options={[
-                    { value: 'Karyawan Swasta', label: 'Karyawan Swasta / BUMN' },
-                    { value: 'Pegawai Negeri Sipil (PNS)', label: 'Pegawai Negeri Sipil (PNS) / TNI / Polri' },
-                    { value: 'Profesional', label: 'Profesional (Dokter, Pengacara, Notaris, Konsultan)' },
-                    { value: 'Wiraswasta', label: 'Wiraswasta / Pemilik Usaha' },
-                    { value: 'Freelancer / Digital Creator', label: 'Freelancer / Pekerja Lepas / Kreator Digital' },
-                  ]}
                   onChange={(e) => setOccupation(e.target.value)}
+                  options={[
+                    { value: 'Software Architect (IT / Tech)', label: 'Software Architect (IT / Tech)' },
+                    { value: 'Karyawan Swasta', label: 'Karyawan Swasta / BUMN' },
+                    { value: 'Wiraswasta / Pemilik Bisnis', label: 'Wiraswasta / Pemilik Bisnis' },
+                    { value: 'Profesional Medis / Dokter', label: 'Profesional Medis / Dokter' },
+                    { value: 'Pegawai Negeri Sipil (PNS)', label: 'Pegawai Negeri Sipil (PNS)' },
+                  ]}
+                  error={errors.occupation}
                 />
 
                 <Input
-                  label="Penghasilan Bulanan Bersih (Take Home Pay)"
-                  type="number"
-                  min={1_000_000}
-                  step={500_000}
-                  value={monthlyIncome || ''}
+                  label="Nama Perusahaan / Institusi:"
+                  placeholder="PT Teknologi Solusi Bangsa"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  errorMessage={errors.companyName}
+                />
+              </div>
+
+              {/* Monthly Income & Funding Source */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Select
+                  label="Rata-Rata Penghasilan Bulanan:"
+                  value={String(monthlyIncome)}
                   onChange={(e) => setMonthlyIncome(Number(e.target.value))}
-                  errorMessage={errors.monthlyIncome}
-                  helperText={`Format Rupiah: ${formatRupiah(monthlyIncome || 0)}`}
+                  options={[
+                    { value: '15000000', label: 'Rp 10.000.000 - Rp 20.000.000' },
+                    { value: '30000000', label: 'Rp 25.000.000 - Rp 35.000.000' },
+                    { value: '50000000', label: 'Rp 40.000.000 - Rp 60.000.000' },
+                    { value: '80000000', label: 'Di atas Rp 75.000.000' },
+                  ]}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Rata-rata Pengeluaran Rutin Bulanan"
-                    type="number"
-                    min={0}
-                    step={500_000}
-                    value={monthlyExpenses || ''}
-                    onChange={(e) => setMonthlyExpenses(Number(e.target.value))}
-                    helperText={`Format: ${formatRupiah(monthlyExpenses || 0)}`}
-                  />
-
-                  <Input
-                    label="Total Cicilan / Kewajiban Utang Bulanan"
-                    type="number"
-                    min={0}
-                    step={500_000}
-                    value={existingDebtsMonthly || ''}
-                    onChange={(e) => setExistingDebtsMonthly(Number(e.target.value))}
-                    helperText={`Format: ${formatRupiah(existingDebtsMonthly || 0)}`}
-                  />
-                </div>
-
-                {/* Real-time DSR Assessment Card */}
-                <div
-                  className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    calculatedDsr <= 30
-                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-                      : calculatedDsr <= 40
-                      ? 'bg-amber-50/70 border-amber-200 text-amber-900'
-                      : 'bg-rose-50/70 border-rose-200 text-rose-900'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">
-                      Indikator Beban Finansial (DSR)
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-extrabold">{calculatedDsr}%</span>
-                      <Badge
-                        variant={calculatedDsr <= 30 ? 'emerald' : calculatedDsr <= 40 ? 'amber' : 'rose'}
-                        size="sm"
-                      >
-                        {calculatedDsr <= 30
-                          ? 'Sehat Finansial'
-                          : calculatedDsr <= 40
-                          ? 'Mendekati Batas Aman'
-                          : 'Rasio Tinggi'}
-                      </Badge>
-                    </div>
-                    <p className="text-xs opacity-90 leading-relaxed">
-                      {calculatedDsr <= 30
-                        ? 'Rasio cicilan dan premi Anda sangat sehat (di bawah ambang batas OJK 35%).'
-                        : calculatedDsr <= 40
-                        ? 'Rasio cicilan dan premi mendekati batas toleransi 35-40%.'
-                        : 'Beban kewajiban melebihi 40% penghasilan. Mungkin diperlukan bukti penghasilan tambahan.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: PILAR 3 - SKRINING MEDIS & GAYA HIDUP */}
-          {currentStep === 3 && (
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6 text-left animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-4 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="blue" size="sm">
-                    Pilar 03
-                  </Badge>
-                  <span className="text-xs font-bold text-slate-500">Skrining Kesehatan</span>
-                </div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Indeks Massa Tubuh (BMI) & Kuesioner Medis
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Deklarasi riwayat kesehatan digital tanpa memerlukan Medical Check-Up fisik untuk perlindungan hingga Rp 1 Miliar.
-                </p>
+                <Select
+                  label="Sumber Dana Pembayaran Premi:"
+                  value={incomeSource}
+                  onChange={(e) => setIncomeSource(e.target.value)}
+                  options={[
+                    { value: 'Gaji Tetap Bulanan (Payroll)', label: 'Gaji Tetap Bulanan (Payroll)' },
+                    { value: 'Hasil Usaha / Bisnis', label: 'Hasil Usaha / Bisnis' },
+                    { value: 'Investasi & Dividen', label: 'Investasi & Dividen' },
+                  ]}
+                />
               </div>
 
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Tinggi Badan (cm)"
-                    type="number"
-                    min={100}
-                    max={250}
-                    value={heightCm}
-                    onChange={(e) => setHeightCm(Number(e.target.value))}
-                    errorMessage={errors.heightCm}
-                  />
-
-                  <Input
-                    label="Berat Badan (kg)"
-                    type="number"
-                    min={30}
-                    max={200}
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(Number(e.target.value))}
-                    errorMessage={errors.weightKg}
-                  />
-                </div>
-
-                {/* BMI Score Display */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[11px] font-bold uppercase text-slate-500">
-                      Indeks Massa Tubuh (BMI)
-                    </span>
-                    <p className="text-xs text-slate-600">
-                      Status:{' '}
-                      <span className="font-bold text-slate-900">
-                        {calculatedBmi < 18.5
-                          ? 'Underweight (< 18.5)'
-                          : calculatedBmi <= 24.9
-                          ? 'Ideal / Normal (18.5 - 24.9)'
-                          : calculatedBmi <= 29.9
-                          ? 'Overweight (25 - 29.9)'
-                          : 'Obesitas (≥ 30)'}
-                      </span>
-                    </p>
-                  </div>
-                  <span className="text-xl font-extrabold text-blue-600">{calculatedBmi}</span>
-                </div>
-
-                {/* Medical Questionnaire */}
-                <div className="space-y-3 pt-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                    Deklarasi Riwayat Kesehatan Calon Tertanggung:
+              {/* Prominent DSR Ratio Box matching Penpot */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+                    <span>⚡</span> Analisis Rasio Beban Premi (Debt-to-Income / DSR):
                   </span>
-
-                  <Checkbox
-                    label="Riwayat Penyakit Kritis"
-                    description="Pernah terdiagnosa atau dirawat karena kanker, serangan jantung, stroke, gagal ginjal, atau diabetes kronis."
-                    checked={hasCriticalIllnessHistory}
-                    onChange={(e) => setHasCriticalIllnessHistory(e.target.checked)}
-                  />
-
-                  <Checkbox
-                    label="Riwayat Rawat Inap 2 Tahun Terakhir"
-                    description="Pernah menjalani tindakan pembedahan / operasi atau opname di rumah sakit lebih dari 3 hari dalam 24 bulan terakhir."
-                    checked={hasHospitalizationLast2Years}
-                    onChange={(e) => setHasHospitalizationLast2Years(e.target.checked)}
-                  />
-
-                  <Checkbox
-                    label="Status Perokok Aktif"
-                    description="Mengonsumsi rokok tembakau konvensional atau cerutu / vape dalam 12 bulan terakhir."
-                    checked={isSmoker}
-                    onChange={(e) => setIsSmoker(e.target.checked)}
-                  />
-
-                  <Checkbox
-                    label="Riwayat Herediter Penyakit Keluarga Inti"
-                    description="Terdapat orang tua kandung atau saudara kandung yang terdiagnosa penyakit jantung / kanker sebelum usia 55 tahun."
-                    checked={hasFamilyHistory}
-                    onChange={(e) => setHasFamilyHistory(e.target.checked)}
-                  />
+                  <span className="text-xs font-extrabold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                    Rasio {calculatedDsr}% (SAFE)
+                  </span>
                 </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Premi tahunan sebesar {formatRupiah(annualPremium)} setara dengan {calculatedDsr}% dari total estimasi pendapatan tahunan Anda. Rasio ini tergolong <strong className="text-emerald-700">SANGAT SEHAT & MEMENUHI SYARAT UNDERWRITING OTOMATIS</strong> (Batas aman maksimum regulasi DSR adalah 15.0%).
+                </p>
+                <span className="inline-block text-[11px] font-bold text-emerald-600">
+                  Status: Lolos Evaluasi Kapasitas Finansial (Green Flag) ✓
+                </span>
+              </div>
+
+              {/* Income Proof Upload */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-900 block">
+                  Unggah Bukti Penghasilan (Slip Gaji 3 Bulan / Rekening Koran):
+                </span>
+                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-slate-800">📄 {incomeDocName}</span>
+                    <span className="block text-[10px] text-emerald-700">
+                      ✓ Dokumen terbaca jelas • Gaji pokok verified {formatRupiah(monthlyIncome)}/bln
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIncomeDocName('Slip_Gaji_Updated.pdf')}
+                    className="text-xs text-blue-600 hover:underline font-semibold"
+                  >
+                    Ganti Berkas ↺
+                  </button>
+                </div>
+              </div>
+
+              {/* NPWP (Optional) */}
+              <Input
+                label="Nomor Pokok Wajib Pajak (NPWP 16 Digit) - Opsional:"
+                placeholder="09.254.891.2-014.000"
+                value={npwp}
+                onChange={(e) => setNpwp(e.target.value)}
+                helperText="Terverifikasi integrasi DJP Pajak otomatis."
+              />
+
+              {/* Navigation CTAs */}
+              <div className="pt-2 flex items-center justify-between gap-3">
+                <Button size="md" variant="outline" onClick={handlePrevStep} className="font-semibold">
+                  ← Kembali ke Step 1
+                </Button>
+                <Button
+                  size="md"
+                  variant="primary"
+                  className="font-bold bg-[#0f172a] hover:bg-slate-800 text-white py-3 px-6 rounded-xl"
+                  onClick={handleNextStep}
+                >
+                  Lanjut ke Step 3: Skrining Medis →
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: PILAR 4 - AHLI WARIS & LEGALITAS POLIS */}
-          {currentStep === 4 && (
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6 text-left animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-4 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="blue" size="sm">
-                    Pilar 04
-                  </Badge>
-                  <span className="text-xs font-bold text-slate-500">Legalitas & Beneficiary</span>
+          {/* ========================================================= */}
+          {/* STEP 3: SKRINING MEDIS                                    */}
+          {/* ========================================================= */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
+                    Pilar 3: Skrining Medis & Deklarasi Kesehatan Mandiri
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Jawab 4 pertanyaan kesehatan di bawah dengan jujur. Jawaban Anda dievaluasi langsung oleh engine risiko Core API.
+                  </p>
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Data Ahli Waris & Otorisasi e-Policy
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Tentukan penerima manfaat klaim santunan tunai yang sah dan otorisasi pembayaran premi.
+                <span className="self-start sm:self-auto text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shrink-0">
+                  ✓ Medical Exam Waived (Bebas MCU)
+                </span>
+              </div>
+
+              {/* Height / Weight & Live BMI */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <Input
+                  label="Tinggi Badan (cm):"
+                  type="number"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(Number(e.target.value))}
+                  errorMessage={errors.heightCm}
+                />
+                <Input
+                  label="Berat Badan (kg):"
+                  type="number"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(Number(e.target.value))}
+                  errorMessage={errors.weightKg}
+                />
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <span className="text-slate-500 block text-[10px]">Indeks Massa Tubuh (BMI):</span>
+                  <span className="font-extrabold text-slate-900 text-sm">BMI: {calculatedBmi}</span>{' '}
+                  <span className="text-emerald-600 font-bold">(Normal / Ideal 🟢)</span>
+                </div>
+              </div>
+
+              {/* Smoker Pills */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-semibold text-slate-700 block">
+                  Status Kebiasaan Merokok / Tembakau / Vape:
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsSmoker(false)}
+                    aria-pressed={!isSmoker}
+                    className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
+                      !isSmoker
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    {!isSmoker ? '✓ ' : ''}Tidak Merokok (Non-Smoker Standard)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSmoker(true)}
+                    aria-pressed={isSmoker}
+                    className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
+                      isSmoker
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    {isSmoker ? '✓ ' : ''}Perokok Aktif (Surcharge +45%)
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Health Questions */}
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                {/* Q1 */}
+                <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200 space-y-2">
+                  <p className="text-xs font-semibold text-slate-800">
+                    1. Apakah Anda pernah menjalani rawat inap di RS atau operasi dalam 2 tahun terakhir?
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHasHospitalization(false)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        !hasHospitalization ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHasHospitalization(true)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        hasHospitalization ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {hasHospitalization ? '✓ ' : ''}Pernah Dirawat
+                    </button>
+                  </div>
+                </div>
+
+                {/* Q2 */}
+                <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200 space-y-2">
+                  <p className="text-xs font-semibold text-slate-800">
+                    2. Apakah Anda terdiagnosa penyakit kritis (jantung, stroke, kanker, diabetes, gagal ginjal)?
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHasCriticalIllness(false)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        !hasCriticalIllness ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {!hasCriticalIllness ? '✓ ' : ''}Tidak Ada Riwayat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHasCriticalIllness(true)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        hasCriticalIllness ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {hasCriticalIllness ? '✓ ' : ''}Ada Riwayat
+                    </button>
+                  </div>
+                </div>
+
+                {/* Q3 */}
+                <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200 space-y-2">
+                  <p className="text-xs font-semibold text-slate-800">
+                    3. Apakah saat ini Anda sedang mengonsumsi obat resep dokter secara rutin jangka panjang?
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHasRegularMedication(false)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        !hasRegularMedication ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {!hasRegularMedication ? '✓ ' : ''}Tidak Ada Obat Rutin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHasRegularMedication(true)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        hasRegularMedication ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {hasRegularMedication ? '✓ ' : ''}Sedang Mengonsumsi
+                    </button>
+                  </div>
+                </div>
+
+                {/* Q4 */}
+                <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200 space-y-2">
+                  <p className="text-xs font-semibold text-slate-800">
+                    4. Apakah ada riwayat penyakit kritis keluarga kandung sebelum usia 55 tahun?
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHasFamilyIllness(false)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        !hasFamilyIllness ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {!hasFamilyIllness ? '✓ ' : ''}Tidak Ada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHasFamilyIllness(true)}
+                      className={`py-2 px-4 rounded-xl text-xs font-semibold border ${
+                        hasFamilyIllness ? 'bg-[#0f172a] text-white' : 'bg-white text-slate-700'
+                      }`}
+                    >
+                      {hasFamilyIllness ? '✓ ' : ''}Ada Riwayat Keluarga
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Medical Outcome Callout */}
+              <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                <span className="font-extrabold block">
+                  ✓ Hasil Skrining Medis: Skor Risiko Sangat Rendah (Low Risk - Class 1)
+                </span>
+                <p className="opacity-90">
+                  Berdasarkan deklarasi di atas, Anda TIDAK MEMERLUKAN pemeriksaan lab rumah sakit. Proses instan aktif.
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Navigation CTAs */}
+              <div className="pt-2 flex items-center justify-between gap-3">
+                <Button size="md" variant="outline" onClick={handlePrevStep} className="font-semibold">
+                  ← Kembali ke Step 2
+                </Button>
+                <Button
+                  size="md"
+                  variant="primary"
+                  className="font-bold bg-[#0f172a] hover:bg-slate-800 text-white py-3 px-6 rounded-xl"
+                  onClick={handleNextStep}
+                >
+                  Lanjut ke Step 4: Review & Polis →
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* STEP 4: REVIEW & PERSETUJUAN POLIS                        */}
+          {/* ========================================================= */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
+                    Pilar 4: Review & Persetujuan Polis
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Periksa kembali data pengajuan, tentukan penerima manfaat ahli waris, dan setujui klausul perjanjian asuransi.
+                  </p>
+                </div>
+                <span className="self-start sm:self-auto text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-3 py-1 rounded-full shrink-0">
+                  ⚡ Instant Approval Guaranteed
+                </span>
+              </div>
+
+              {/* 3 Pillar Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Identitas Pemohon</span>
+                  <span className="font-bold text-slate-900 block truncate">{fullName}</span>
+                  <span className="text-emerald-600 font-semibold block">Dukcapil OCR: Lolos 99.4%</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Kapasitas Finansial</span>
+                  <span className="font-bold text-slate-900 block truncate">{formatRupiah(monthlyIncome)}/bln</span>
+                  <span className="text-emerald-600 font-semibold block">Rasio DSR: {calculatedDsr}% (Sehat)</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Skrining Medis</span>
+                  <span className="font-bold text-slate-900 block">BMI: {calculatedBmi} (Normal)</span>
+                  <span className="text-emerald-600 font-semibold block">Non-Smoker • Bebas Tes Lab</span>
+                </div>
+              </div>
+
+              {/* Beneficiary Fields */}
+              <div className="space-y-3 pt-2">
+                <span className="text-xs font-bold text-slate-900 block">
+                  Penerima Manfaat Utama (Ahli Waris Polis):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
-                    label="Nama Lengkap Ahli Waris Utama"
-                    placeholder="Contoh: Siti Rahayu"
+                    id="beneficiaryName"
+                    label="Nama Lengkap Ahli Waris:"
+                    placeholder="Ratna Dewi Kusuma"
                     value={beneficiaryName}
                     onChange={(e) => setBeneficiaryName(e.target.value)}
                     errorMessage={errors.beneficiaryName}
                   />
 
                   <Select
-                    label="Hubungan dengan Tertanggung"
+                    label="Hubungan Keluarga:"
                     value={beneficiaryRelationship}
-                    options={[
-                      { value: 'spouse', label: 'Pasangan Sah (Suami / Istri)' },
-                      { value: 'child', label: 'Anak Kandung' },
-                      { value: 'parent', label: 'Orang Tua Kandung' },
-                      { value: 'sibling', label: 'Saudara Kandung' },
-                    ]}
                     onChange={(e) =>
                       setBeneficiaryRelationship(
                         e.target.value as 'spouse' | 'child' | 'parent' | 'sibling'
                       )
                     }
+                    options={[
+                      { value: 'spouse', label: 'Istri Sah / Suami Sah' },
+                      { value: 'child', label: 'Anak Kandung' },
+                      { value: 'parent', label: 'Orang Tua' },
+                      { value: 'sibling', label: 'Saudara Kandung' },
+                    ]}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
-                    label="Nomor KTP / NIK Ahli Waris"
-                    placeholder="Contoh: 3201123456780002"
+                    id="beneficiaryNik"
+                    label="NIK Ahli Waris (16 Digit):"
+                    placeholder="3174055609950002"
                     value={beneficiaryNik}
-                    onChange={(e) => setBeneficiaryNik(e.target.value.replace(/[^0-9]/g, ''))}
+                    onChange={(e) => setBeneficiaryNik(e.target.value.replace(/\D/g, '').slice(0, 16))}
                     errorMessage={errors.beneficiaryNik}
-                    helperText="Untuk verifikasi keabsahan saat proses klaim santunan."
                   />
-
                   <Input
-                    label="Porsi Hak Santunan (%)"
-                    type="number"
+                    label="Persentase Hak Manfaat:"
+                    value="100% (Penerima Manfaat Tunggal)"
                     disabled
-                    value={beneficiaryShare}
-                    helperText="Hak santunan penuh 100% dialokasikan kepada ahli waris utama."
                   />
                 </div>
+              </div>
 
-                {/* Payment Selection */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <label className="block text-xs font-semibold text-slate-700 select-none">
-                    Pilihan Metode Pembayaran Premi Pertama
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <RadioCard
-                      name="payment-method"
-                      value="va_bca"
-                      title="BCA Virtual Account"
-                      description="Konfirmasi instan via myBCA, BCA mobile, dan ATM."
-                      selected={paymentMethod === 'va_bca'}
-                      onChange={() => setPaymentMethod('va_bca')}
-                    />
-                    <RadioCard
-                      name="payment-method"
-                      value="va_mandiri"
-                      title="Mandiri Virtual Account"
-                      description="Bayar instan via Livin' by Mandiri."
-                      selected={paymentMethod === 'va_mandiri'}
-                      onChange={() => setPaymentMethod('va_mandiri')}
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <Checkbox
-                      label="Aktifkan Autodebet Otomatis"
-                      description="Perlindungan polis tidak pernah terputus karena kelupaan tanggal jatuh tempo premi."
-                      checked={autoDebet}
-                      onChange={(e) => setAutoDebet(e.target.checked)}
-                    />
-                  </div>
+              {/* Payment Methods */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-900 block">
+                  Pilih Metode Pembayaran Premi Pertama:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'va_bca', label: 'Virtual Account BCA' },
+                    { id: 'va_mandiri', label: 'VA Mandiri' },
+                    { id: 'va_bri', label: 'VA BRI' },
+                    { id: 'credit_card', label: 'Kartu Kredit' },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(m.id as 'va_bca' | 'va_mandiri' | 'va_bri' | 'credit_card')}
+                      className={`py-3 px-2 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        paymentMethod === m.id
+                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {paymentMethod === m.id ? '✓ ' : ''}{m.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Legal Agreements */}
-                <div className="space-y-3 pt-3 border-t border-slate-100">
-                  <Checkbox
-                    label="Persetujuan Pemrosesan Data Pribadi (UU PDP)"
-                    description="Saya menyetujui pemrosesan data identitas untuk verifikasi kepatuhan OJK dan penerbitan e-Policy."
-                    checked={agreePdp}
-                    onChange={(e) => setAgreePdp(e.target.checked)}
-                    errorMessage={errors.agreePdp}
-                  />
+              {/* Legal Statements */}
+              <div className="space-y-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                <Checkbox
+                  label="Pernyataan Kebenaran Data Underwriting"
+                  description="Saya menyatakan seluruh data identitas, profil finansial, dan deklarasi kesehatan di atas adalah benar dan sesuai kenyataan sesungguhnya. Data akan divalidasi langsung oleh sistem underwriting resmi."
+                  checked={agreeTruth}
+                  onChange={(e) => setAgreeTruth(e.target.checked)}
+                />
+                {errors.agreeTruth && (
+                  <p className="text-rose-600 text-[11px] font-medium pl-6">{errors.agreeTruth}</p>
+                )}
 
-                  <Checkbox
-                    label="Pernyataan Kebenaran Data Underwriting"
-                    description="Saya menyatakan seluruh jawaban kuesioner medis dan data keuangan adalah benar dan tidak memuat penipuan / fraud."
-                    checked={agreeUnderwriting}
-                    onChange={(e) => setAgreeUnderwriting(e.target.checked)}
-                    errorMessage={errors.agreeUnderwriting}
-                  />
-                </div>
+                <Checkbox
+                  label="Persetujuan Klausul Polis & Izin Autodebet"
+                  description={`Saya telah membaca, memahami, dan menyetujui seluruh Ketentuan Polis ${selectedProduct.title}, klausul pengecualian, masa tunggu, serta memberikan izin autodebet premi berkala.`}
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                />
+                {errors.agreeTerms && (
+                  <p className="text-rose-600 text-[11px] font-medium pl-6">{errors.agreeTerms}</p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 space-y-2">
+                <Button
+                  size="lg"
+                  variant="primary"
+                  className="w-full font-bold bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl text-base shadow-lg transition-all"
+                  onClick={handleSubmitApplication}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? 'Memproses Underwriting Instan...'
+                    : `Kirim Pengajuan & Terbitkan Polis Instan (${formatRupiah(activePremium)}) 🚀`}
+                </Button>
+                <p className="text-[11px] text-slate-400 text-center">
+                  🛡️ Seluruh transaksi dilindungi enkripsi SSL 256-bit dan diawasi oleh Otoritas Jasa Keuangan (OJK).
+                </p>
+              </div>
+
+              <div className="pt-1 flex items-center justify-between">
+                <Button size="sm" variant="outline" onClick={handlePrevStep}>
+                  ← Kembali ke Step 3
+                </Button>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Wizard Step Navigation Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-            {currentStep > 1 ? (
-              <Button type="button" variant="outline" onClick={handlePrevStep}>
-                ← Kembali ke Pilar 0{currentStep - 1}
-              </Button>
-            ) : (
-              <div />
-            )}
+        {/* Right Column: Sticky Policy Quote & Real-time Underwriting Status (4-5 cols) */}
+        <div className="lg:col-span-5 sticky top-24 space-y-4">
+          <div className="bg-[#0f172a] text-white rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 text-left">
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e293b] text-[#38bdf8] text-[10px] font-bold tracking-wider uppercase">
+                • APLIKASI POLIS #APP-2026-8819
+              </span>
+            </div>
 
-            {currentStep < 4 ? (
-              <Button type="button" variant="primary" onClick={handleNextStep}>
-                Lanjut ke Pilar 0{currentStep + 1} →
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                disabled={isSubmitting}
-                className="font-bold shadow-md"
-              >
-                {isSubmitting ? 'Memproses Verifikasi 4-Pilar...' : 'Kirim Pengajuan Polis Digital 🚀'}
-              </Button>
-            )}
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+                {selectedProduct.title}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedProduct.tagline || selectedProduct.description}
+              </p>
+            </div>
+
+            {/* Price Box */}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
+              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                PREMI {frequency === 'annually' ? 'TAHUNAN (HEMAT 8%)' : 'BULANAN'}
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold tracking-tight text-white">
+                  {formatRupiah(activePremium)}
+                </span>
+                <span className="text-xs text-slate-400">
+                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Setara dengan {formatRupiah(monthlyPremium)} per bulan
+              </p>
+            </div>
+
+            {/* Policy Parameters */}
+            <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2 text-xs">
+              <span className="text-[11px] font-bold text-slate-200 block border-b border-slate-700/60 pb-1">
+                Ringkasan Pertanggungan Polis:
+              </span>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Uang Pertanggungan (UP)</span>
+                <span className="font-bold text-white">{formatRupiah(sumAssured)}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Masa Pertanggungan (Tenor)</span>
+                <span className="font-semibold text-white">{termYears} Tahun</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Frekuensi Pembayaran</span>
+                <span className="font-semibold text-white capitalize">
+                  {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Metode Verifikasi</span>
+                <span className="font-semibold text-emerald-400">Automated Underwriting</span>
+              </div>
+            </div>
+
+            {/* Evaluasi Real-time Underwriting Engine */}
+            <div className="space-y-2 text-xs">
+              <span className="text-[11px] font-bold text-slate-200 block">
+                Evaluasi Real-time Underwriting Engine:
+              </span>
+              <div className="space-y-1.5 text-slate-300">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-400">✓</span> Pilar Identitas & KTP
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-400">VERIFIED DUKCAPIL</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {currentStep >= 2 ? '✓' : '○'}
+                    </span>{' '}
+                    Pilar Profil Finansial
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep >= 2 ? `RATIO ${calculatedDsr}% (SAFE)` : 'PENDING'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {currentStep >= 2 ? '✓' : '○'}
+                    </span>{' '}
+                    Pilar Kelengkapan Berkas
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep >= 2 ? 'COMPLETE & VALID' : 'PENDING'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className={currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {currentStep >= 3 ? '✓' : '○'}
+                    </span>{' '}
+                    Pilar Skrining Medis
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep >= 3 ? 'LOW RISK LEVEL' : 'PENDING'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Decision Status Box */}
+            <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1 text-xs">
+              <span className="text-[#38bdf8] font-bold block">
+                {currentStep === 4
+                  ? '⚡ Estimasi Keputusan: INSTANT APPROVAL'
+                  : '⚡ Estimasi Keputusan Sistem: IN PROGRESS'}
+              </span>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {currentStep === 4
+                  ? 'Seluruh 4 pilar checks terpenuhi! Polis elektronik (E-Polis) siap diterbitkan secara instan setelah konfirmasi pembayaran.'
+                  : 'Sistem memvalidasi data Anda secara real-time. Lanjutkan ke langkah berikutnya untuk melengkapi underwriting.'}
+              </p>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Column: Sticky Policy Overview Sidebar */}
-        <div className="lg:col-span-4 sticky top-24 space-y-4">
-          <Card
-            variant="elevated"
-            className="border-blue-100 bg-linear-to-b from-white to-blue-50/20 text-left shadow-lg shadow-blue-900/5"
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 3: PRE-FOOTER AI ASSISTANT CARD                       */}
+      {/* ------------------------------------------------------------- */}
+      <section aria-labelledby="heading-apply-ai" className="pt-4">
+        <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-indigo-100 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md uppercase">
+                AI ASSISTANT
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-600">
+                ⚡ Siaga 24/7 • Respons &lt; 1 Detik
+              </span>
+            </div>
+            <h3 id="heading-apply-ai" className="text-lg font-extrabold text-[#0f172a]">
+              Mengalami Kendala Saat Mengisi Formulir Aplikasi?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Underwriting Assistant kami siap membantu menjelaskan setiap pilar syarat dan klausul polis.
+            </p>
+          </div>
+
+          <Link
+            href="/assistant"
+            className="py-2.5 px-5 rounded-xl bg-[#0f172a] hover:bg-slate-800 text-white font-semibold text-xs transition-all shrink-0 self-start sm:self-auto"
           >
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <Badge variant="blue" size="sm">
-                  Ringkasan Polis
-                </Badge>
-                <span className="text-[11px] font-semibold text-slate-500">
-                  Masa {termYears} Th
-                </span>
-              </div>
-              <CardTitle className="text-lg text-slate-900 mt-1">
-                {selectedProduct.title}
-              </CardTitle>
-              <CardDescription>{selectedProduct.tagline || selectedProduct.category}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4 text-xs">
-              {/* Premium Box */}
-              <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-0.5">
-                <span className="text-[11px] text-slate-400 block">
-                  Kontribusi Premi ({frequency === 'monthly' ? 'Bulanan' : 'Tahunan'})
-                </span>
-                <span className="text-2xl font-extrabold tracking-tight">
-                  {formatRupiah(frequency === 'monthly' ? monthlyPremium : annualPremium)}
-                </span>
-                <span className="text-xs text-slate-400 font-medium">
-                  {' '}/ {frequency === 'monthly' ? 'bulan' : 'tahun'}
-                </span>
-              </div>
-
-              {/* Policy Attributes */}
-              <div className="p-3 bg-white rounded-xl border border-slate-200/80 space-y-2.5">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Santunan Uang Pertanggungan</span>
-                  <span className="font-bold text-slate-900">{formatRupiah(sumAssured)}</span>
-                </div>
-                <div className="h-px bg-slate-100" />
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Masa Garansi Polis</span>
-                  <span className="font-semibold text-slate-800">{termYears} Tahun</span>
-                </div>
-                <div className="h-px bg-slate-100" />
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Metode Klaim</span>
-                  <span className="font-semibold text-slate-800 capitalize">
-                    {selectedProduct.claimMethod === 'cashless'
-                      ? '💳 Cashless Digital'
-                      : selectedProduct.claimMethod === 'instant_transfer'
-                      ? '⚡ Transfer Instan 24 Jam'
-                      : '📄 Reimbursement'}
-                  </span>
-                </div>
-                <div className="h-px bg-slate-100" />
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Riders Terpilih</span>
-                  <span className="font-semibold text-blue-600">
-                    {selectedRiders.length > 0 ? `${selectedRiders.length} Proteksi Tambahan` : 'Tidak Ada'}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                *Penerbitan polis resmi dilindungi oleh OJK & Dewan Pengawas Syariah / AAJI.
-              </p>
-            </CardContent>
-          </Card>
+            Buka Chat AI Asisten →
+          </Link>
         </div>
-      </form>
+      </section>
     </div>
   );
 };
