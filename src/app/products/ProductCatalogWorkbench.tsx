@@ -143,7 +143,7 @@ const PENPOT_CANONICAL_PRODUCTS: CanonicalProductItem[] = [
           'Tunjukkan e-Card pada aplikasi untuk rawat inap tanpa uang muka di seluruh jaringan Siloam, Mitra Keluarga, dan RSUD.',
       },
       {
-        title: 'Privilese Kamar 1 Bed Privat',
+        title: 'Privilege Kamar 1 Bed Privat',
         description:
           'Jaminan kamar isolasi atau VIP 1 tempat tidur untuk kenyamanan pemulihan maksimal pasien.',
       },
@@ -207,7 +207,7 @@ const PENPOT_CANONICAL_PRODUCTS: CanonicalProductItem[] = [
           'Perbaikan dilakukan oleh teknisi tersertifikasi ATPM (Astra, Honda, Toyota, Hyundai) dengan garansi pengerjaan.',
       },
       {
-        title: 'Jaminan Suku Cadang Orisinal',
+        title: 'Jaminan Suku Cadang Asli',
         description:
           'Penggantian spare part 100% Genuine OEM dengan masa garansi mutu komponen selama 6 bulan.',
       },
@@ -253,13 +253,25 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
   const allProducts: CanonicalProductItem[] = useMemo(() => {
     const list = [...PENPOT_CANONICAL_PRODUCTS];
 
-    if (Array.isArray(initialProducts)) {
-      initialProducts.forEach((p) => {
-        // Only append if not already in canonical list by id or slug
-        const exists = list.some(
-          (c) => c.id === p.id || c.slug === p.id || c.title.toLowerCase() === p.title.toLowerCase()
-        );
-        if (!exists) {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      // Pre-index existing IDs and lowercase titles into O(1) Sets to prevent O(N*M) nested lookups
+      const existingIds = new Set<string>();
+      const existingTitles = new Set<string>();
+
+      for (let i = 0; i < list.length; i++) {
+        existingIds.add(list[i].id);
+        existingIds.add(list[i].slug);
+        existingTitles.add(list[i].title.toLowerCase());
+      }
+
+      for (let i = 0; i < initialProducts.length; i++) {
+        const p = initialProducts[i];
+        const pTitleLower = p.title.toLowerCase();
+
+        if (!existingIds.has(p.id) && !existingTitles.has(pTitleLower)) {
+          existingIds.add(p.id);
+          existingTitles.add(pTitleLower);
+
           list.push({
             id: p.id,
             slug: p.id,
@@ -287,7 +299,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
             riders: p.riders || [],
           });
         }
-      });
+      }
     }
 
     return list;
