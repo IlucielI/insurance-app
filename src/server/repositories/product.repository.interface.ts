@@ -1,4 +1,4 @@
-export type ProductCategoryKey = 'life' | 'health' | 'education' | 'critical_illness';
+export type ProductCategoryKey = 'life' | 'health' | 'vehicle' | 'education' | 'critical_illness';
 
 export interface ProductBenefitDetail {
   title: string;

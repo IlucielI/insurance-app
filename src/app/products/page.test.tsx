@@ -16,50 +16,71 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     vi.clearAllMocks();
   });
 
-  it('renders Server Component ProductsPage correctly with all initial products', async () => {
+  it('renders Server Component ProductsPage correctly with Penpot hero and canonical products', async () => {
     const Component = await ProductsPage();
     render(Component);
 
+    // 1. Breadcrumb & Heading
+    expect(screen.getByText('Katalog Produk Asuransi')).toBeDefined();
     expect(
-      screen.getByRole('heading', { level: 1, name: /Pilihan Lengkap Asuransi Digital Masa Depan/i })
+      screen.getByRole('heading', { level: 1, name: /Pilihan Produk Proteksi Unggulan/i })
     ).toBeDefined();
 
-    expect(screen.getAllByText('Term Life Guard Plus').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Critical Illness Shield').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('EduCare Future').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('HealthCare Prime Cashless').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Senior Heritage Life').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Family Hospital Protection').length).toBeGreaterThan(0);
+    // 2. Canonical Penpot Products
+    expect(screen.getAllByText('Secure Life Plus').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Health Guard Essential').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Auto Shield Comprehensive').length).toBeGreaterThan(0);
 
-    // Comparison Table
-    expect(screen.getByText('Matriks Komparasi Fitur & Benefit Polis')).toBeDefined();
+    // 3. Core API Guarantee Banner
+    expect(screen.getByText('CORE API GUARANTEE')).toBeDefined();
+    expect(screen.getByText('Perhitungan Presisi & Lifecycle Terintegrasi')).toBeDefined();
+    expect(screen.getByText('Pricing Rules Dinamis')).toBeDefined();
+    expect(screen.getByText('4 Checks Underwriting')).toBeDefined();
+
+    // 4. Pre-Footer AI Assistant Card
+    expect(screen.getByText('Konsultasi Asuransi Cerdas dengan AI')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /Buka Chat AI Asisten →/i })
+    ).toBeDefined();
   });
 
-  it('filters products by category tabs', async () => {
+  it('filters products by category pills (Jiwa, Kesehatan, Kendaraan, Semua)', async () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
     // Click 'Asuransi Jiwa'
-    const lifeTab = screen.getByRole('button', { name: /Asuransi Jiwa/i });
-    fireEvent.click(lifeTab);
+    const lifeBtn = screen.getByRole('button', { name: /Asuransi Jiwa/i });
+    fireEvent.click(lifeBtn);
+    expect(lifeBtn.getAttribute('aria-pressed')).toBe('true');
 
-    expect(screen.getAllByText('Term Life Guard Plus').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Senior Heritage Life').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Critical Illness Shield')).toBeNull();
+    expect(screen.getAllByText('Secure Life Plus').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Health Guard Essential')).toBeNull();
+    expect(screen.queryByText('Auto Shield Comprehensive')).toBeNull();
 
-    // Click 'Penyakit Kritis'
-    const criticalTab = screen.getByRole('button', { name: /Penyakit Kritis/i });
-    fireEvent.click(criticalTab);
+    // Click 'Asuransi Kesehatan'
+    const healthBtn = screen.getByRole('button', { name: /Asuransi Kesehatan/i });
+    fireEvent.click(healthBtn);
+    expect(healthBtn.getAttribute('aria-pressed')).toBe('true');
 
-    expect(screen.getAllByText('Critical Illness Shield').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Term Life Guard Plus')).toBeNull();
+    expect(screen.getAllByText('Health Guard Essential').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Secure Life Plus')).toBeNull();
+
+    // Click 'Asuransi Kendaraan'
+    const vehicleBtn = screen.getByRole('button', { name: /Asuransi Kendaraan/i });
+    fireEvent.click(vehicleBtn);
+    expect(vehicleBtn.getAttribute('aria-pressed')).toBe('true');
+
+    expect(screen.getAllByText('Auto Shield Comprehensive').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Health Guard Essential')).toBeNull();
 
     // Switch back to 'Semua Produk'
-    const allTab = screen.getByRole('button', { name: /Semua Produk/i });
-    fireEvent.click(allTab);
+    const allBtn = screen.getByRole('button', { name: /Semua Produk/i });
+    fireEvent.click(allBtn);
+    expect(allBtn.getAttribute('aria-pressed')).toBe('true');
 
-    expect(screen.getAllByText('Term Life Guard Plus').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Family Hospital Protection').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Secure Life Plus').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Health Guard Essential').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Auto Shield Comprehensive').length).toBeGreaterThan(0);
   });
 
   it('searches products with search query and handles empty search state', async () => {
@@ -67,16 +88,16 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
     const searchInput = screen.getByRole('textbox', { name: 'Cari produk asuransi' });
-    fireEvent.change(searchInput, { target: { value: 'Senior' } });
+    fireEvent.change(searchInput, { target: { value: 'Kendaraan' } });
 
-    expect(screen.getAllByText('Senior Heritage Life').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Critical Illness Shield')).toBeNull();
+    expect(screen.getAllByText('Auto Shield Comprehensive').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Health Guard Essential')).toBeNull();
 
     // Clear search with X button
     const clearBtn = screen.getByRole('button', { name: 'Hapus pencarian' });
     fireEvent.click(clearBtn);
 
-    expect(screen.getAllByText('Critical Illness Shield').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Health Guard Essential').length).toBeGreaterThan(0);
 
     // Search unmatched string
     fireEvent.change(searchInput, { target: { value: 'NONEXISTENT_QUERY_XYZ' } });
@@ -86,72 +107,84 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     const resetBtn = screen.getByRole('button', { name: 'Tampilkan Semua Produk' });
     fireEvent.click(resetBtn);
 
-    expect(screen.getAllByText('Term Life Guard Plus').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Secure Life Plus').length).toBeGreaterThan(0);
   });
 
-  it('sorts products by sort dropdown', async () => {
+  it('opens product detail modal, views benefits & riders, and closes via X button, Escape key, or backdrop click', async () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    const sortSelect = screen.getByRole('combobox', { name: 'Urutkan produk' });
+    // Breadcrumb semantic check
+    const breadcrumbCurrent = screen.getByText('Katalog Produk Asuransi');
+    expect(breadcrumbCurrent.getAttribute('aria-current')).toBe('page');
 
-    // Sort by price-asc
-    fireEvent.change(sortSelect, { target: { value: 'price-asc' } });
-    // Sort by price-desc
-    fireEvent.change(sortSelect, { target: { value: 'price-desc' } });
-    // Sort by coverage-desc
-    fireEvent.change(sortSelect, { target: { value: 'coverage-desc' } });
-    // Sort by popular
-    fireEvent.change(sortSelect, { target: { value: 'popular' } });
+    // Open modal via first Rincian button
+    const rincianButtons = screen.getAllByRole('button', { name: /Rincian/i });
+    fireEvent.click(rincianButtons[0]);
 
-    expect(screen.getAllByText('Term Life Guard Plus').length).toBeGreaterThan(0);
-  });
+    // Dialog opens with proper ARIA roles
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(screen.getByText('Cakupan Manfaat Utama Polis')).toBeDefined();
 
-  it('opens product detail modal, views benefits & riders, and closes modal', async () => {
-    const products = await productService.getProducts();
-    render(<ProductCatalogWorkbench initialProducts={products} />);
-
-    const detailButtons = screen.getAllByRole('button', { name: /Lihat Rincian Manfaat & Riders/i });
-    fireEvent.click(detailButtons[0]);
-
-    // Modal opens
+    // 1. Close via Escape key
+    fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => {
-      expect(screen.getByText('Cakupan Manfaat Utama Polis')).toBeDefined();
-      expect(screen.getByText('Santunan Meninggal Dunia 100%')).toBeDefined();
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    // Close via X button
+    // 2. Re-open and close via backdrop click
+    fireEvent.click(rincianButtons[0]);
+    const reOpenedDialog = await screen.findByRole('dialog');
+    fireEvent.click(reOpenedDialog);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    // 3. Re-open and close via Close button
+    fireEvent.click(rincianButtons[0]);
+    await screen.findByRole('dialog');
     const closeBtn = screen.getByRole('button', { name: 'Tutup Detail Produk' });
     fireEvent.click(closeBtn);
-
     await waitFor(() => {
-      expect(screen.queryByText('Cakupan Manfaat Utama Polis')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
   });
 
-  it('navigates to simulation page from ProductCard, Modal CTA, and Comparison Table', async () => {
+  it('navigates to simulation page from Simulasi button and apply page from Daftar button', async () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    // Cards in ProductCatalogWorkbench are sorted by popularity by default
-    const popularSorted = [...products].sort((a, b) => (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0));
+    // 1. Click 'Simulasi Premi' on first product (Secure Life Plus)
+    const simButtons = screen.getAllByRole('button', { name: /Simulasi premi/i });
+    fireEvent.click(simButtons[0]);
+    expect(mockPush).toHaveBeenCalledWith('/simulation?productId=secure-life-plus');
 
-    // 1. From ProductCard (first card corresponds to first popular-sorted product)
-    const cardSelectBtns = screen.getAllByRole('button', { name: /Pilih & Simulasi Premi →/i });
-    fireEvent.click(cardSelectBtns[0]);
-    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${popularSorted[0].id}`);
+    // 2. Click 'Daftar Sekarang' on second product (Health Guard Essential)
+    const applyButtons = screen.getAllByRole('button', { name: /Daftar sekarang/i });
+    fireEvent.click(applyButtons[1]);
+    expect(mockPush).toHaveBeenCalledWith('/apply?productId=health-guard-essential');
+  });
 
-    // 2. From Detail Modal CTA (second card corresponds to second popular-sorted product)
-    const detailButtons = screen.getAllByRole('button', { name: /Lihat Rincian Manfaat & Riders/i });
-    fireEvent.click(detailButtons[1]);
+  it('toggles the comparison table visibility and navigates from table action', async () => {
+    const products = await productService.getProducts();
+    render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    const modalSimulateBtn = await screen.findByRole('button', { name: /Lanjut ke Simulasi Premi 🧮/i });
-    fireEvent.click(modalSimulateBtn);
-    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${popularSorted[1].id}`);
+    // Toggle button
+    const toggleBtn = screen.getByRole('button', { name: /Matriks Komparasi Fitur Polis/i });
+    expect(screen.queryByText('Uang Pertanggungan Maksimal')).toBeNull();
 
-    // 3. From Comparison Table (rendered directly in initialProducts order)
+    // Open table
+    fireEvent.click(toggleBtn);
+    expect(screen.getByText('Uang Pertanggungan Maksimal')).toBeDefined();
+
+    // Click table simulate button
     const tableSimulateBtns = screen.getAllByRole('button', { name: 'Simulasi →' });
-    fireEvent.click(tableSimulateBtns[2]);
-    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${products[2].id}`);
+    fireEvent.click(tableSimulateBtns[0]);
+    expect(mockPush).toHaveBeenCalledWith('/simulation?productId=secure-life-plus');
+
+    // Close table
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByText('Uang Pertanggungan Maksimal')).toBeNull();
   });
 });
