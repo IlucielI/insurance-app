@@ -1,4 +1,3 @@
-import { execSync } from 'child_process';
 import { ISystemRepository, SystemMetadata } from './system.repository.interface';
 import packageJson from '../../../package.json';
 
@@ -28,16 +27,26 @@ export class SystemRepository implements ISystemRepository {
       return SystemRepository.cachedGitHash;
     }
 
-    try {
-      const hash = execSync('git rev-parse --short HEAD', {
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
-      SystemRepository.cachedGitHash = hash || 'unknown';
-      return SystemRepository.cachedGitHash;
-    } catch {
-      SystemRepository.cachedGitHash = 'dev';
-      return SystemRepository.cachedGitHash;
+    if (typeof window === 'undefined') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { execSync } = require('child_process');
+        const hash = (
+          execSync('git rev-parse --short HEAD', {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+          }) || ''
+        ).trim();
+        const resolved = hash || 'unknown';
+        SystemRepository.cachedGitHash = resolved;
+        return resolved;
+      } catch {
+        SystemRepository.cachedGitHash = 'dev';
+        return 'dev';
+      }
     }
+
+    SystemRepository.cachedGitHash = 'dev';
+    return 'dev';
   }
 }

@@ -99,6 +99,9 @@ export interface PolicyApplication {
   underwritingTier: 'guaranteed_issue' | 'simplified' | 'full_underwriting';
   slaRemainingMinutes: number;
   createdAt: string;
+  underwriterNotes?: string;
+  rfiDeadline?: string;
+  rfiRequestedAt?: string;
   rfiDocuments?: RfiDocument[];
   timelineEvents?: ApplicationTimelineEvent[];
 }
