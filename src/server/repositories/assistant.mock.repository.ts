@@ -260,6 +260,8 @@ export class AssistantMockRepository implements IAssistantRepository {
         timestamp: 'Baru saja',
       },
     ];
+    session.lastActive = 'Baru saja dibersihkan';
+    session.previewText = 'Percakapan telah dibersihkan.';
   }
 
   public async getPopularTopics(): Promise<PopularTopic[]> {

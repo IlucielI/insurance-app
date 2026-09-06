@@ -61,6 +61,8 @@ describe('AssistantMockRepository', () => {
     const session = await repository.getSessionById('sess-klaim-01');
     expect(session?.messages.length).toBe(1);
     expect(session?.messages[0].content).toContain('telah dibersihkan');
+    expect(session?.lastActive).toBe('Baru saja dibersihkan');
+    expect(session?.previewText).toBe('Percakapan telah dibersihkan.');
   });
 
   it('retrieves popular topics and engine status', async () => {

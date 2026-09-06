@@ -100,6 +100,7 @@ describe('AssistantPage & AssistantWorkbench', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Percakapan telah dibersihkan/i)).toBeDefined();
+      expect(screen.getByText(/Baru saja dibersihkan/i)).toBeDefined();
     });
   });
 
