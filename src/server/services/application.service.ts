@@ -161,4 +161,45 @@ export class ApplicationService implements IApplicationService {
   public async getApplicationById(id: string): Promise<PolicyApplication | null> {
     return this.repository.findById(id);
   }
+
+  public async trackApplication(query: string): Promise<PolicyApplication | null> {
+    const trimmed = query.trim();
+    if (!trimmed) return null;
+
+    // 1. Try search by Application ID (case-insensitive)
+    const byId = await this.repository.findById(trimmed);
+    if (byId) return byId;
+
+    // 2. Try search by NIK
+    const byNik = await this.repository.findByNik(trimmed);
+    if (byNik && byNik.length > 0) {
+      // Return the most recently created application
+      return byNik[0];
+    }
+
+    return null;
+  }
+
+  public async submitRfiDocument(
+    applicationId: string,
+    pillarNumber: number,
+    documentType: string,
+    fileName: string
+  ): Promise<{ success: boolean; application: PolicyApplication }> {
+    const updated = await this.repository.addRfiDocument(applicationId, {
+      pillarNumber,
+      documentType,
+      documentName: fileName,
+    });
+
+    if (!updated) {
+      throw new Error(`Aplikasi dengan ID ${applicationId} tidak ditemukan.`);
+    }
+
+    return {
+      success: true,
+      application: updated,
+    };
+  }
 }
+

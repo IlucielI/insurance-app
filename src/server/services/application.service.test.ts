@@ -153,4 +153,49 @@ describe('ApplicationService', () => {
     expect(result.application.underwritingTier).toBe('simplified');
     expect(result.application.slaRemainingMinutes).toBe(60);
   });
+
+  it('tracks application by application ID or NIK correctly', async () => {
+    // Search by ID
+    const byId = await service.trackApplication('APP-2026-8821');
+    expect(byId).not.toBeNull();
+    expect(byId?.identity.fullName).toBe('Budi Santoso');
+
+    // Search by case-insensitive ID
+    const byIdLower = await service.trackApplication('app-2026-8821');
+    expect(byIdLower).not.toBeNull();
+    expect(byIdLower?.id).toBe('APP-2026-8821');
+
+    // Search by NIK
+    const byNik = await service.trackApplication('3171098765430005');
+    expect(byNik).not.toBeNull();
+    expect(byNik?.id).toBe('APP-2026-7492');
+
+    // Search nonexistent query
+    const notFound = await service.trackApplication('NONEXISTENT-999');
+    expect(notFound).toBeNull();
+
+    // Empty query returns null
+    const emptyQuery = await service.trackApplication('   ');
+    expect(emptyQuery).toBeNull();
+  });
+
+  it('submits RFI document and updates application status in service layer', async () => {
+    const result = await service.submitRfiDocument(
+      'APP-2026-3109',
+      3,
+      'Resume Medis Dokter Spesialis',
+      'resume-medis.pdf'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.application.rfiDocuments?.length).toBe(1);
+    expect(result.application.overallStatus).toBe('under_review');
+  });
+
+  it('throws error when submitting RFI document for invalid application ID', async () => {
+    await expect(
+      service.submitRfiDocument('INVALID-APP-ID', 1, 'KTP', 'ktp.jpg')
+    ).rejects.toThrow('tidak ditemukan');
+  });
 });
+

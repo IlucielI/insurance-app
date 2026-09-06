@@ -28,7 +28,10 @@ export default defineConfig({
         'src/app/simulation/SimulationWorkbench.tsx',
         'src/app/apply/page.tsx',
         'src/app/apply/ApplicationWorkbench.tsx',
+        'src/app/tracking/page.tsx',
+        'src/app/tracking/TrackingWorkbench.tsx',
       ],
+
       thresholds: {
         lines: 80,
         functions: 80,

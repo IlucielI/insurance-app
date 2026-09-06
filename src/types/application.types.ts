@@ -63,6 +63,22 @@ export interface PaymentSelection {
   autoDebet: boolean;
 }
 
+export interface RfiDocument {
+  id: string;
+  pillarNumber: number;
+  documentType: string;
+  documentName: string;
+  uploadedAt: string;
+  status: 'uploaded' | 'verified' | 'rejected';
+}
+
+export interface ApplicationTimelineEvent {
+  title: string;
+  timestamp: string;
+  description: string;
+  status: 'completed' | 'in_progress' | 'pending' | 'action_required';
+}
+
 export interface PolicyApplication {
   id: string;
   productId: string;
@@ -83,6 +99,8 @@ export interface PolicyApplication {
   underwritingTier: 'guaranteed_issue' | 'simplified' | 'full_underwriting';
   slaRemainingMinutes: number;
   createdAt: string;
+  rfiDocuments?: RfiDocument[];
+  timelineEvents?: ApplicationTimelineEvent[];
 }
 
 export interface CreateApplicationDTO {

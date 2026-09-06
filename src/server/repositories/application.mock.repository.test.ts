@@ -92,4 +92,43 @@ describe('ApplicationMockRepository', () => {
     const refetched = await repository.findById('APP-2026-9999');
     expect(refetched?.identity.fullName).toBe('Test User');
   });
+
+  it('finds applications by NIK', async () => {
+    const apps = await repository.findByNik('3201123456780001');
+    expect(apps.length).toBe(1);
+    expect(apps[0].id).toBe('APP-2026-8821');
+
+    const notFound = await repository.findByNik('9999999999999999');
+    expect(notFound.length).toBe(0);
+  });
+
+  it('adds RFI document to existing application and updates pillar status', async () => {
+    const updated = await repository.addRfiDocument('APP-2026-3109', {
+      pillarNumber: 3,
+      documentType: 'Surat Keterangan Bebas Penyakit Kritis',
+      documentName: 'surat-dokter-hendra.pdf',
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated?.rfiDocuments?.length).toBe(1);
+    expect(updated?.rfiDocuments?.[0].documentName).toBe('surat-dokter-hendra.pdf');
+    expect(updated?.overallStatus).toBe('under_review');
+
+    // Pillar 3 should now be PENDING
+    const pillar3 = updated?.pillarChecks.find((p) => p.pillarNumber === 3);
+    expect(pillar3?.status).toBe('PENDING');
+
+    // Timeline event added
+    expect(updated?.timelineEvents?.[0].title).toContain('Dokumen RFI Diunggah');
+  });
+
+  it('returns null when adding RFI document to non-existent application', async () => {
+    const result = await repository.addRfiDocument('APP-NOTFOUND', {
+      pillarNumber: 1,
+      documentType: 'KTP',
+      documentName: 'ktp.jpg',
+    });
+    expect(result).toBeNull();
+  });
 });
+
