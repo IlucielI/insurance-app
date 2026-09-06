@@ -13,8 +13,7 @@ vi.mock('next/navigation', () => ({
 
 describe('HomePage & HomeWorkbench', () => {
   beforeEach(() => {
-    mockPush.mockClear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 

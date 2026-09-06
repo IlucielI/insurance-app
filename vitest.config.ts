@@ -19,6 +19,8 @@ export default defineConfig({
         'src/server/di/registry.ts',
         'src/app/page.tsx',
         'src/app/HomeWorkbench.tsx',
+        'src/app/products/page.tsx',
+        'src/app/products/ProductCatalogWorkbench.tsx',
       ],
       thresholds: {
         lines: 80,

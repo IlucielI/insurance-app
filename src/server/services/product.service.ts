@@ -12,8 +12,12 @@ export class ProductService implements IProductService {
     return this.repository.getFeaturedProducts();
   }
 
-  async getProducts(categoryKey?: ProductCategoryKey | 'all'): Promise<InsuranceProduct[]> {
-    return this.repository.getProducts(categoryKey);
+  async getProducts(
+    categoryKey?: ProductCategoryKey | 'all',
+    search?: string
+  ): Promise<InsuranceProduct[]> {
+    const trimmedSearch = search?.trim() || undefined;
+    return this.repository.getProducts(categoryKey, trimmedSearch);
   }
 
   async getProductById(id: string): Promise<InsuranceProduct | null> {
