@@ -17,21 +17,52 @@ describe('HomePage & HomeWorkbench', () => {
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
-  it('renders Server Component HomePage correctly with products from productService', async () => {
+  it('renders Server Component HomePage correctly with Penpot sections and products', async () => {
     const Component = await HomePage();
     render(Component);
 
-    // Hero Section
-    expect(screen.getByText(/Teknologi Underwriting AI Berkecepatan Tinggi/i)).toBeDefined();
+    // 1. Hero Section
+    expect(screen.getByText(/PLATFORM ASURANSI DIGITAL MODERN/i)).toBeDefined();
+    expect(screen.getByText(/Perlindungan Masa Depan,/i)).toBeDefined();
+    expect(screen.getByText(/Instant Approval Engine/i)).toBeDefined();
+    expect(screen.getByText(/Disetujui Otomatis dalam 45 Detik/i)).toBeDefined();
+
+    // 2. 4 Value Props Strip
+    expect(screen.getByText('3 Kategori Polis')).toBeDefined();
+    expect(screen.getByText('Smart Pricing Engine')).toBeDefined();
+    expect(screen.getByText('Digital Underwriting')).toBeDefined();
+    expect(screen.getByText('RAG AI Assistant')).toBeDefined();
+
+    // 3. Featured Products
+    expect(screen.getByText(/Pilihan Perlindungan Terbaik Dari Core API/i)).toBeDefined();
     expect(screen.getByText('Term Life Guard Plus')).toBeDefined();
     expect(screen.getByText('Critical Illness Shield')).toBeDefined();
     expect(screen.getByText('EduCare Future')).toBeDefined();
 
-    // 4 Pillars
-    expect(screen.getByText('1. Identitas Dukcapil')).toBeDefined();
-    expect(screen.getByText('2. Finansial & DSR')).toBeDefined();
-    expect(screen.getByText('3. Riwayat Medis')).toBeDefined();
-    expect(screen.getByText('4. Legalitas Polis')).toBeDefined();
+    // 4. Simulation Teaser
+    expect(screen.getByText(/Hitung Estimasi Premi Secara Terbuka & Presisi/i)).toBeDefined();
+    expect(screen.getByText(/PREMI INDIKATIF TERBAIK/i)).toBeDefined();
+
+    // 5. 4-Tahap Workflow Underwriting
+    expect(screen.getByText('Verifikasi KTP Dukcapil')).toBeDefined();
+    expect(screen.getByText('Analisis Kemampuan UP')).toBeDefined();
+    expect(screen.getByText('Validasi Berkas Digital')).toBeDefined();
+    expect(screen.getByText('Kuesioner Kesehatan')).toBeDefined();
+    expect(screen.getByText(/95% Aplikasi Disetujui Secara Otomatis dalam 5 Menit/i)).toBeDefined();
+
+    // 6. RAG AI Assistant Section
+    expect(screen.getByText(/Bingung Memilih Polis atau Cara Klaim\? Tanya AI Kami Kapan Saja/i)).toBeDefined();
+
+    // 7. FAQ Accordion
+    expect(screen.getByText(/Semua Hal yang Perlu Anda Ketahui/i)).toBeDefined();
+
+    // 8. Pre-Footer Banner
+    expect(screen.getByText(/Butuh Rekomendasi Polis yang Tepat\?/i)).toBeDefined();
+
+    // 9. Official Penpot Footer
+    expect(screen.getByText(/Menara Bayu Lt\. 18/i)).toBeDefined();
+    expect(screen.getByText(/TERDAFTAR & DIAWASI OJK/i)).toBeDefined();
+    expect(screen.getByText(/ISO 27001 SECURITY/i)).toBeDefined();
   });
 
   it('navigates to simulation page when a product is selected', async () => {
@@ -43,6 +74,55 @@ describe('HomePage & HomeWorkbench', () => {
 
     fireEvent.click(selectButtons[0]);
     expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${featured[0].id}`);
+  });
+
+  it('interacts with the simulation teaser controls (age, gender, smoker, category)', async () => {
+    const featured = await productService.getFeaturedProducts();
+    render(<HomeWorkbench initialFeaturedProducts={featured} />);
+
+    // Test age increment / decrement
+    expect(screen.getByText('32 Tahun')).toBeDefined();
+    const plusBtn = screen.getByRole('button', { name: 'Tambah Usia' });
+    fireEvent.click(plusBtn);
+    expect(screen.getByText('33 Tahun')).toBeDefined();
+
+    const minusBtn = screen.getByRole('button', { name: 'Kurangi Usia' });
+    fireEvent.click(minusBtn);
+    expect(screen.getByText('32 Tahun')).toBeDefined();
+
+    // Test category change
+    const healthCatBtn = screen.getByRole('button', { name: 'Health (Kesehatan)' });
+    fireEvent.click(healthCatBtn);
+    expect(healthCatBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // Test gender change
+    const femaleBtn = screen.getByRole('button', { name: 'Wanita' });
+    fireEvent.click(femaleBtn);
+    expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // Test smoker toggle
+    const smokerToggle = screen.getByRole('button', { name: 'Non-Smoker' });
+    fireEvent.click(smokerToggle);
+    expect(smokerToggle.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Perokok')).toBeDefined();
+    expect(screen.getAllByText(/Rp\s\d{3}\.\d{3}/).length).toBeGreaterThan(0);
+  });
+
+  it('toggles FAQ accordion items when clicked', async () => {
+    const featured = await productService.getFeaturedProducts();
+    render(<HomeWorkbench initialFeaturedProducts={featured} />);
+
+    // First FAQ is open by default
+    expect(screen.getByText(/tabel mortalita resmi TMI IV OJK/i)).toBeDefined();
+
+    // Click second FAQ
+    const secondFaq = screen.getByText('Berapa lama proses persetujuan underwriting?');
+    fireEvent.click(secondFaq);
+    expect(screen.getByText(/45 detik hingga 5 menit/i)).toBeDefined();
+
+    // Click second FAQ again to close it
+    fireEvent.click(secondFaq);
+    expect(screen.queryByText(/45 detik hingga 5 menit/i)).toBeNull();
   });
 
   it('opens and closes the AI Assistant Drawer via the floating trigger', async () => {
