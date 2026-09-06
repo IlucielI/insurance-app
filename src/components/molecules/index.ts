@@ -7,3 +7,5 @@ export * from './StepTracker';
 export * from './DocumentUploadItem';
 export * from './StatusTimeline';
 export * from './ChatMessageBubble';
+export * from './PillarStatusCard';
+export * from './PolicyCard';

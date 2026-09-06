@@ -10,3 +10,4 @@ export * from './Slider';
 export * from './FileUpload';
 export * from './ProgressBar';
 export * from './Spinner';
+export * from './Tabs';
