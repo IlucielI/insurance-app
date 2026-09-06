@@ -727,7 +727,7 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
             Pengajuan Klaim Berhasil Dikirim ke Tim Underwriter Medis
           </h3>
           <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-            Nomor registrasi klaim Anda adalah <span className="font-bold text-blue-600 font-mono">CLM-2026-9042</span>. Status evaluasi dan pencairan santunan dapat dipantau langsung melalui portal ini.
+            Nomor registrasi klaim Anda adalah <span className="font-bold text-blue-600 font-mono">{claimSuccess.claimId || 'CLM-2026-9042'}</span>. Status evaluasi dan pencairan santunan dapat dipantau langsung melalui portal ini.
           </p>
 
           <div className="max-w-md mx-auto p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-left space-y-1.5">
