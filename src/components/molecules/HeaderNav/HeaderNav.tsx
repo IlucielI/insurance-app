@@ -12,8 +12,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/' }) => {
     { label: 'Beranda', href: '/' },
     { label: 'Katalog Produk', href: '/products' },
     { label: 'Simulasi Premi', href: '/simulation' },
+    { label: 'Konsultasi AI', href: '/assistant' },
     { label: 'Cek Status Klaim & Polis', href: '/tracking' },
   ];
+
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur border-b border-slate-200/80 transition-all">

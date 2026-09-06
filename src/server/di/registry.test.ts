@@ -4,12 +4,16 @@ import {
   simulationService,
   applicationRepository,
   applicationService,
+  assistantRepository,
+  assistantService,
 } from './registry';
 import { HealthController } from '../controllers/health.controller';
 import { ProductService } from '../services/product.service';
 import { SimulationService } from '../services/simulation.service';
 import { ApplicationMockRepository } from '../repositories/application.mock.repository';
 import { ApplicationService } from '../services/application.service';
+import { AssistantMockRepository } from '../repositories/assistant.mock.repository';
+import { AssistantService } from '../services/assistant.service';
 
 describe('DI Registry', () => {
   it('should export initialized services and controller instances', () => {
@@ -23,7 +27,12 @@ describe('DI Registry', () => {
     expect(applicationRepository).toBeInstanceOf(ApplicationMockRepository);
     expect(applicationService).toBeDefined();
     expect(applicationService).toBeInstanceOf(ApplicationService);
+    expect(assistantRepository).toBeDefined();
+    expect(assistantRepository).toBeInstanceOf(AssistantMockRepository);
+    expect(assistantService).toBeDefined();
+    expect(assistantService).toBeInstanceOf(AssistantService);
   });
+
 
   it('should allow productService to successfully fetch data through injected mock repository', async () => {
     const featured = await productService.getFeaturedProducts();

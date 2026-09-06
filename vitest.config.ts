@@ -16,9 +16,11 @@ export default defineConfig({
       include: [
         'src/server/repositories/product.mock.repository.ts',
         'src/server/repositories/application.mock.repository.ts',
+        'src/server/repositories/assistant.mock.repository.ts',
         'src/server/services/product.service.ts',
         'src/server/services/simulation.service.ts',
         'src/server/services/application.service.ts',
+        'src/server/services/assistant.service.ts',
         'src/server/di/registry.ts',
         'src/app/page.tsx',
         'src/app/HomeWorkbench.tsx',
@@ -30,7 +32,10 @@ export default defineConfig({
         'src/app/apply/ApplicationWorkbench.tsx',
         'src/app/tracking/page.tsx',
         'src/app/tracking/TrackingWorkbench.tsx',
+        'src/app/assistant/page.tsx',
+        'src/app/assistant/AssistantWorkbench.tsx',
       ],
+
 
       thresholds: {
         lines: 80,

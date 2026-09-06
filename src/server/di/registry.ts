@@ -8,6 +8,9 @@ import { SimulationService } from '../services/simulation.service';
 import { ApplicationMockRepository } from '../repositories/application.mock.repository';
 import { ApplicationService } from '../services/application.service';
 
+import { AssistantMockRepository } from '../repositories/assistant.mock.repository';
+import { AssistantService } from '../services/assistant.service';
+
 const systemRepository = new SystemRepository();
 const healthService = new HealthService(systemRepository);
 export const healthController = new HealthController(healthService);
@@ -19,4 +22,8 @@ export const simulationService = new SimulationService();
 
 export const applicationRepository = new ApplicationMockRepository();
 export const applicationService = new ApplicationService(applicationRepository);
+
+export const assistantRepository = new AssistantMockRepository();
+export const assistantService = new AssistantService(assistantRepository);
+
 
