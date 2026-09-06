@@ -13,8 +13,7 @@ vi.mock('next/navigation', () => ({
 
 describe('ProductsPage & ProductCatalogWorkbench', () => {
   beforeEach(() => {
-    mockPush.mockClear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders Server Component ProductsPage correctly with all initial products', async () => {
