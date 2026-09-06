@@ -1,8 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { healthController, productService, simulationService } from './registry';
+import {
+  healthController,
+  productService,
+  simulationService,
+  applicationRepository,
+  applicationService,
+} from './registry';
 import { HealthController } from '../controllers/health.controller';
 import { ProductService } from '../services/product.service';
 import { SimulationService } from '../services/simulation.service';
+import { ApplicationMockRepository } from '../repositories/application.mock.repository';
+import { ApplicationService } from '../services/application.service';
 
 describe('DI Registry', () => {
   it('should export initialized services and controller instances', () => {
@@ -12,6 +19,10 @@ describe('DI Registry', () => {
     expect(productService).toBeInstanceOf(ProductService);
     expect(simulationService).toBeDefined();
     expect(simulationService).toBeInstanceOf(SimulationService);
+    expect(applicationRepository).toBeDefined();
+    expect(applicationRepository).toBeInstanceOf(ApplicationMockRepository);
+    expect(applicationService).toBeDefined();
+    expect(applicationService).toBeInstanceOf(ApplicationService);
   });
 
   it('should allow productService to successfully fetch data through injected mock repository', async () => {

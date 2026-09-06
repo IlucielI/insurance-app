@@ -15,8 +15,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: [
         'src/server/repositories/product.mock.repository.ts',
+        'src/server/repositories/application.mock.repository.ts',
         'src/server/services/product.service.ts',
         'src/server/services/simulation.service.ts',
+        'src/server/services/application.service.ts',
         'src/server/di/registry.ts',
         'src/app/page.tsx',
         'src/app/HomeWorkbench.tsx',
@@ -24,6 +26,8 @@ export default defineConfig({
         'src/app/products/ProductCatalogWorkbench.tsx',
         'src/app/simulation/page.tsx',
         'src/app/simulation/SimulationWorkbench.tsx',
+        'src/app/apply/page.tsx',
+        'src/app/apply/ApplicationWorkbench.tsx',
       ],
       thresholds: {
         lines: 80,
