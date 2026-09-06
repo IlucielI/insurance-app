@@ -19,6 +19,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       value,
       id,
       disabled,
+      rows = 3,
       ...props
     },
     ref
@@ -61,7 +62,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
               ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
               : 'border-slate-300 focus:border-blue-500 focus:ring-blue-100'
           } ${className}`}
-          rows={props.rows || 3}
+          rows={rows}
           {...props}
         />
 
