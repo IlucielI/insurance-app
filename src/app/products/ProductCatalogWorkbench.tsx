@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -315,6 +315,17 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
     return result;
   }, [allProducts, activeCategory, searchQuery]);
 
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedProduct]);
+
   const handleSelectSimulation = (productId: string) => {
     router.push(`/simulation?productId=${encodeURIComponent(productId)}`);
   };
@@ -332,8 +343,8 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
           <Link href="/" className="hover:text-blue-600 transition-colors">
             Beranda
           </Link>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-600 font-semibold">Katalog Produk Asuransi</span>
+          <span className="text-slate-300" aria-hidden="true">/</span>
+          <span className="text-slate-600 font-semibold" aria-current="page">Katalog Produk Asuransi</span>
         </nav>
 
         {/* Heading */}
@@ -515,6 +526,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                   <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
+                      aria-label={`Simulasi premi untuk ${product.title}`}
                       onClick={() => handleSelectSimulation(product.id)}
                       className="w-full py-2.5 px-3 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors text-center cursor-pointer shadow-xs"
                     >
@@ -522,6 +534,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                     </button>
                     <button
                       type="button"
+                      aria-label={`Daftar sekarang untuk ${product.title}`}
                       onClick={() => handleSelectApply(product.id)}
                       className="w-full py-2.5 px-3 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors text-center cursor-pointer shadow-xs shadow-blue-500/20"
                     >
@@ -536,6 +549,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                     </span>
                     <button
                       type="button"
+                      aria-label={`Lihat rincian manfaat dan riders untuk ${product.title}`}
                       onClick={() => setSelectedProduct(product)}
                       className="font-semibold text-blue-600 hover:text-blue-700 hover:underline shrink-0 ml-2 cursor-pointer"
                     >
@@ -698,7 +712,15 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
 
       {/* 7. PRODUCT DETAIL & BENEFITS MODAL */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-detail-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedProduct(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+        >
           <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 text-left">
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/70">
@@ -713,7 +735,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                     </Badge>
                   )}
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900">
+                <h3 id="product-detail-modal-title" className="text-xl font-extrabold text-slate-900">
                   {selectedProduct.title}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-lg">

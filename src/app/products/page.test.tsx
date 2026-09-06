@@ -110,24 +110,44 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     expect(screen.getAllByText('Secure Life Plus').length).toBeGreaterThan(0);
   });
 
-  it('opens product detail modal, views benefits & riders, and closes modal', async () => {
+  it('opens product detail modal, views benefits & riders, and closes via X button, Escape key, or backdrop click', async () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    const rincianButtons = screen.getAllByRole('button', { name: /Rincian 🔍/i });
+    // Breadcrumb semantic check
+    const breadcrumbCurrent = screen.getByText('Katalog Produk Asuransi');
+    expect(breadcrumbCurrent.getAttribute('aria-current')).toBe('page');
+
+    // Open modal via first Rincian button
+    const rincianButtons = screen.getAllByRole('button', { name: /Rincian/i });
     fireEvent.click(rincianButtons[0]);
 
-    // Modal opens
+    // Dialog opens with proper ARIA roles
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(screen.getByText('Cakupan Manfaat Utama Polis')).toBeDefined();
+
+    // 1. Close via Escape key
+    fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => {
-      expect(screen.getByText('Cakupan Manfaat Utama Polis')).toBeDefined();
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    // Close via X button
+    // 2. Re-open and close via backdrop click
+    fireEvent.click(rincianButtons[0]);
+    const reOpenedDialog = await screen.findByRole('dialog');
+    fireEvent.click(reOpenedDialog);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    // 3. Re-open and close via Close button
+    fireEvent.click(rincianButtons[0]);
+    await screen.findByRole('dialog');
     const closeBtn = screen.getByRole('button', { name: 'Tutup Detail Produk' });
     fireEvent.click(closeBtn);
-
     await waitFor(() => {
-      expect(screen.queryByText('Cakupan Manfaat Utama Polis')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
   });
 
@@ -135,13 +155,13 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    // 1. Click 'Simulasi Premi ↗' on first product (Secure Life Plus)
-    const simButtons = screen.getAllByRole('button', { name: /Simulasi Premi ↗/i });
+    // 1. Click 'Simulasi Premi' on first product (Secure Life Plus)
+    const simButtons = screen.getAllByRole('button', { name: /Simulasi premi/i });
     fireEvent.click(simButtons[0]);
     expect(mockPush).toHaveBeenCalledWith('/simulation?productId=secure-life-plus');
 
-    // 2. Click 'Daftar Sekarang →' on second product (Health Guard Essential)
-    const applyButtons = screen.getAllByRole('button', { name: /Daftar Sekarang →/i });
+    // 2. Click 'Daftar Sekarang' on second product (Health Guard Essential)
+    const applyButtons = screen.getAllByRole('button', { name: /Daftar sekarang/i });
     fireEvent.click(applyButtons[1]);
     expect(mockPush).toHaveBeenCalledWith('/apply?productId=health-guard-essential');
   });
