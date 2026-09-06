@@ -18,6 +18,8 @@ export class SimulationService implements ISimulationService {
       isSmoker,
       frequency,
       selectedRiderIds = [],
+      gender,
+      occupationRisk,
     } = input;
 
     // 1. Age Factor based on Indonesian Mortality Table (TMIV - Tabel Mortalita Indonesia IV)
@@ -28,11 +30,19 @@ export class SimulationService implements ISimulationService {
     // 2. Smoker Risk Multiplier (OJK actuarial standard: 35% risk loading for active smokers)
     const smokerFactor = isSmoker ? 1.35 : 1.0;
 
-    // 3. Base Annual Premium calculation
-    const rawAnnualBase = sumAssured * product.baseRate * ageFactor * smokerFactor;
+    // 3. Gender Multiplier (Actuarial baseline: Male 1.05x, Female 1.00x)
+    const genderFactor = gender === 'male' ? 1.05 : 1.0;
+
+    // 4. Occupation Risk Multiplier (Low 0.95x, Standard 1.00x, High 1.40x)
+    const occupationFactor =
+      occupationRisk === 'low' ? 0.95 : occupationRisk === 'high' ? 1.4 : 1.0;
+
+    // 5. Base Annual Premium calculation
+    const rawAnnualBase =
+      sumAssured * product.baseRate * ageFactor * smokerFactor * genderFactor * occupationFactor;
     const baseAnnualPremium = Math.round(rawAnnualBase / 10_000) * 10_000;
 
-    // 4. Riders Calculation
+    // 6. Riders Calculation
     const selectedRiders: RiderCostItem[] = [];
     let ridersAnnualTotal = 0;
 
@@ -57,19 +67,19 @@ export class SimulationService implements ISimulationService {
       }
     }
 
-    // 5. Total Annual Premium
+    // 7. Total Annual Premium
     const annualPremium = baseAnnualPremium + ridersAnnualTotal;
 
-    // 6. Monthly Premium (with 10% operational margin compared to annual prepay)
+    // 8. Monthly Premium (with 10% operational margin compared to annual prepay)
     const monthlyPremium = Math.round(((annualPremium / 12) * 1.1) / 1_000) * 1_000;
 
-    // 7. Annual Savings
+    // 9. Annual Savings
     const annualSavings = Math.max(0, monthlyPremium * 12 - annualPremium);
 
-    // 8. Active Premium based on chosen frequency
+    // 10. Active Premium based on chosen frequency
     const activePremium = frequency === 'monthly' ? monthlyPremium : annualPremium;
 
-    // 9. Underwriting Tier Assessment
+    // 11. Underwriting Tier Assessment
     let underwritingTier: 'guaranteed_issue' | 'simplified' | 'full_underwriting' = 'simplified';
     let underwritingDescription =
       'Simplified Issue (Kuesioner Kesehatan Digital & Verifikasi Tele-Underwriting OJK)';
@@ -88,6 +98,9 @@ export class SimulationService implements ISimulationService {
       baseRate: product.baseRate,
       ageFactor,
       smokerFactor,
+      genderFactor,
+      occupationFactor,
+      annualDiscountPercent: 6.0,
       baseAnnualPremium,
       ridersAnnualTotal,
       ridersBreakdown: selectedRiders,
@@ -103,6 +116,8 @@ export class SimulationService implements ISimulationService {
       applicantAge: normalizedAge,
       isSmoker,
       frequency,
+      gender: gender || 'female',
+      occupationRisk: occupationRisk || 'standard',
       monthlyPremium,
       annualPremium,
       annualSavings,
