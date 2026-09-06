@@ -16,11 +16,14 @@ export default defineConfig({
       include: [
         'src/server/repositories/product.mock.repository.ts',
         'src/server/services/product.service.ts',
+        'src/server/services/simulation.service.ts',
         'src/server/di/registry.ts',
         'src/app/page.tsx',
         'src/app/HomeWorkbench.tsx',
         'src/app/products/page.tsx',
         'src/app/products/ProductCatalogWorkbench.tsx',
+        'src/app/simulation/page.tsx',
+        'src/app/simulation/SimulationWorkbench.tsx',
       ],
       thresholds: {
         lines: 80,
