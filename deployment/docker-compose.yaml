@@ -1,0 +1,12 @@
+services:
+  app:
+    image: insurance-app:latest
+    container_name: insurance-app
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      CORE_API_URL: http://insurance-core-api:8080
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
