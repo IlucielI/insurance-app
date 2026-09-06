@@ -517,6 +517,13 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
                     Aplikasi #{currentApp.id} • Produk: {currentApp.productName} • Pemohon: {currentApp.identity.fullName}
                   </p>
                 </div>
+                <div>
+                  <Link href={`/portal/rfi/${currentApp.id}`}>
+                    <Button variant="primary" size="sm" className="whitespace-nowrap shadow-xs">
+                      Buka Portal Unggah Berkas Khusus RFI ↗
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Underwriter Note Callout */}
