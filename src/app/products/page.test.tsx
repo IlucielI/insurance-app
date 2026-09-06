@@ -133,20 +133,23 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);
 
-    // 1. From ProductCard
+    // Cards in ProductCatalogWorkbench are sorted by popularity by default
+    const popularSorted = [...products].sort((a, b) => (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0));
+
+    // 1. From ProductCard (first card corresponds to first popular-sorted product)
     const cardSelectBtns = screen.getAllByRole('button', { name: /Pilih & Simulasi Premi →/i });
     fireEvent.click(cardSelectBtns[0]);
-    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${products[0].id}`);
+    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${popularSorted[0].id}`);
 
-    // 2. From Detail Modal CTA
+    // 2. From Detail Modal CTA (second card corresponds to second popular-sorted product)
     const detailButtons = screen.getAllByRole('button', { name: /Lihat Rincian Manfaat & Riders/i });
     fireEvent.click(detailButtons[1]);
 
     const modalSimulateBtn = await screen.findByRole('button', { name: /Lanjut ke Simulasi Premi 🧮/i });
     fireEvent.click(modalSimulateBtn);
-    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${products[1].id}`);
+    expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${popularSorted[1].id}`);
 
-    // 3. From Comparison Table
+    // 3. From Comparison Table (rendered directly in initialProducts order)
     const tableSimulateBtns = screen.getAllByRole('button', { name: 'Simulasi →' });
     fireEvent.click(tableSimulateBtns[2]);
     expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${products[2].id}`);
