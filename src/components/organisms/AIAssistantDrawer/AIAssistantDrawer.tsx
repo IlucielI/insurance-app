@@ -41,7 +41,9 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
   }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -112,6 +114,7 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
 
           <button
             type="button"
+            aria-label="Tutup Asisten"
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
           >
