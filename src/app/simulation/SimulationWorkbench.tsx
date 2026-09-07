@@ -591,53 +591,108 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       {/* 3 PRODUCT SELECTOR CARDS (Y: 240 - 370)                       */}
       {/* ------------------------------------------------------------- */}
       <section aria-label="Pilihan Produk Simulasi" className="space-y-3 text-left">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          {canonicalCards.map((product) => {
-            const isSelected = product.id === selectedProductId;
-            const isLife = product.categoryKey === 'life';
-            const isHealth = product.categoryKey === 'health';
+        {initialProducts.length > 3 ? (
+          <div className="space-y-2">
+            <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin snap-x snap-mandatory">
+              {initialProducts.map((product) => {
+                const isSelected = product.id === selectedProductId;
+                const isLife = product.categoryKey === 'life';
+                const isHealth = product.categoryKey === 'health';
 
-            return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => handleProductChange(product.id)}
-                aria-pressed={isSelected}
-                className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] border ${
-                  isSelected
-                    ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
-                    : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  {isSelected ? (
-                    <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      PILIHAN
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => handleProductChange(product.id)}
+                    aria-pressed={isSelected}
+                    className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] shrink-0 w-72 sm:w-80 snap-start border ${
+                      isSelected
+                        ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {isSelected ? (
+                        <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          PILIHAN
+                        </span>
+                      ) : isHealth ? (
+                        <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          KESEHATAN
+                        </span>
+                      ) : isLife ? (
+                        <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          JIWA
+                        </span>
+                      ) : (
+                        <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          KENDARAAN
+                        </span>
+                      )}
+                      <span className={`text-base font-extrabold line-clamp-1 ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
+                        {product.title}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                      {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+              <span>‹ Geser horizontal untuk melihat {initialProducts.length} produk pilihan ›</span>
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+            {canonicalCards.map((product) => {
+              const isSelected = product.id === selectedProductId;
+              const isLife = product.categoryKey === 'life';
+              const isHealth = product.categoryKey === 'health';
+
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => handleProductChange(product.id)}
+                  aria-pressed={isSelected}
+                  className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] border ${
+                    isSelected
+                      ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {isSelected ? (
+                      <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        PILIHAN
+                      </span>
+                    ) : isHealth ? (
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        KESEHATAN
+                      </span>
+                    ) : isLife ? (
+                      <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        JIWA
+                      </span>
+                    ) : (
+                      <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        KENDARAAN
+                      </span>
+                    )}
+                    <span className={`text-base font-extrabold ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
+                      {product.title}
                     </span>
-                  ) : isHealth ? (
-                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      KESEHATAN
-                    </span>
-                  ) : isLife ? (
-                    <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      JIWA
-                    </span>
-                  ) : (
-                    <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      KENDARAAN
-                    </span>
-                  )}
-                  <span className={`text-base font-extrabold ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
-                    {product.title}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 font-medium line-clamp-1">
-                  {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
-                </p>
-              </button>
-            );
-          })}
-        </div>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                    {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Catalog Fallback Dropdown if more than 3 products */}
         {initialProducts.length > 3 && (
