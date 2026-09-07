@@ -48,13 +48,92 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const messageCounterRef = useRef(0);
 
+  // 1. Hydrate sessions from localStorage on client mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('bayu_insurance_assistant_sessions_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          queueMicrotask(() => {
+            setSessions(parsed);
+            setActiveSessionId(parsed[0].id);
+          });
+        }
+      }
+    } catch {
+      // ignore storage parsing error
+    }
+  }, []);
+
+  // 2. Persist sessions to localStorage on state changes
+  useEffect(() => {
+    try {
+      if (sessions.length > 0) {
+        localStorage.setItem(
+          'bayu_insurance_assistant_sessions_v1',
+          JSON.stringify(sessions.slice(0, 15))
+        );
+      }
+    } catch {
+      // ignore storage write errors
+    }
+  }, [sessions]);
+
   const handleCreateNewSession = async () => {
     try {
-      const newSession = await assistantService.startNewSession();
+      const created = await assistantService.startNewSession();
+      messageCounterRef.current += 1;
+      const initialMessages: ChatMessage[] =
+        created.messages && created.messages.length > 0
+          ? created.messages
+          : [
+              {
+                id: `msg-welcome-${messageCounterRef.current}`,
+                sender: 'assistant',
+                content:
+                  'Halo! Saya asisten AI resmi Bayu Insurance yang diawasi OJK. Saya siap membantu Anda melakukan simulasi premi aktuaria, memeriksa klausul polis, memahami syarat klaim, atau menjawab pertanyaan proteksi lainnya. Apa yang ingin Anda tanyakan?',
+                timestamp: 'Baru saja',
+              },
+            ];
+
+      const newSession: ChatSession = {
+        ...created,
+        messages: initialMessages,
+      };
+
       setSessions((prev) => [newSession, ...prev]);
       setActiveSessionId(newSession.id);
     } catch (error) {
       console.error('Failed to create new session', error);
+    }
+  };
+
+  const handleSelectSession = async (session: ChatSession) => {
+    setActiveSessionId(session.id);
+    // If session messages are empty, attempt to lazy-load from BFF conversations route
+    if (session.messages.length === 0 && !session.id.startsWith('temp-')) {
+      try {
+        const res = await fetch(`/api/assistant/conversations/${encodeURIComponent(session.id)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data?.messages && Array.isArray(json.data.messages)) {
+            const loadedMessages: ChatMessage[] = json.data.messages.map(
+              (m: { id: string; role: string; content: string; created_at?: string }) => ({
+                id: m.id,
+                sender: m.role === 'user' ? 'user' : 'assistant',
+                content: m.content,
+                timestamp: 'Riwayat Percakapan',
+              })
+            );
+            setSessions((prev) =>
+              prev.map((s) => (s.id === session.id ? { ...s, messages: loadedMessages } : s))
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('[AssistantWorkbench] Failed to lazy-load session details:', err);
+      }
     }
   };
 
@@ -135,6 +214,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         let buffer = '';
         const accumulatedTokens: string[] = [];
         let doneCitations: Array<{ id: string; source: string; score?: number; excerpt?: string }> = [];
+        let capturedConvId: string | null = null;
 
         while (reader) {
           const { done, value } = await reader.read();
@@ -172,6 +252,9 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   })
                 );
               } else if (event.type === 'done') {
+                if (event.conversation_id && typeof event.conversation_id === 'string') {
+                  capturedConvId = event.conversation_id;
+                }
                 if (event.sources && Array.isArray(event.sources)) {
                   doneCitations = event.sources.map((s: { title: string; score?: number; excerpt?: string }, idx: number) => ({
                     id: `cit-${idx + 1}`,
@@ -191,11 +274,24 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         const finalContent = accumulatedTokens.join('');
         if (finalContent.trim()) {
           streamSuccess = true;
+          const targetSessionId = activeSession.id;
+          const nextSessionId = capturedConvId || targetSessionId;
+          const isInitialTitle =
+            activeSession.title === '💬 Percakapan Baru' ||
+            activeSession.title.includes('Percakapan Baru');
+          const nextTitle = isInitialTitle
+            ? `💬 ${textToSend.slice(0, 30)}${textToSend.length > 30 ? '...' : ''}`
+            : activeSession.title;
+
           setSessions((prev) =>
             prev.map((s) => {
-              if (s.id === activeSession.id) {
+              if (s.id === targetSessionId) {
                 return {
                   ...s,
+                  id: nextSessionId,
+                  title: nextTitle,
+                  lastActive: 'Sesi Aktif',
+                  previewText: finalContent.slice(0, 60) + '...',
                   messages: s.messages.map((m) =>
                     m.id === streamAssistantId
                       ? {
@@ -211,6 +307,10 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
               return s;
             })
           );
+
+          if (nextSessionId !== targetSessionId) {
+            setActiveSessionId(nextSessionId);
+          }
         } else {
           // Remove empty stream message if no tokens arrived
           setSessions((prev) =>
@@ -406,7 +506,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   <button
                     key={session.id}
                     type="button"
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => handleSelectSession(session)}
                     className={`w-full text-left p-3 rounded-lg transition-all border ${
                       isActive
                         ? 'bg-blue-50 border-blue-200 shadow-2xs'

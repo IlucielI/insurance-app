@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AssistantPage from './page';
 import { AssistantWorkbench } from './AssistantWorkbench';
-import { assistantService } from '@/server/di';
+import { assistantService, assistantRepository } from '@/server/di';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -14,7 +14,11 @@ vi.mock('next/navigation', () => ({
 describe('AssistantPage & AssistantWorkbench', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    (assistantRepository as unknown as { reset?: () => void }).reset?.();
   });
 
   it('renders Server Component AssistantPage with header, sidebar, and initial active session', async () => {
@@ -348,6 +352,155 @@ describe('AssistantPage & AssistantWorkbench', () => {
     await waitFor(() => {
       expect(screen.getByText(/Halo streaming/i)).toBeDefined();
       expect(screen.getByText(/📚 Polis Baku Bab I/i)).toBeDefined();
+    });
+  });
+
+  it('creates a new clean conversation session when clicking + Percakapan Baru button', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const newChatBtn = screen.getByRole('button', { name: /\+ Percakapan Baru/i });
+    fireEvent.click(newChatBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Asisten AI.*Bayu Insurance/i)).toBeDefined();
+      expect(screen.getAllByText(/💬 Percakapan Baru/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('captures conversation_id from first response and propagates it in multi-turn follow-up message', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    const firstStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"type":"token","content":"Jawaban pertama"}\n\n'));
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"done","conversation_id":"conv-multiturn-888","sources":[]}\n\n'
+          )
+        );
+        controller.close();
+      },
+    });
+
+    const secondStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"type":"token","content":"Jawaban kedua multi-turn"}\n\n'));
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"done","conversation_id":"conv-multiturn-888","sources":[]}\n\n'
+          )
+        );
+        controller.close();
+      },
+    });
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, body: firstStream })
+      .mockResolvedValueOnce({ ok: true, body: secondStream });
+
+    global.fetch = fetchMock;
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i);
+    const sendBtn = screen.getByRole('button', { name: /Kirim ➔/i });
+
+    // Turn 1
+    fireEvent.change(input, { target: { value: 'Hitung premi' } });
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Jawaban pertama/i)).toBeDefined();
+    });
+
+    // Turn 2
+    fireEvent.change(input, { target: { value: 'Kenapa harganya segitu?' } });
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Jawaban kedua multi-turn/i)).toBeDefined();
+    });
+
+    // Verify second request propagated conversation_id: "conv-multiturn-888"
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondCallBody.conversation_id).toBe('conv-multiturn-888');
+    expect(secondCallBody.message).toBe('Kenapa harganya segitu?');
+  });
+
+  it('switches conversation session when clicking a session in the sidebar', async () => {
+    const customSessions = [
+      {
+        id: 'sess-alpha',
+        title: 'Percakapan Alpha',
+        lastActive: '10 menit lalu',
+        previewText: 'Isi alpha',
+        messages: [
+          {
+            id: 'm-alpha',
+            sender: 'user' as const,
+            content: 'Pesan rahasia alpha',
+            timestamp: '10:00 WIB',
+          },
+        ],
+      },
+      {
+        id: 'sess-beta',
+        title: 'Percakapan Beta',
+        lastActive: '5 menit lalu',
+        previewText: 'Isi beta',
+        messages: [
+          {
+            id: 'm-beta',
+            sender: 'user' as const,
+            content: 'Pesan rahasia beta',
+            timestamp: '10:05 WIB',
+          },
+        ],
+      },
+    ];
+
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    render(
+      <AssistantWorkbench
+        initialSessions={customSessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    // Alpha is active by default
+    expect(screen.getByText(/Pesan rahasia alpha/i)).toBeDefined();
+    expect(screen.queryByText(/Pesan rahasia beta/i)).toBeNull();
+
+    // Click Beta in sidebar
+    const betaBtn = screen.getByRole('button', { name: /Percakapan Beta/i });
+    fireEvent.click(betaBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pesan rahasia beta/i)).toBeDefined();
+      expect(screen.queryByText(/Pesan rahasia alpha/i)).toBeNull();
     });
   });
 });
