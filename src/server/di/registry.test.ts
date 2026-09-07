@@ -1,5 +1,7 @@
+import { describe, it, expect } from 'vitest';
 import {
   healthController,
+  productRepository,
   productService,
   simulationService,
   applicationRepository,
@@ -8,6 +10,7 @@ import {
   assistantService,
 } from './registry';
 import { HealthController } from '../controllers/health.controller';
+import { ProductMockRepository } from '../repositories/product.mock.repository';
 import { ProductService } from '../services/product.service';
 import { SimulationService } from '../services/simulation.service';
 import { ApplicationMockRepository } from '../repositories/application.mock.repository';
@@ -19,6 +22,8 @@ describe('DI Registry', () => {
   it('should export initialized services and controller instances', () => {
     expect(healthController).toBeDefined();
     expect(healthController).toBeInstanceOf(HealthController);
+    expect(productRepository).toBeDefined();
+    expect(productRepository).toBeInstanceOf(ProductMockRepository);
     expect(productService).toBeDefined();
     expect(productService).toBeInstanceOf(ProductService);
     expect(simulationService).toBeDefined();

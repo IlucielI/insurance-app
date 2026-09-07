@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    env: {
+      MOCK_CORE_API: 'true',
+    },
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
@@ -15,6 +18,7 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: [
         'src/server/repositories/product.mock.repository.ts',
+        'src/server/repositories/product.core-api.repository.ts',
         'src/server/repositories/application.mock.repository.ts',
         'src/server/repositories/assistant.mock.repository.ts',
         'src/server/services/product.service.ts',

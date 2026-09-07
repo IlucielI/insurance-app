@@ -20,6 +20,14 @@ export class ProductService implements IProductService {
     return this.repository.getProducts(categoryKey, trimmedSearch);
   }
 
+  async getProductBySlug(slug: string): Promise<InsuranceProduct | null> {
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      return null;
+    }
+    return this.repository.getProductBySlug(trimmedSlug);
+  }
+
   async getProductById(id: string): Promise<InsuranceProduct | null> {
     const trimmedId = id?.trim();
     if (!trimmedId) {

@@ -44,6 +44,16 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     ).toBeDefined();
   });
 
+  it('passes category and search searchParams to productService.getProducts', async () => {
+    const spy = vi.spyOn(productService, 'getProducts');
+    const Component = await ProductsPage({
+      searchParams: Promise.resolve({ category: 'life', search: 'secure' }),
+    });
+    render(Component);
+
+    expect(spy).toHaveBeenCalledWith('life', 'secure');
+  });
+
   it('filters products by category pills (Jiwa, Kesehatan, Kendaraan, Semua)', async () => {
     const products = await productService.getProducts();
     render(<ProductCatalogWorkbench initialProducts={products} />);

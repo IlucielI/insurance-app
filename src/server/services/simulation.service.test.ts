@@ -7,6 +7,7 @@ describe('SimulationService', () => {
 
   const sampleProduct: InsuranceProduct = {
     id: 'prod-term-life',
+    slug: 'prod-term-life',
     title: 'Term Life Guard Plus',
     tagline: 'Proteksi Jiwa Murni',
     category: 'Asuransi Jiwa',
@@ -14,8 +15,13 @@ describe('SimulationService', () => {
     badge: 'Paling Populer',
     isPopular: true,
     description: 'Perlindungan finansial keluarga optimal.',
+    startingPrice: 'Rp 150.000 / bln',
     monthlyPremiumStarting: 'Rp 150.000',
+    coverageAmount: 'Hingga Rp 2.500.000.000',
+    coverageTerm: '10 Tahun',
     baseRate: 0.0035,
+    minAge: 18,
+    maxAge: 60,
     minSumAssured: 100_000_000,
     maxSumAssured: 2_500_000_000,
     minTermYears: 5,
