@@ -136,9 +136,11 @@ export class ApplicationService implements IApplicationService {
       beneficiary: {
         ...dto.beneficiary,
       },
-      payment: {
-        ...dto.payment,
+      payment: dto.payment || {
+        method: 'va_bca',
+        autoDebet: true,
       },
+      answers: dto.answers,
       pillarChecks,
       overallStatus: allPassed ? 'approved' : 'under_review',
       underwritingTier: allPassed ? 'guaranteed_issue' : 'simplified',
