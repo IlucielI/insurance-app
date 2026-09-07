@@ -2,9 +2,12 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  ProductPricingRuleDTO,
+  ProductQuestionnaireDTO,
   QuoteCalculationRequest,
   QuoteCalculationResult,
 } from './product.repository.interface';
+
 
 export interface CoreApiProduct {
   id: string;
@@ -274,4 +277,77 @@ export class CoreApiProductRepository implements IProductRepository {
 
     return json.data as QuoteCalculationResult;
   }
+
+  async getPricingRules(slug: string): Promise<ProductPricingRuleDTO[]> {
+    if (!this.baseUrl) {
+      throw new Error(
+        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+      );
+    }
+
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      return [];
+    }
+
+    const url = `${this.baseUrl}/api/v1/products/${encodeURIComponent(trimmedSlug)}/pricing-rules`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (res.status === 404) {
+      return [];
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Core API error fetching pricing rules for product ${trimmedSlug}: HTTP ${res.status}`
+      );
+    }
+
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !Array.isArray(json.data)) {
+      return [];
+    }
+
+    return json.data as ProductPricingRuleDTO[];
+  }
+
+  async getQuestionnaire(slug: string): Promise<ProductQuestionnaireDTO | null> {
+    if (!this.baseUrl) {
+      throw new Error(
+        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+      );
+    }
+
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      return null;
+    }
+
+    const url = `${this.baseUrl}/api/v1/products/${encodeURIComponent(trimmedSlug)}/questionnaire`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (res.status === 404) {
+      return null;
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Core API error fetching questionnaire for product ${trimmedSlug}: HTTP ${res.status}`
+      );
+    }
+
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !json.data) {
+      return null;
+    }
+
+    return json.data as ProductQuestionnaireDTO;
+  }
 }
+

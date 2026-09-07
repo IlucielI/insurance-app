@@ -43,8 +43,11 @@ describe('ProductService', () => {
       getProductBySlug: vi.fn().mockResolvedValue(mockProduct),
       getProductById: vi.fn().mockResolvedValue(mockProduct),
       calculateQuote: vi.fn(),
+      getPricingRules: vi.fn().mockResolvedValue([]),
+      getQuestionnaire: vi.fn().mockResolvedValue(null),
     };
     service = new ProductService(repository);
+
   });
 
   describe('getFeaturedProducts', () => {

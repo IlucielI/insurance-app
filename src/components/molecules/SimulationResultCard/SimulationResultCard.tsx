@@ -11,6 +11,7 @@ export interface SimulationResultCardProps {
   paymentFrequency: 'monthly' | 'annually';
   termYears: number;
   applicantAge: number;
+  dynamicFactors?: { ruleCode: string; ruleName: string; factor: number }[];
   onApply?: () => void;
   className?: string;
 }
@@ -23,9 +24,11 @@ export const SimulationResultCard: React.FC<SimulationResultCardProps> = ({
   paymentFrequency,
   termYears,
   applicantAge,
+  dynamicFactors,
   onApply,
   className = '',
 }) => {
+
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
   const currentPremium = paymentFrequency === 'monthly' ? monthlyPremium : annualPremium;
@@ -90,7 +93,21 @@ export const SimulationResultCard: React.FC<SimulationResultCardProps> = ({
           </div>
         </div>
 
+        {dynamicFactors && dynamicFactors.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {dynamicFactors.map((df) => (
+              <span
+                key={df.ruleCode}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200"
+              >
+                {df.ruleName}: {df.factor}x
+              </span>
+            ))}
+          </div>
+        )}
+
         <p className="text-[11px] text-slate-400 leading-relaxed italic">
+
           *Angka premi final tunduk pada hasil verifikasi underwriting 4 pilar (kesehatan, riwayat
           merokok, dan rasio debt-to-income).
         </p>

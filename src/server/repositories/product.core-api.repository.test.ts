@@ -403,4 +403,98 @@ describe('CoreApiProductRepository', () => {
       expect(product?.exclusions).toEqual(['Klaim fiktif']);
     });
   });
+
+  describe('getPricingRules & getQuestionnaire', () => {
+    it('fetches pricing rules successfully for a product', async () => {
+      const mockRules = [
+        {
+          id: 'pr_life_smoker',
+          product_id: 'prod_1',
+          rule_code: 'smoker',
+          rule_name: 'Faktor Status Merokok',
+          rule_type: 'multiplier_map',
+          factors: { yes: 1.35, no: 1.0 },
+          is_active: true,
+          order_index: 1,
+        },
+      ];
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: mockRules }),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const rules = await repo.getPricingRules('secure-life-plus');
+      expect(rules).toHaveLength(1);
+      expect(rules[0].rule_code).toBe('smoker');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://core-api.example.com/api/v1/products/secure-life-plus/pricing-rules',
+        expect.any(Object)
+      );
+    });
+
+    it('returns empty array when pricing rules endpoint returns 404', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const rules = await repo.getPricingRules('unknown-product');
+      expect(rules).toEqual([]);
+    });
+
+    it('fetches questionnaire successfully for a product', async () => {
+      const mockQuest = {
+        id: 'quest_1',
+        title: 'Formulir Pertanyaan Risiko',
+        category: 'life',
+        version: 1,
+        is_active: true,
+        questions: [
+          {
+            id: 'q_smoker',
+            code: 'is_smoker',
+            label: 'Kebiasaan Merokok',
+            input_type: 'radio',
+            pricing_rule_id: 'pr_life_smoker',
+            options: [
+              { value: 'no', label: 'Bukan Perokok', multiplier: 1.0 },
+              { value: 'yes', label: 'Perokok Aktif', multiplier: 1.35 },
+            ],
+          },
+        ],
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: mockQuest }),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const quest = await repo.getQuestionnaire('secure-life-plus');
+      expect(quest).not.toBeNull();
+      expect(quest?.questions).toHaveLength(1);
+      expect(quest?.questions[0].code).toBe('is_smoker');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://core-api.example.com/api/v1/products/secure-life-plus/questionnaire',
+        expect.any(Object)
+      );
+    });
+
+    it('returns null when questionnaire endpoint returns 404', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const quest = await repo.getQuestionnaire('unknown-product');
+      expect(quest).toBeNull();
+    });
+  });
 });
+

@@ -3,9 +3,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
+import { InsuranceProduct, ProductQuestionDTO } from '@/server/repositories/product.repository.interface';
 import { SimulationResult } from '@/types/simulation.types';
-import { simulationService } from '@/server/di';
+import { simulationService, productRepository } from '@/server/di';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
@@ -16,6 +16,90 @@ export interface SimulationWorkbenchProps {
   initialProducts: InsuranceProduct[];
   initialProductId?: string;
 }
+
+export function getDefaultQuestionsForProduct(product?: InsuranceProduct): ProductQuestionDTO[] {
+  if (!product) return [];
+  if (product.categoryKey === 'vehicle') {
+    return [
+      {
+        id: `q_${product.id}_vehicle_usage`,
+        questionnaire_id: `quest_${product.id}`,
+        step_number: 1,
+        pillar_type: 'risk_assessment',
+        code: 'occupation_class',
+        label: 'Penggunaan Utama Kendaraan',
+        help_text: 'Tentukan intensitas dan keperluan operasional kendaraan',
+        input_type: 'radio',
+        order_index: 1,
+        pricing_rule_id: 'pr_vehicle_occupation',
+        affects_pricing_field: 'occupation_class',
+        is_active: true,
+        options: [
+          { value: 'low', label: 'Pribadi / Komuter', multiplier: 0.95 },
+          { value: 'standard', label: 'Harian Operasional', multiplier: 1.0 },
+          { value: 'high', label: 'Komersial / Ekspedisi', multiplier: 1.15 },
+        ],
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `q_${product.id}_gender`,
+      questionnaire_id: `quest_${product.id}`,
+      step_number: 1,
+      pillar_type: 'identity_verified',
+      code: 'gender',
+      label: 'Jenis Kelamin',
+      input_type: 'radio',
+      order_index: 1,
+      pricing_rule_id: 'pr_life_gender',
+      affects_pricing_field: 'gender',
+      is_active: true,
+      options: [
+        { value: 'male', label: 'Pria', multiplier: product.genderFactors?.male ?? 1.05 },
+        { value: 'female', label: 'Wanita', multiplier: product.genderFactors?.female ?? 1.0 },
+      ],
+    },
+    {
+      id: `q_${product.id}_is_smoker`,
+      questionnaire_id: `quest_${product.id}`,
+      step_number: 1,
+      pillar_type: 'medical_history',
+      code: 'is_smoker',
+      label: 'Kebiasaan Merokok',
+      help_text: 'Konsumsi rokok konvensional atau elektrik (vape) dalam 12 bulan terakhir',
+      input_type: 'radio',
+      order_index: 2,
+      pricing_rule_id: 'pr_life_smoker',
+      affects_pricing_field: 'smoker',
+      is_active: true,
+      options: [
+        { value: 'no', label: 'Bukan Perokok', multiplier: product.smokerFactors?.no ?? 1.0 },
+        { value: 'yes', label: 'Perokok Aktif', multiplier: product.smokerFactors?.yes ?? 1.35 },
+      ],
+    },
+    {
+      id: `q_${product.id}_occupation_class`,
+      questionnaire_id: `quest_${product.id}`,
+      step_number: 1,
+      pillar_type: 'financial_capacity',
+      code: 'occupation_class',
+      label: 'Tingkat Risiko Pekerjaan',
+      input_type: 'radio',
+      order_index: 3,
+      pricing_rule_id: 'pr_life_occupation',
+      affects_pricing_field: 'occupation_class',
+      is_active: true,
+      options: [
+        { value: 'low', label: 'Rendah', multiplier: product.occupationFactors?.low ?? 0.95 },
+        { value: 'standard', label: 'Standar', multiplier: product.occupationFactors?.standard ?? 1.0 },
+        { value: 'high', label: 'Tinggi', multiplier: product.occupationFactors?.high ?? 1.4 },
+      ],
+    },
+  ];
+}
+
 
 // Convert numbers to Indonesian currency wording without misleading rounding
 export function numberToRupiahWords(num: number): string {
@@ -90,11 +174,76 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   const [aiAssistantQuery, setAiAssistantQuery] = useState<string>('');
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
 
+  const [dynamicQuestions, setDynamicQuestions] = useState<ProductQuestionDTO[]>(() =>
+    getDefaultQuestionsForProduct(currentProduct)
+  );
+  const [answers, setAnswers] = useState<Record<string, string>>({
+    gender: 'male',
+    is_smoker: 'no',
+    occupation_class: 'low',
+  });
+  const [dynamicMultipliers, setDynamicMultipliers] = useState<Record<string, number>>({});
+
+  const handleAnswerChange = (code: string, value: string, multiplier?: number) => {
+    setAnswers((prev) => ({ ...prev, [code]: value }));
+    if (multiplier !== undefined) {
+      setDynamicMultipliers((prev) => ({ ...prev, [code]: multiplier }));
+    }
+    if (code === 'is_smoker' || code === 'smoker') {
+      setIsSmoker(value === 'yes');
+    } else if (code === 'gender') {
+      setGender(value as 'male' | 'female');
+    } else if (code === 'occupation_class') {
+      setOccupationRisk(value as 'low' | 'standard' | 'high');
+    }
+  };
+
+  // Sync questions when currentProduct changes
+  useEffect(() => {
+    if (!currentProduct) return;
+    let isMounted = true;
+    const currentSlug = currentProduct.slug || currentProduct.id;
+    const fetchQuestionnaire = async () => {
+      try {
+        const questionnaire = await productRepository.getQuestionnaire(currentSlug);
+        if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
+          const pricingQuestions = questionnaire.questions.filter(
+            (q) => q.pricing_rule_id || q.affects_pricing_field
+          );
+          if (pricingQuestions.length > 0) {
+            setDynamicQuestions(pricingQuestions);
+            setAnswers((prev) => {
+              const updated = { ...prev };
+              for (const q of pricingQuestions) {
+                if (!updated[q.code]) {
+                  if (q.code === 'gender') updated[q.code] = prev.gender || 'male';
+                  else if (q.code === 'is_smoker' || q.code === 'smoker') updated[q.code] = prev.is_smoker || 'no';
+                  else if (q.code === 'occupation_class') updated[q.code] = prev.occupation_class || 'standard';
+                  else updated[q.code] = q.options?.[0]?.value || '';
+                }
+              }
+              return updated;
+            });
+          }
+        }
+      } catch {
+        // Fallback already in place
+      }
+    };
+
+    fetchQuestionnaire();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentProduct]);
+
+
   // Switch product and adjust bounds if needed
   const handleProductChange = (newProductId: string) => {
     setSelectedProductId(newProductId);
     const newProduct = initialProducts.find((p) => p.id === newProductId);
     if (newProduct) {
+      setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
       setSumAssured((prev) =>
         Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
       );
@@ -122,6 +271,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       setSelectedProductId(initialProductId);
       const newProduct = initialProducts.find((p) => p.id === initialProductId);
       if (newProduct) {
+        setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
         setSumAssured((prev) =>
           Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
         );
@@ -174,6 +324,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         gender,
         occupationRisk,
         selectedRiderIds,
+        answers,
+        dynamicMultipliers,
       },
       currentProduct
     );
@@ -187,6 +339,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     gender,
     occupationRisk,
     selectedRiderIds,
+    answers,
+    dynamicMultipliers,
   ]);
 
   const [asyncSimulationResult, setAsyncSimulationResult] = useState<SimulationResult | null>(null);
@@ -197,11 +351,13 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   useEffect(() => {
     if (!currentProduct) return;
     let isMounted = true;
-    setIsCalculating(true);
-    setCalculationError(null);
 
     const timer = setTimeout(async () => {
+      if (!isMounted) return;
+      setIsCalculating(true);
+      setCalculationError(null);
       try {
+
         const res = await simulationService.calculateAsync(
           {
             productId: currentProduct.id,
@@ -213,6 +369,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             gender,
             occupationRisk,
             selectedRiderIds,
+            answers,
+            dynamicMultipliers,
           },
           currentProduct
         );
@@ -244,7 +402,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     gender,
     occupationRisk,
     selectedRiderIds,
+    answers,
+    dynamicMultipliers,
   ]);
+
 
   const simulationResult = asyncSimulationResult || syncSimulationResult;
 
@@ -562,117 +723,65 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
             </div>
 
-            {/* Jenis Kelamin Selector */}
-            <div className="space-y-2">
-              <span className="block text-xs sm:text-sm font-semibold text-slate-700">
-                Jenis Kelamin:
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setGender('male')}
-                  aria-pressed={gender === 'male'}
-                  className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
-                    gender === 'male'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {gender === 'male' ? '✓ ' : ''}Pria{formatFactorLabel(currentProduct?.genderFactors?.male ?? 1.05, 'Faktor')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGender('female')}
-                  aria-pressed={gender === 'female'}
-                  className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
-                    gender === 'female'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {gender === 'female' ? '✓ ' : ''}Wanita{formatFactorLabel(currentProduct?.genderFactors?.female ?? 1.00, 'Faktor')}
-                </button>
-              </div>
-            </div>
+            {/* Dynamic Product Actuarial Risk Questionnaire Fields */}
+            {dynamicQuestions.map((q) => {
+              const selectedValue =
+                answers[q.code] ||
+                (q.code === 'gender'
+                  ? gender
+                  : q.code === 'is_smoker' || q.code === 'smoker'
+                  ? isSmoker
+                    ? 'yes'
+                    : 'no'
+                  : q.code === 'occupation_class'
+                  ? occupationRisk
+                  : q.options?.[0]?.value || '');
 
-            {/* Kebiasaan Merokok Selector */}
-            <div className="space-y-2">
-              <span className="block text-xs sm:text-sm font-semibold text-slate-700">
-                Kebiasaan Merokok:
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsSmoker(false)}
-                  aria-pressed={!isSmoker}
-                  className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
-                    !isSmoker
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {!isSmoker ? '✓ ' : ''}Bukan Perokok{formatFactorLabel(currentProduct?.smokerFactors?.no ?? 1.00)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSmoker(true)}
-                  aria-pressed={isSmoker}
-                  className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
-                    isSmoker
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {isSmoker ? '✓ ' : ''}Perokok Aktif{formatFactorLabel(currentProduct?.smokerFactors?.yes ?? 1.35)}
-                </button>
-              </div>
-            </div>
+              const colsClass =
+                (q.options?.length ?? 0) === 2
+                  ? 'grid-cols-2'
+                  : (q.options?.length ?? 0) === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2 sm:grid-cols-4';
 
-            {/* Tingkat Risiko Pekerjaan Selector */}
-            <div className="space-y-2">
-              <span className="block text-xs sm:text-sm font-semibold text-slate-700">
-                Tingkat Risiko Pekerjaan:
-              </span>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setOccupationRisk('low')}
-                  aria-pressed={occupationRisk === 'low'}
-                  className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border text-center ${
-                    occupationRisk === 'low'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {occupationRisk === 'low' ? '✓ ' : ''}Rendah{formatFactorLabel(currentProduct?.occupationFactors?.low ?? 0.95)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOccupationRisk('standard')}
-                  aria-pressed={occupationRisk === 'standard'}
-                  className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border text-center ${
-                    occupationRisk === 'standard'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {occupationRisk === 'standard' ? '✓ ' : ''}Standar{formatFactorLabel(currentProduct?.occupationFactors?.standard ?? 1.00)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOccupationRisk('high')}
-                  aria-pressed={occupationRisk === 'high'}
-                  className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border text-center ${
-                    occupationRisk === 'high'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {occupationRisk === 'high' ? '✓ ' : ''}Tinggi{formatFactorLabel(currentProduct?.occupationFactors?.high ?? 1.40)}
-                </button>
-              </div>
-            </div>
+              return (
+                <div key={q.id || q.code} className="space-y-2">
+                  <span className="block text-xs sm:text-sm font-semibold text-slate-700">
+                    {q.label.endsWith(':') ? q.label : `${q.label}:`}
+                  </span>
+                  {q.help_text && (
+                    <p className="text-[11px] text-slate-500">{q.help_text}</p>
+                  )}
+                  <div className={`grid ${colsClass} gap-3`}>
+                    {q.options?.map((opt) => {
+                      const isPressed = selectedValue === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleAnswerChange(q.code, opt.value, opt.multiplier)}
+                          aria-pressed={isPressed}
+                          className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all border text-center ${
+                            isPressed
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isPressed ? '✓ ' : ''}
+                          {opt.label}
+                          {formatFactorLabel(
+                            opt.multiplier ?? 1.0,
+                            q.code === 'gender' ? 'Faktor' : ''
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </section>
+
 
           <hr className="border-slate-200" />
 
@@ -948,10 +1057,12 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   <span>Faktor Gender ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
                   <span className="font-semibold text-white">{simulationResult.breakdown.genderFactor}x</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span>Faktor {isSmoker ? 'Perokok Aktif' : 'Non-Smoker'}</span>
-                  <span className="font-semibold text-white">{simulationResult.breakdown.smokerFactor}x</span>
-                </div>
+                {currentProduct.categoryKey !== 'vehicle' && (
+                  <div className="flex justify-between items-center">
+                    <span>Faktor {isSmoker ? 'Perokok Aktif' : 'Non-Smoker'}</span>
+                    <span className="font-semibold text-white">{simulationResult.breakdown.smokerFactor}x</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span>
                     Faktor Pekerjaan{' '}
@@ -959,7 +1070,22 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   </span>
                   <span className="font-semibold text-white">{simulationResult.breakdown.occupationFactor}x</span>
                 </div>
+                {simulationResult.breakdown.dynamicFactors
+                  ?.filter(
+                    (df) =>
+                      !['gender', 'smoker', 'is_smoker', 'occupation', 'occupation_class'].includes(
+                        df.ruleCode
+                      )
+                  )
+                  .map((df) => (
+                    <div key={df.ruleCode} className="flex justify-between items-center text-sky-300">
+                      <span>{df.ruleName}</span>
+                      <span className="font-semibold text-white">{df.factor}x</span>
+                    </div>
+                  ))}
+
                 <div className="flex justify-between items-center text-emerald-300 font-medium">
+
                   <span>Diskon Bayar Tahunan</span>
                   <span className="font-bold">-{simulationResult.breakdown.annualDiscountPercent.toFixed(1)}%</span>
                 </div>
@@ -1220,19 +1346,36 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                     {simulationResult.breakdown.genderFactor}x ({gender === 'male' ? 'Pria' : 'Wanita'})
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Faktor Risiko Merokok:</span>
-                  <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.smokerFactor}x ({isSmoker ? 'Perokok Aktif' : 'Bukan Perokok'})
-                  </span>
-                </div>
+                {currentProduct.categoryKey !== 'vehicle' && (
+                  <div className="flex justify-between">
+                    <span>Faktor Risiko Merokok:</span>
+                    <span className="font-semibold text-slate-900">
+                      {simulationResult.breakdown.smokerFactor}x ({isSmoker ? 'Perokok Aktif' : 'Bukan Perokok'})
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Faktor Risiko Pekerjaan:</span>
                   <span className="font-semibold text-slate-900">
                     {simulationResult.breakdown.occupationFactor}x ({occupationRisk})
                   </span>
                 </div>
+                {simulationResult.breakdown.dynamicFactors
+                  ?.filter(
+                    (df) =>
+                      !['gender', 'smoker', 'is_smoker', 'occupation', 'occupation_class'].includes(
+                        df.ruleCode
+                      )
+                  )
+                  .map((df) => (
+                    <div key={df.ruleCode} className="flex justify-between text-blue-700">
+                      <span>{df.ruleName}:</span>
+                      <span className="font-semibold text-slate-900">{df.factor}x</span>
+                    </div>
+                  ))}
+
                 <div className="flex justify-between border-t border-slate-100 pt-2">
+
                   <span>Premi Dasar Tahunan:</span>
                   <span className="font-bold text-slate-900">
                     {formatRupiah(simulationResult.breakdown.baseAnnualPremium)}

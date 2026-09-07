@@ -1,15 +1,29 @@
 import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 
+export interface QuoteAnswerItem {
+  rule_code?: string;
+  rule_id?: string;
+  value: string;
+}
+
+export interface DynamicFactorItem {
+  ruleCode: string;
+  ruleName: string;
+  factor: number;
+}
+
 export interface SimulationInput {
   productId: string;
   sumAssured: number;
   termYears: number;
   applicantAge: number;
-  isSmoker: boolean;
+  isSmoker?: boolean;
   frequency: 'monthly' | 'annually';
   selectedRiderIds: string[];
   gender?: 'male' | 'female';
   occupationRisk?: 'low' | 'standard' | 'high';
+  answers?: Record<string, string>;
+  dynamicMultipliers?: Record<string, number>;
 }
 
 export interface RiderCostItem {
@@ -33,6 +47,7 @@ export interface ActuarialBreakdown {
   adminFee: number;
   underwritingTier: 'guaranteed_issue' | 'simplified' | 'full_underwriting';
   underwritingDescription: string;
+  dynamicFactors?: DynamicFactorItem[];
 }
 
 export interface SimulationResult {
@@ -51,4 +66,6 @@ export interface SimulationResult {
   selectedRiders: RiderCostItem[];
   breakdown: ActuarialBreakdown;
   ojkTableReference: string;
+  answers?: Record<string, string>;
 }
+

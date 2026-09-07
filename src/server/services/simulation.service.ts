@@ -21,12 +21,32 @@ export class SimulationService implements ISimulationService {
       sumAssured,
       termYears,
       applicantAge,
-      isSmoker,
       frequency,
       selectedRiderIds = [],
-      gender,
-      occupationRisk,
     } = input;
+
+    const answers = input.answers || {};
+
+    let isSmoker = Boolean(input.isSmoker);
+    if (answers['is_smoker'] !== undefined) {
+      isSmoker = answers['is_smoker'] === 'yes';
+    } else if (answers['smoker'] !== undefined) {
+      isSmoker = answers['smoker'] === 'yes';
+    }
+
+    let gender = input.gender;
+    if (answers['gender'] === 'male' || answers['gender'] === 'female') {
+      gender = answers['gender'];
+    }
+
+    let occupationRisk = input.occupationRisk;
+    if (
+      answers['occupation_class'] === 'low' ||
+      answers['occupation_class'] === 'standard' ||
+      answers['occupation_class'] === 'high'
+    ) {
+      occupationRisk = answers['occupation_class'];
+    }
 
     // 1. Age Factor based on Indonesian Mortality Table or product configuration
     const minAge = product.minAge || 18;
@@ -53,9 +73,30 @@ export class SimulationService implements ISimulationService {
         ? product.occupationFactors?.high ?? 1.4
         : product.occupationFactors?.standard ?? 1.0;
 
+
+    // Dynamic Extra Multipliers if provided
+    let dynamicExtraMultiplier = 1.0;
+    const dynamicFactorsList: { ruleCode: string; ruleName: string; factor: number }[] = [];
+    if (input.dynamicMultipliers) {
+      for (const [code, mult] of Object.entries(input.dynamicMultipliers)) {
+        dynamicExtraMultiplier *= mult;
+        dynamicFactorsList.push({
+          ruleCode: code,
+          ruleName: code,
+          factor: mult,
+        });
+      }
+    }
+
     // 5. Base Annual Premium calculation
     const rawAnnualBase =
-      sumAssured * product.baseRate * ageFactor * smokerFactor * genderFactor * occupationFactor;
+      sumAssured *
+      product.baseRate *
+      ageFactor *
+      smokerFactor *
+      genderFactor *
+      occupationFactor *
+      dynamicExtraMultiplier;
     const baseAnnualPremium = Math.round(rawAnnualBase / 10_000) * 10_000;
 
     // 6. Riders Calculation
@@ -138,6 +179,7 @@ export class SimulationService implements ISimulationService {
       adminFee: 0, // 100% Free digital processing
       underwritingTier,
       underwritingDescription,
+      dynamicFactors: dynamicFactorsList.length > 0 ? dynamicFactorsList : undefined,
     };
 
     return {
@@ -150,12 +192,14 @@ export class SimulationService implements ISimulationService {
       gender: gender || 'female',
       occupationRisk: occupationRisk || 'standard',
       monthlyPremium,
+
       annualPremium,
       annualSavings,
       activePremium,
       selectedRiders,
       breakdown,
       ojkTableReference,
+      answers: input.answers,
     };
   }
 
@@ -169,15 +213,45 @@ export class SimulationService implements ISimulationService {
       const maxAge = product.maxAge || 60;
       const normalizedAge = Math.max(minAge, Math.min(maxAge, input.applicantAge));
 
+      const answers = input.answers || {};
+      let isSmoker = Boolean(input.isSmoker);
+      if (answers['is_smoker'] !== undefined) {
+        isSmoker = answers['is_smoker'] === 'yes';
+      } else if (answers['smoker'] !== undefined) {
+        isSmoker = answers['smoker'] === 'yes';
+      }
+
+      let gender = input.gender || 'male';
+      if (answers['gender'] === 'male' || answers['gender'] === 'female') {
+        gender = answers['gender'];
+      }
+
+      let occupationRisk = input.occupationRisk || 'standard';
+      if (
+        answers['occupation_class'] === 'low' ||
+        answers['occupation_class'] === 'standard' ||
+        answers['occupation_class'] === 'high'
+      ) {
+        occupationRisk = answers['occupation_class'];
+      }
+
+      const answersList = input.answers
+        ? Object.entries(input.answers).map(([code, val]) => ({
+            rule_code: code,
+            value: String(val),
+          }))
+        : undefined;
+
       const quoteReq: QuoteCalculationRequest = {
         age: normalizedAge,
-        gender: input.gender || 'male',
+        gender,
         sum_assured: input.sumAssured,
         payment_term: input.termYears,
         payment_frequency: input.frequency === 'annually' ? 'annual' : 'monthly',
-        smoker: input.isSmoker ? 'yes' : 'no',
-        occupation_class: input.occupationRisk || 'standard',
+        smoker: isSmoker ? 'yes' : 'no',
+        occupation_class: occupationRisk,
         health_risk: 'low',
+        answers: answersList,
       };
 
       const quoteResult = await this.productRepo.calculateQuote(slug, quoteReq);
@@ -234,7 +308,7 @@ export class SimulationService implements ISimulationService {
       if (
         input.sumAssured <= 500_000_000 &&
         normalizedAge <= 45 &&
-        !input.isSmoker
+        !isSmoker
       ) {
         underwritingTier = 'guaranteed_issue';
         underwritingDescription =
@@ -242,7 +316,7 @@ export class SimulationService implements ISimulationService {
       } else if (
         input.sumAssured > 1_500_000_000 ||
         normalizedAge > 55 ||
-        (input.isSmoker && input.sumAssured > 1_000_000_000)
+        (isSmoker && input.sumAssured > 1_000_000_000)
       ) {
         underwritingTier = 'full_underwriting';
         underwritingDescription =
@@ -255,6 +329,12 @@ export class SimulationService implements ISimulationService {
       const annualDiscountPercent = Number(
         (((monthlyLoading - annualLoading) / monthlyLoading) * 100).toFixed(1)
       );
+
+      const dynamicFactors = quoteResult.breakdown.factors?.map((f) => ({
+        ruleCode: f.rule_code,
+        ruleName: f.rule_name,
+        factor: f.factor,
+      }));
 
       const breakdown: ActuarialBreakdown = {
         baseRate: quoteResult.breakdown.base_rate,
@@ -269,6 +349,7 @@ export class SimulationService implements ISimulationService {
         adminFee: 0,
         underwritingTier,
         underwritingDescription,
+        dynamicFactors,
       };
 
       return {
@@ -276,10 +357,10 @@ export class SimulationService implements ISimulationService {
         sumAssured: input.sumAssured,
         termYears: input.termYears,
         applicantAge: normalizedAge,
-        isSmoker: input.isSmoker,
+        isSmoker,
         frequency: input.frequency,
-        gender: input.gender || 'male',
-        occupationRisk: input.occupationRisk || 'standard',
+        gender,
+        occupationRisk,
         monthlyPremium,
         annualPremium,
         annualSavings,
@@ -287,9 +368,11 @@ export class SimulationService implements ISimulationService {
         selectedRiders,
         breakdown,
         ojkTableReference: `Core API Actuarial Engine (Ref: ${quoteResult.product_slug})`,
+        answers: input.answers,
       };
     }
 
     return this.calculate(input, product);
   }
 }
+
