@@ -7,7 +7,18 @@ import {
 import { IAssistantRepository } from './assistant.repository.interface';
 
 export class AssistantMockRepository implements IAssistantRepository {
-  private sessions: ChatSession[] = [
+  private sessions: ChatSession[];
+
+  constructor() {
+    this.sessions = this.getDefaultSessions();
+  }
+
+  public reset(): void {
+    this.sessions = this.getDefaultSessions();
+  }
+
+  private getDefaultSessions(): ChatSession[] {
+    return [
     {
       id: 'sess-klaim-01',
       title: '💬 Syarat Klaim Meninggal Dunia',
@@ -139,6 +150,7 @@ export class AssistantMockRepository implements IAssistantRepository {
       ],
     },
   ];
+  }
 
   private popularTopics: PopularTopic[] = [
     {

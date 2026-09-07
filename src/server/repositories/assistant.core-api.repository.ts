@@ -59,7 +59,58 @@ export class CoreApiAssistantRepository implements IAssistantRepository {
   }
 
   public async getSessions(): Promise<ChatSession[]> {
-    return [];
+    return [
+      {
+        id: 'sess-klaim-01',
+        title: '💬 Syarat Klaim Meninggal Dunia',
+        lastActive: 'Sesi Aktif • Garansi SLA 3 Hari',
+        previewText: 'Garansi pencairan 3 hari kerja setelah berkas lengkap.',
+        messages: [
+          {
+            id: 'msg-01',
+            sender: 'user',
+            content:
+              'Halo AI, saya mau tanya: berapa hari batas pencairan klaim meninggal dunia dan apa saja berkas yang wajib diunggah?',
+            timestamp: '09:41 WIB • Terkirim',
+          },
+          {
+            id: 'msg-02',
+            sender: 'assistant',
+            content:
+              'Berdasarkan Ketentuan Polis Baku Bab IV Pasal 14, klaim meninggal dunia memiliki Garansi SLA Pencairan Maksimal 3 Hari Kerja ke rekening ahli waris setelah berkas diverifikasi lengkap oleh tim underwriting kami.',
+            timestamp: '09:41 WIB • Selesai Disintesis',
+            checklistCard: {
+              title: '📋 4 DOKUMEN WAJIB PENGAJUAN KLAIM MENINGGAL DUNIA:',
+              items: [
+                '1. Surat Kematian / Akta Kematian asli dari Disdukcapil atau resume dokter RS',
+                '2. Formulir Pengajuan Klaim Resmi bertanda tangan Ahli Waris',
+                '3. KTP Ahli Waris & KTP Tertanggung terdaftar (terverifikasi sistem Dukcapil)',
+                '4. Buku Tabungan / Rekening Koran Ahli Waris tujuan transfer santunan UP',
+              ],
+            },
+            actionButtons: [
+              {
+                label: 'Ajukan Klaim Sekarang →',
+                actionType: 'navigate',
+                target: '/tracking',
+              },
+              {
+                label: 'Unduh Formulir Klaim (PDF) 📄',
+                actionType: 'download',
+                target:
+                  'https://s3.ap-southeast-3.amazonaws.com/bayu-insurance-storage/forms/formulir-klaim-resmi.pdf',
+              },
+            ],
+            citations: [
+              {
+                id: 'cit-1',
+                source: 'Polis Baku Pasal 14 Ayat 2 & Surat Edaran OJK SEOJK.05/2022',
+              },
+            ],
+          },
+        ],
+      },
+    ];
   }
 
   public async getSessionById(id: string): Promise<ChatSession | null> {
