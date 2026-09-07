@@ -79,6 +79,12 @@ export interface ApplicationTimelineEvent {
   status: 'completed' | 'in_progress' | 'pending' | 'action_required';
 }
 
+export interface ApplicationAnswerItem {
+  questionId?: string;
+  code: string;
+  value: unknown;
+}
+
 export interface PolicyApplication {
   id: string;
   productId: string;
@@ -93,7 +99,8 @@ export interface PolicyApplication {
   financial: ApplicantFinancial;
   medical: ApplicantMedical;
   beneficiary: Beneficiary;
-  payment: PaymentSelection;
+  payment?: PaymentSelection;
+  answers?: ApplicationAnswerItem[];
   pillarChecks: PillarCheck[];
   overallStatus: ApplicationStatus;
   underwritingTier: 'guaranteed_issue' | 'simplified' | 'full_underwriting';
@@ -119,7 +126,8 @@ export interface CreateApplicationDTO {
   financial: Omit<ApplicantFinancial, 'calculatedDsr'>;
   medical: Omit<ApplicantMedical, 'bmi'>;
   beneficiary: Beneficiary;
-  payment: PaymentSelection;
+  payment?: PaymentSelection;
+  answers?: ApplicationAnswerItem[];
 }
 
 export interface ApplicationSubmissionResult {
@@ -128,3 +136,4 @@ export interface ApplicationSubmissionResult {
   isInstantApproval: boolean;
   message: string;
 }
+

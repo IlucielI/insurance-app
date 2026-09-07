@@ -43,9 +43,22 @@ export default async function ApplyPage({ searchParams }: ApplyPageProps) {
     selectedRiders: resolvedParams?.riders ? resolvedParams.riders.split(',').filter(Boolean) : undefined,
   };
 
+  const selectedProduct = initialQuote.productId
+    ? products.find((p) => p.id === initialQuote.productId || p.slug === initialQuote.productId)
+    : products[0];
+
+  const initialQuestionnaire = selectedProduct
+    ? await productService.getQuestionnaire(selectedProduct.slug)
+    : null;
+
   return (
     <AppLayout currentPath="/apply">
-      <ApplicationWorkbench initialProducts={products} initialQuote={initialQuote} />
+      <ApplicationWorkbench
+        initialProducts={products}
+        initialQuote={initialQuote}
+        initialQuestionnaire={initialQuestionnaire}
+      />
     </AppLayout>
   );
 }
+

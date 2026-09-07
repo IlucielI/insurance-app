@@ -7,6 +7,7 @@ import { ProductService } from '../services/product.service';
 import { SimulationService } from '../services/simulation.service';
 
 import { ApplicationMockRepository } from '../repositories/application.mock.repository';
+import { CoreApiApplicationRepository } from '../repositories/application.core-api.repository';
 import { ApplicationService } from '../services/application.service';
 
 import { AssistantMockRepository } from '../repositories/assistant.mock.repository';
@@ -28,7 +29,9 @@ export const productService = new ProductService(productRepository);
 
 export const simulationService = new SimulationService(productRepository);
 
-export const applicationRepository = new ApplicationMockRepository();
+export const applicationRepository = useMock
+  ? new ApplicationMockRepository()
+  : new CoreApiApplicationRepository();
 export const applicationService = new ApplicationService(applicationRepository);
 
 export const assistantRepository = new AssistantMockRepository();

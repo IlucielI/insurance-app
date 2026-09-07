@@ -128,23 +128,37 @@ export interface ProductQuestionDTO {
   input_type: string;
   placeholder?: string;
   order_index: number;
+  validation_rules?: Record<string, unknown>;
   options?: QuestionOptionDTO[];
   parent_question_id?: string;
+  show_if_parent_value?: unknown;
   pricing_rule_id?: string;
   affects_pricing_field?: string;
+  underwriting_rules?: Record<string, unknown>;
   is_active: boolean;
+}
+
+export interface QuestionnaireStepGroupDTO {
+  step_number: number;
+  pillar_type: string;
+  title: string;
+  description?: string;
+  questions: ProductQuestionDTO[];
 }
 
 export interface ProductQuestionnaireDTO {
   id: string;
   product_id?: string;
+  product_slug?: string;
   category: string;
   title: string;
   description?: string;
   version: number;
   is_active: boolean;
+  steps?: QuestionnaireStepGroupDTO[];
   questions: ProductQuestionDTO[];
 }
+
 
 export interface ProductPricingRuleDTO {
   id: string;
