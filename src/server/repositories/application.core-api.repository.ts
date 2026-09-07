@@ -90,6 +90,10 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
           { question_id: 'q_ben_nik', code: 'beneficiary_nik', value: application.beneficiary.nik },
         ];
 
+    const occupationClass =
+      (application.answers?.find((a) => a.code === 'occupation_class')?.value as string) ||
+      'standard';
+
     const payload = {
       product_id: application.productId,
       product_slug: application.productId,
@@ -102,7 +106,7 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
       payment_term: application.termYears,
       payment_frequency: application.frequency,
       smoker: application.medical.isSmoker ? 'yes' : 'no',
-      occupation_class: 'standard',
+      occupation_class: occupationClass,
       answers,
     };
 
@@ -115,15 +119,33 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`Core API application creation failed with status: ${response.status}`);
+        let errDetail = '';
+        try {
+          const errJson: unknown = await response.json();
+          if (errJson && typeof errJson === 'object') {
+            const record = errJson as Record<string, unknown>;
+            errDetail =
+              (typeof record.message === 'string' && record.message) ||
+              (typeof record.error === 'string' && record.error) ||
+              JSON.stringify(errJson);
+          } else if (errJson !== null && errJson !== undefined) {
+            errDetail = String(errJson);
+          } else {
+            errDetail = response.statusText || 'Unknown error';
+          }
+        } catch {
+          errDetail = response.statusText || 'Unknown error';
+        }
+        throw new Error(`Core API application creation failed (${response.status}): ${errDetail}`);
       }
 
       const resBody = (await response.json()) as { data: CoreApiApplication };
       const created = resBody.data;
 
       return this.mapCoreApiApplication(created, application);
-    } catch {
-      // If Core API is unreachable or responds with error, fallback to returning application with generated ID
+    } catch (err) {
+      // If Core API is unreachable or responds with error, log warning and fallback to returning application with generated ID
+      console.warn('[CoreApiApplicationRepository] Create failed, falling back to local simulation:', err);
       const fallbackId = application.id.startsWith('APP-')
         ? application.id
         : `APP-2026-${Math.floor(1000 + Math.random() * 9000)}`;

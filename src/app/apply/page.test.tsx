@@ -230,4 +230,188 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     render(<ApplicationWorkbench initialProducts={[]} />);
     expect(screen.getByText(/Memuat data pendaftaran polis asuransi.../i)).toBeDefined();
   });
+
+  it('passes comprehensive 4-pillar questionnaire answers to submitAction', async () => {
+    const products = await productService.getProducts();
+    const mockSubmitAction = vi.fn().mockResolvedValue({
+      applicationId: 'APP-TEST-999',
+      isInstantApproval: true,
+      message: 'Success',
+      application: {
+        id: 'APP-TEST-999',
+        productId: products[0].id,
+        productName: products[0].title,
+        sumAssured: 500_000_000,
+        termYears: 10,
+        monthlyPremium: 450_000,
+        annualPremium: 5_000_000,
+        frequency: 'annually',
+        selectedRiderIds: [],
+        identity: {
+          nik: '3174051208940003',
+          fullName: 'Bayu Pratama Kusuma',
+          birthDate: '1992-05-12',
+          gender: 'male',
+          phoneNumber: '+62 812-3456-7890',
+          email: 'bayu.pratama@email.com',
+        },
+        financial: {
+          occupation: 'Lead Architect',
+          monthlyIncome: 25_000_000,
+          monthlyExpenses: 10_000_000,
+          existingDebtsMonthly: 2_500_000,
+          calculatedDsr: 12.0,
+        },
+        medical: {
+          heightCm: 175,
+          weightKg: 68,
+          bmi: 22.2,
+          isSmoker: false,
+          hasCriticalIllnessHistory: false,
+          hasHospitalizationLast2Years: false,
+          hasFamilyHistory: false,
+        },
+        beneficiary: {
+          fullName: 'Ratna Dewi Kusuma',
+          relationship: 'spouse',
+          nik: '3174055609950002',
+          sharePercentage: 100,
+        },
+        pillarChecks: [],
+        overallStatus: 'approved',
+        underwritingTier: 'guaranteed_issue',
+        slaRemainingMinutes: 0,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    render(
+      <ApplicationWorkbench
+        initialProducts={products}
+        initialQuote={{
+          productId: products[0].id,
+          sumAssured: 500_000_000,
+          termYears: 10,
+          frequency: 'annually',
+          applicantAge: 32,
+          occupationRisk: 'standard',
+        }}
+        submitAction={mockSubmitAction}
+      />
+    );
+
+    // Step 1: Identity
+    fireEvent.change(screen.getByLabelText(/Nomor Induk Kependudukan/i), {
+      target: { value: '3174051208940003' },
+    });
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i), {
+      target: { value: 'Bayu Pratama Kusuma' },
+    });
+    fireEvent.change(screen.getByLabelText(/Nomor Handphone \(Aktif\):/i), {
+      target: { value: '+62 812-3456-7890' },
+    });
+    fireEvent.change(screen.getByLabelText(/Alamat Email Terdaftar:/i), {
+      target: { value: 'bayu.pratama@email.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+
+    // Step 2: Financial
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+
+    // Step 3: Medical
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
+
+    // Step 4: Beneficiary & Agreements
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap Ahli Waris:/i), {
+      target: { value: 'Ratna Dewi Kusuma' },
+    });
+    fireEvent.change(screen.getByLabelText(/NIK Ahli Waris \(16 Digit\):/i), {
+      target: { value: '3174055609950002' },
+    });
+    fireEvent.click(screen.getByLabelText(/Pernyataan Kebenaran Data Underwriting/i));
+    fireEvent.click(screen.getByLabelText(/Persetujuan Klausul Polis & Izin Autodebet/i));
+
+    // Submit
+    fireEvent.click(
+      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+    );
+
+    await waitFor(() => {
+      expect(mockSubmitAction).toHaveBeenCalledTimes(1);
+    });
+
+    const submittedPayload = mockSubmitAction.mock.calls[0][0];
+    const answerCodes = submittedPayload.answers.map((a: { code: string }) => a.code);
+
+    // Verify key 4-pillar questionnaire fields are in answers
+    expect(answerCodes).toContain('nik');
+    expect(answerCodes).toContain('full_name');
+    expect(answerCodes).toContain('occupation');
+    expect(answerCodes).toContain('occupation_class');
+    expect(answerCodes).toContain('monthly_income');
+    expect(answerCodes).toContain('monthly_expenses');
+    expect(answerCodes).toContain('existing_debts_monthly');
+    expect(answerCodes).toContain('weight_kg');
+    expect(answerCodes).toContain('height_cm');
+    expect(answerCodes).toContain('is_smoker');
+    expect(answerCodes).toContain('has_critical_illness');
+    expect(answerCodes).toContain('has_hospitalization_2y');
+    expect(answerCodes).toContain('beneficiary_name');
+    expect(answerCodes).toContain('beneficiary_nik');
+    expect(answerCodes).toContain('agree_truth_declaration');
+    expect(answerCodes).toContain('agree_policy_terms');
+  });
+
+  it('displays specific error message when submission fails', async () => {
+    const products = await productService.getProducts();
+    const failingSubmitAction = vi
+      .fn()
+      .mockRejectedValue(new Error('Koneksi ke sistem Core API underwriting gagal terhubung.'));
+
+    render(
+      <ApplicationWorkbench
+        initialProducts={products}
+        submitAction={failingSubmitAction}
+      />
+    );
+
+    // Step 1: Valid identity
+    fireEvent.change(screen.getByLabelText(/Nomor Induk Kependudukan/i), {
+      target: { value: '3174051208940003' },
+    });
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap \(Sesuai KTP/i), {
+      target: { value: 'Bayu Pratama Kusuma' },
+    });
+    fireEvent.change(screen.getByLabelText(/Nomor Handphone \(Aktif\):/i), {
+      target: { value: '+62 812-3456-7890' },
+    });
+    fireEvent.change(screen.getByLabelText(/Alamat Email Terdaftar:/i), {
+      target: { value: 'bayu.pratama@email.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+
+    // Step 2 -> Step 3 -> Step 4
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
+
+    // Fill Step 4
+    fireEvent.change(screen.getByLabelText(/Nama Lengkap Ahli Waris:/i), {
+      target: { value: 'Ratna Dewi Kusuma' },
+    });
+    fireEvent.change(screen.getByLabelText(/NIK Ahli Waris \(16 Digit\):/i), {
+      target: { value: '3174055609950002' },
+    });
+    fireEvent.click(screen.getByLabelText(/Pernyataan Kebenaran Data Underwriting/i));
+    fireEvent.click(screen.getByLabelText(/Persetujuan Klausul Polis & Izin Autodebet/i));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Koneksi ke sistem Core API underwriting gagal terhubung/i)
+      ).toBeDefined();
+    });
+  });
 });

@@ -8,7 +8,8 @@ import {
   ProductQuestionDTO,
   ProductQuestionnaireDTO,
 } from '@/server/repositories/product.repository.interface';
-import { applicationService, productService, simulationService } from '@/server/di';
+import { productService, simulationService } from '@/server/di';
+import { submitApplicationAction } from './actions';
 import {
   ApplicationAnswerItem,
   ApplicationSubmissionResult,
@@ -37,12 +38,14 @@ export interface ApplicationWorkbenchProps {
   initialProducts: InsuranceProduct[];
   initialQuote?: InitialQuoteParams;
   initialQuestionnaire?: ProductQuestionnaireDTO | null;
+  submitAction?: (payload: CreateApplicationDTO) => Promise<ApplicationSubmissionResult>;
 }
 
 export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   initialProducts,
   initialQuote = {},
   initialQuestionnaire = null,
+  submitAction,
 }) => {
   const router = useRouter();
 
@@ -319,6 +322,8 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         { questionId: 'q_fin_occupation', code: 'occupation', value: occupation.trim() },
         { questionId: 'q_fin_company_name', code: 'company_name', value: companyName.trim() },
         { questionId: 'q_fin_monthly_income', code: 'monthly_income', value: monthlyIncome },
+        { questionId: 'q_fin_monthly_expenses', code: 'monthly_expenses', value: Math.round(monthlyIncome * 0.4) },
+        { questionId: 'q_fin_existing_debts', code: 'existing_debts_monthly', value: Math.round(monthlyIncome * 0.1) },
         { questionId: 'q_ben_name', code: 'beneficiary_name', value: beneficiaryName.trim() },
         { questionId: 'q_ben_relationship', code: 'beneficiary_relationship', value: beneficiaryRelationship },
         { questionId: 'q_ben_nik', code: 'beneficiary_nik', value: beneficiaryNik.trim() },
@@ -334,6 +339,11 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         );
       } else {
         answersList.push(
+          {
+            questionId: 'q_fin_occupation_class',
+            code: 'occupation_class',
+            value: initialQuote.occupationRisk || 'standard',
+          },
           { questionId: 'q_med_weight', code: 'weight_kg', value: weightKg },
           { questionId: 'q_med_height', code: 'height_cm', value: heightCm },
           { questionId: 'q_med_smoker', code: 'is_smoker', value: isSmoker ? 'yes' : 'no' },
@@ -359,7 +369,9 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
       // Add any additional dynamic questions
       Object.entries(customAnswers).forEach(([code, value]) => {
-        answersList.push({ code, value });
+        if (!answersList.some((a) => a.code === code)) {
+          answersList.push({ code, value });
+        }
       });
 
       const payload: CreateApplicationDTO = {
@@ -407,12 +419,17 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         answers: answersList,
       };
 
-      const result = await applicationService.submitApplication(payload);
+      const submitFn = submitAction || submitApplicationAction;
+      const result = await submitFn(payload);
       setSubmissionResult(result);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Terjadi kendala saat memproses pendaftaran. Silakan coba beberapa saat lagi.';
       setErrors({
-        submit: 'Terjadi kendala saat memproses pendaftaran. Silakan coba beberapa saat lagi.',
+        submit: message,
       });
     } finally {
       setIsSubmitting(false);
