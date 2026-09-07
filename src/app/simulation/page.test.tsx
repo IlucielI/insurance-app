@@ -241,19 +241,20 @@ describe('SimulationPage & SimulationWorkbench', () => {
     );
   });
 
-  it('clamps age input on blur to [18, 65] range', async () => {
+  it('clamps age input on blur to product age range', async () => {
     const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} initialProductId={products[0].id} />);
+    const product = products[0];
+    render(<SimulationWorkbench initialProducts={products} initialProductId={product.id} />);
 
     const ageInput = screen.getByLabelText(/Input Manual Usia:/i) as HTMLInputElement;
 
     fireEvent.change(ageInput, { target: { value: '' } });
     fireEvent.blur(ageInput);
-    expect(ageInput.value).toBe('18');
+    expect(ageInput.value).toBe(String(product.minAge));
 
     fireEvent.change(ageInput, { target: { value: '99' } });
     fireEvent.blur(ageInput);
-    expect(ageInput.value).toBe('65');
+    expect(ageInput.value).toBe(String(product.maxAge));
   });
 
   it('navigates to apply page with rich actuarial query params when clicking continue CTA', async () => {

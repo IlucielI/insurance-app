@@ -123,6 +123,12 @@ export class CoreApiProductRepository implements IProductRepository {
       })),
       sumAssuredPresets: p.pricing_rules?.sum_assured_presets,
       termPresets: p.pricing_rules?.payment_term_presets,
+      genderFactors: p.pricing_rules?.gender_factors,
+      smokerFactors: p.pricing_rules?.smoker_factors,
+      occupationFactors: p.pricing_rules?.occupation_factors,
+      healthFactors: p.pricing_rules?.health_factors,
+      frequencyLoading: p.pricing_rules?.frequency_loading,
+      exclusions: p.exclusions || [],
     };
   }
 
@@ -155,8 +161,9 @@ export class CoreApiProductRepository implements IProductRepository {
       throw new Error(`Core API error fetching products: HTTP ${res.status}`);
     }
 
-    const json = await res.json();
-    const rawProducts: CoreApiProduct[] = Array.isArray(json.data) ? json.data : [];
+    const json = await res.json().catch(() => null);
+    const rawProducts: CoreApiProduct[] =
+      json && typeof json === 'object' && Array.isArray(json.data) ? json.data : [];
     return rawProducts.map((p) => this.mapCoreApiProductToInsuranceProduct(p));
   }
 
@@ -179,8 +186,9 @@ export class CoreApiProductRepository implements IProductRepository {
       );
     }
 
-    const json = await res.json();
-    const rawProducts: CoreApiProduct[] = Array.isArray(json.data) ? json.data : [];
+    const json = await res.json().catch(() => null);
+    const rawProducts: CoreApiProduct[] =
+      json && typeof json === 'object' && Array.isArray(json.data) ? json.data : [];
     return rawProducts.map((p) => this.mapCoreApiProductToInsuranceProduct(p));
   }
 
@@ -212,8 +220,8 @@ export class CoreApiProductRepository implements IProductRepository {
       );
     }
 
-    const json = await res.json();
-    if (!json.data) {
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !json.data) {
       return null;
     }
 
@@ -259,8 +267,8 @@ export class CoreApiProductRepository implements IProductRepository {
       );
     }
 
-    const json = await res.json();
-    if (!json.data) {
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !json.data) {
       throw new Error('Invalid response structure from Core API quote calculation');
     }
 

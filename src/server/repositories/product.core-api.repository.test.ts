@@ -27,6 +27,11 @@ describe('CoreApiProductRepository', () => {
         { min_age: 18, max_age: 30, factor: 1.0 },
         { min_age: 31, max_age: 60, factor: 2.0 },
       ],
+      gender_factors: { male: 1.05, female: 1.0 },
+      smoker_factors: { yes: 1.35, no: 1.0 },
+      occupation_factors: { low: 0.95, standard: 1.0, high: 1.4 },
+      health_factors: { low: 1.0, medium: 1.25, high: 1.75 },
+      frequency_loading: { annual: 1.0, monthly: 1.06 },
     },
     benefits: ['Santunan meninggal dunia', 'Bebas premi penyakit kritis'],
     exclusions: ['Klaim fiktif'],
@@ -327,6 +332,75 @@ describe('CoreApiProductRepository', () => {
       await expect(
         repo.calculateQuote('secure-life-plus', sampleRequest)
       ).rejects.toThrow('Core API error calculating quote for product secure-life-plus: HTTP 400');
+    });
+
+    it('throws descriptive error when response body is null or non-object without throwing TypeError', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => null,
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      await expect(
+        repo.calculateQuote('secure-life-plus', sampleRequest)
+      ).rejects.toThrow('Invalid response structure from Core API quote calculation');
+    });
+
+    it('throws descriptive error when response body is missing data field', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      await expect(
+        repo.calculateQuote('secure-life-plus', sampleRequest)
+      ).rejects.toThrow('Invalid response structure from Core API quote calculation');
+    });
+  });
+
+  describe('Defensive parsing on getProducts and getProductBySlug', () => {
+    it('handles null body gracefully in getProducts', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => null,
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const products = await repo.getProducts();
+      expect(products).toEqual([]);
+    });
+
+    it('handles null body gracefully in getProductBySlug', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => null,
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const product = await repo.getProductBySlug('secure-life-plus');
+      expect(product).toBeNull();
+    });
+
+    it('maps actuarial factor maps and exclusions correctly from Core API product', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: mockCoreProduct }),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const product = await repo.getProductBySlug('secure-life-plus');
+      expect(product).not.toBeNull();
+      expect(product?.genderFactors).toEqual({ male: 1.05, female: 1.0 });
+      expect(product?.smokerFactors).toEqual({ yes: 1.35, no: 1.0 });
+      expect(product?.occupationFactors).toEqual({ low: 0.95, standard: 1.0, high: 1.4 });
+      expect(product?.frequencyLoading).toEqual({ annual: 1.0, monthly: 1.06 });
+      expect(product?.exclusions).toEqual(['Klaim fiktif']);
     });
   });
 });

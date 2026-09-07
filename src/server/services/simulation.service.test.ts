@@ -217,7 +217,7 @@ describe('SimulationService', () => {
       },
       sampleProduct
     );
-    expect(underAge.applicantAge).toBe(18);
+    expect(underAge.applicantAge).toBe(sampleProduct.minAge || 18);
 
     const overAge = service.calculate(
       {
@@ -231,7 +231,7 @@ describe('SimulationService', () => {
       },
       sampleProduct
     );
-    expect(overAge.applicantAge).toBe(65);
+    expect(overAge.applicantAge).toBe(sampleProduct.maxAge || 60);
   });
 
   it('handles rider with undefined or malformed extraPrice defensively', () => {

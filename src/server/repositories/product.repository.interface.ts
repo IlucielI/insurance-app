@@ -50,6 +50,12 @@ export interface InsuranceProduct {
   ageFactors?: ProductAgeFactor[];
   sumAssuredPresets?: number[];
   termPresets?: number[];
+  genderFactors?: Record<string, number>;
+  smokerFactors?: Record<string, number>;
+  occupationFactors?: Record<string, number>;
+  healthFactors?: Record<string, number>;
+  frequencyLoading?: Record<string, number>;
+  exclusions?: string[];
 }
 
 export interface QuoteCalculationRequest {
