@@ -730,7 +730,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     { value: 'Profesional Medis / Dokter', label: 'Profesional Medis / Dokter' },
                     { value: 'Pegawai Negeri Sipil (PNS)', label: 'Pegawai Negeri Sipil (PNS)' },
                   ]}
-                  error={errors.occupation}
+                  errorMessage={errors.occupation}
                 />
 
                 <Input

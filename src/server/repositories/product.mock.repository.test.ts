@@ -79,6 +79,20 @@ describe('ProductMockRepository', () => {
     });
   });
 
+  describe('getProductBySlug', () => {
+    it('returns product when found by slug', async () => {
+      const product = await repository.getProductBySlug('prod-term-life');
+      expect(product).not.toBeNull();
+      expect(product?.slug).toBe('prod-term-life');
+      expect(product?.title).toBe('Term Life Guard Plus');
+    });
+
+    it('returns null when slug is not found', async () => {
+      const product = await repository.getProductBySlug('non-existent-slug');
+      expect(product).toBeNull();
+    });
+  });
+
   describe('getProductById', () => {
     it('returns product when found', async () => {
       const product = await repository.getProductById('prod-term-life');

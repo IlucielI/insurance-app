@@ -39,7 +39,7 @@ export interface CanonicalProductItem {
   underwritingNote: string;
   apiEndpoint: string;
   benefitsDetailed: { title: string; description: string }[];
-  riders: { id: string; name: string; extraPrice: string; description: string }[];
+  riders: { id: string; name: string; extraPrice: string; description?: string }[];
 }
 
 const PENPOT_CANONICAL_PRODUCTS: CanonicalProductItem[] = [
@@ -268,7 +268,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
       .filter((p) => !existingIds.has(p.id) && !existingTitles.has(p.title.toLowerCase()))
       .map((p) => ({
         id: p.id,
-        slug: p.id,
+        slug: p.slug || p.id,
         categoryKey: p.categoryKey,
         category: p.category.toUpperCase(),
         title: p.title,
@@ -530,7 +530,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                     <button
                       type="button"
                       aria-label={`Simulasi premi untuk ${product.title}`}
-                      onClick={() => handleSelectSimulation(product.id)}
+                      onClick={() => handleSelectSimulation(product.slug || product.id)}
                       className="w-full py-2.5 px-3 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors text-center cursor-pointer shadow-xs"
                     >
                       Simulasi Premi ↗
@@ -538,7 +538,7 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                     <button
                       type="button"
                       aria-label={`Daftar sekarang untuk ${product.title}`}
-                      onClick={() => handleSelectApply(product.id)}
+                      onClick={() => handleSelectApply(product.slug || product.id)}
                       className="w-full py-2.5 px-3 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors text-center cursor-pointer shadow-xs shadow-blue-500/20"
                     >
                       Daftar Sekarang →
@@ -872,9 +872,9 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                 <button
                   type="button"
                   onClick={() => {
-                    const id = selectedProduct.id;
+                    const target = selectedProduct.slug || selectedProduct.id;
                     setSelectedProduct(null);
-                    handleSelectApply(id);
+                    handleSelectApply(target);
                   }}
                   className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer shadow-xs shadow-blue-500/20"
                 >
@@ -884,9 +884,9 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    const id = selectedProduct.id;
+                    const target = selectedProduct.slug || selectedProduct.id;
                     setSelectedProduct(null);
-                    handleSelectSimulation(id);
+                    handleSelectSimulation(target);
                   }}
                   className="font-bold text-xs"
                 >

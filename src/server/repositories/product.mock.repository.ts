@@ -8,6 +8,7 @@ export class ProductMockRepository implements IProductRepository {
   private products: InsuranceProduct[] = [
     {
       id: 'prod-term-life',
+      slug: 'prod-term-life',
       categoryKey: 'life',
       category: 'Asuransi Jiwa Berjangka',
       title: 'Term Life Guard Plus',
@@ -63,6 +64,7 @@ export class ProductMockRepository implements IProductRepository {
     },
     {
       id: 'prod-critical-illness',
+      slug: 'prod-critical-illness',
       categoryKey: 'critical_illness',
       category: 'Penyakit Kritis',
       title: 'Critical Illness Shield',
@@ -112,6 +114,7 @@ export class ProductMockRepository implements IProductRepository {
     },
     {
       id: 'prod-educare',
+      slug: 'prod-educare',
       categoryKey: 'education',
       category: 'Dana Pendidikan',
       title: 'EduCare Future',
@@ -122,28 +125,28 @@ export class ProductMockRepository implements IProductRepository {
       badge: 'Keluarga & Anak',
       badgeVariant: 'purple',
       features: [
-        'Jaminan kelangsungan jenjang pendidikan sarjana',
-        'Pembebasan premi jika orang tua tutup usia',
-        'Tahapan dana pasti sesuai kalender akademik',
+        'Dana tahapan pendidikan terjamin saat anak masuk PTN/PTS',
+        'Gratis premi berkelanjutan jika orang tua wafat',
+        'Bonus loyalitas kelulusan sarjana tepat waktu',
       ],
       isPopular: false,
       isFeatured: true,
       baseRate: 0.0042,
-      minAge: 21,
+      minAge: 20,
       maxAge: 50,
-      minSumAssured: 50_000_000,
+      minSumAssured: 100_000_000,
       maxSumAssured: 1_000_000_000,
-      waitingPeriodDays: 30,
+      waitingPeriodDays: 60,
       claimMethod: 'instant_transfer',
-      underwritingNote: 'Penyelarasan profil orang tua sebagai pemegang polis dan anak sebagai tertanggung.',
+      underwritingNote: 'Verifikasi instan akta kelahiran anak & KTP penanggung otomatis.',
       benefitsDetailed: [
         {
-          title: 'Tahapan Dana Pasti Per Semester',
-          description: 'Pencairan terjadwal saat anak memasuki jenjang SMP, SMA, dan Perguruan Tinggi.',
+          title: 'Tahapan Pencairan Uang Kuliah Pasti',
+          description: 'Pencairan terencana saat anak berusia 18, 19, 20, dan 21 tahun untuk biaya semester kuliah.',
         },
         {
-          title: 'Waiver of Premium (Bebas Premi)',
-          description: 'Jika orang tua meninggal atau cacat tetap, seluruh sisa premi dibebaskan dan dana pendidikan tetap cair.',
+          title: 'Waiver of Premium Total',
+          description: 'Seluruh sisa premi hingga anak berusia 22 tahun dibayarkan penuh oleh asuransi.',
         },
       ],
       riders: [
@@ -157,6 +160,7 @@ export class ProductMockRepository implements IProductRepository {
     },
     {
       id: 'prod-healthcare-prime',
+      slug: 'prod-healthcare-prime',
       categoryKey: 'health',
       category: 'Asuransi Kesehatan Murni',
       title: 'HealthCare Prime Cashless',
@@ -202,6 +206,7 @@ export class ProductMockRepository implements IProductRepository {
     },
     {
       id: 'prod-senior-care',
+      slug: 'prod-senior-care',
       categoryKey: 'life',
       category: 'Asuransi Jiwa Berjangka',
       title: 'Senior Heritage Life',
@@ -240,6 +245,7 @@ export class ProductMockRepository implements IProductRepository {
     },
     {
       id: 'prod-family-hospital',
+      slug: 'prod-family-hospital',
       categoryKey: 'health',
       category: 'Asuransi Kesehatan Murni',
       title: 'Family Hospital Protection',
@@ -314,11 +320,18 @@ export class ProductMockRepository implements IProductRepository {
     return Promise.resolve(structuredClone(result));
   }
 
-  async getProductById(id: string): Promise<InsuranceProduct | null> {
-    const product = this.products.find((p) => p.id === id);
+  async getProductBySlug(slug: string): Promise<InsuranceProduct | null> {
+    const s = slug.trim().toLowerCase();
+    const product = this.products.find(
+      (p) => p.slug.toLowerCase() === s || p.id.toLowerCase() === s
+    );
     if (!product) {
       return Promise.resolve(null);
     }
     return Promise.resolve(structuredClone(product));
+  }
+
+  async getProductById(id: string): Promise<InsuranceProduct | null> {
+    return this.getProductBySlug(id);
   }
 }

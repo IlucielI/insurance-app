@@ -11,6 +11,7 @@ describe('ProductService', () => {
 
   const mockProduct: InsuranceProduct = {
     id: 'prod-term-life',
+    slug: 'prod-term-life',
     categoryKey: 'life',
     category: 'Asuransi Jiwa Berjangka',
     title: 'Term Life Guard Plus',
@@ -39,6 +40,7 @@ describe('ProductService', () => {
     repository = {
       getFeaturedProducts: vi.fn().mockResolvedValue([mockProduct]),
       getProducts: vi.fn().mockResolvedValue([mockProduct]),
+      getProductBySlug: vi.fn().mockResolvedValue(mockProduct),
       getProductById: vi.fn().mockResolvedValue(mockProduct),
     };
     service = new ProductService(repository);
@@ -65,6 +67,22 @@ describe('ProductService', () => {
       await service.getProducts('all', '   ');
 
       expect(repository.getProducts).toHaveBeenCalledWith('all', undefined);
+    });
+  });
+
+  describe('getProductBySlug', () => {
+    it('delegates to repository getProductBySlug with trimmed slug', async () => {
+      const result = await service.getProductBySlug('  prod-term-life  ');
+
+      expect(repository.getProductBySlug).toHaveBeenCalledWith('prod-term-life');
+      expect(result).toEqual(mockProduct);
+    });
+
+    it('returns null if slug is empty or whitespace without calling repository', async () => {
+      const result = await service.getProductBySlug('   ');
+
+      expect(result).toBeNull();
+      expect(repository.getProductBySlug).not.toHaveBeenCalled();
     });
   });
 
