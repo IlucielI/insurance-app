@@ -539,4 +539,77 @@ describe('AssistantPage & AssistantWorkbench', () => {
       expect(screen.queryByText(/Pesan rahasia alpha/i)).toBeNull();
     });
   });
+
+  it('displays live tool calling badge and renders contextual action buttons upon tool execution', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    const toolStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode('data: {"type":"tool_call","tool_name":"calculate_quote"}\n\n')
+        );
+        controller.enqueue(
+          new TextEncoder().encode('data: {"type":"tool_result","tool_name":"calculate_quote"}\n\n')
+        );
+        controller.enqueue(
+          new TextEncoder().encode('data: {"type":"token","content":"Hasil simulasi premi untuk UP 500jt adalah Rp 350.000/bln."}\n\n')
+        );
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"done","conversation_id":"conv-tool-123","tools_used":["calculate_quote"],"sources":[]}\n\n'
+          )
+        );
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      body: toolStream,
+    });
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i);
+    const sendBtn = screen.getByRole('button', { name: /Kirim ➔/i });
+
+    fireEvent.change(input, { target: { value: 'Hitung simulasi premi 500jt' } });
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/✓ Selesai: Kalkulator Premi Aktuaria \(Tereksekusi\)/i)).toBeDefined();
+      expect(screen.getByText(/Hasil simulasi premi untuk UP 500jt/i)).toBeDefined();
+      const actionLink = screen.getByRole('link', { name: /Buka Kalkulator Simulasi 🧮/i });
+      expect(actionLink).toBeDefined();
+      expect(actionLink.getAttribute('href')).toBe('/simulation');
+    });
+  });
+
+  it('populates initial input from deep-link query parameters (?q=...)', async () => {
+    const Component = await AssistantPage({
+      searchParams: Promise.resolve({ q: 'Berapa premi asuransi usia 28 tahun?' }),
+    });
+    render(Component);
+
+    const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i) as HTMLInputElement;
+    expect(input.value).toBe('Berapa premi asuransi usia 28 tahun?');
+  });
+
+  it('populates initial input from fallback prompt parameter (?prompt=...)', async () => {
+    const Component = await AssistantPage({
+      searchParams: Promise.resolve({ prompt: 'Simulasi produk jiwa murni' }),
+    });
+    render(Component);
+
+    const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i) as HTMLInputElement;
+    expect(input.value).toBe('Simulasi produk jiwa murni');
+  });
 });
