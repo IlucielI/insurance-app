@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import SimulationPage from './page';
-import { SimulationWorkbench } from './SimulationWorkbench';
+import { SimulationWorkbench, numberToRupiahWords } from './SimulationWorkbench';
 import { productService } from '@/server/di';
 
 const mockPush = vi.fn();
@@ -241,19 +241,20 @@ describe('SimulationPage & SimulationWorkbench', () => {
     );
   });
 
-  it('clamps age input on blur to [18, 65] range', async () => {
+  it('clamps age input on blur to product age range', async () => {
     const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} initialProductId={products[0].id} />);
+    const product = products[0];
+    render(<SimulationWorkbench initialProducts={products} initialProductId={product.id} />);
 
     const ageInput = screen.getByLabelText(/Input Manual Usia:/i) as HTMLInputElement;
 
     fireEvent.change(ageInput, { target: { value: '' } });
     fireEvent.blur(ageInput);
-    expect(ageInput.value).toBe('18');
+    expect(ageInput.value).toBe(String(product.minAge));
 
     fireEvent.change(ageInput, { target: { value: '99' } });
     fireEvent.blur(ageInput);
-    expect(ageInput.value).toBe('65');
+    expect(ageInput.value).toBe(String(product.maxAge));
   });
 
   it('navigates to apply page with rich actuarial query params when clicking continue CTA', async () => {
@@ -275,5 +276,32 @@ describe('SimulationPage & SimulationWorkbench', () => {
   it('renders loading placeholder if initialProducts is empty', () => {
     render(<SimulationWorkbench initialProducts={[]} />);
     expect(screen.getByText(/Memuat data kalkulator simulasi premi.../i)).toBeDefined();
+  });
+});
+
+describe('numberToRupiahWords', () => {
+  it('formats integer billion correctly (Happy Path)', () => {
+    expect(numberToRupiahWords(2_000_000_000)).toBe('2 Miliar Rupiah');
+  });
+
+  it('formats compound billion and million correctly', () => {
+    expect(numberToRupiahWords(1_500_000_000)).toBe('1 Miliar 500 Juta Rupiah');
+  });
+
+  it('does not mislead user with lossy rounding to 2,0 Miliar for 1_999_999_999 (Edge Case)', () => {
+    const result = numberToRupiahWords(1_999_999_999);
+    expect(result).not.toBe('2,0 Miliar Rupiah');
+    expect(result).not.toBe('2 Miliar Rupiah');
+    expect(result).toBe('1 Miliar 999 Juta 999 Ribu 999 Rupiah');
+  });
+
+  it('formats integer million amounts correctly', () => {
+    expect(numberToRupiahWords(500_000_000)).toBe('500 Juta Rupiah');
+    expect(numberToRupiahWords(100_000_000)).toBe('100 Juta Rupiah');
+  });
+
+  it('returns Nol Rupiah for zero or negative values', () => {
+    expect(numberToRupiahWords(0)).toBe('Nol Rupiah');
+    expect(numberToRupiahWords(-500)).toBe('Nol Rupiah');
   });
 });

@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
+import { SimulationResult } from '@/types/simulation.types';
 import { simulationService } from '@/server/di';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
@@ -16,24 +17,25 @@ export interface SimulationWorkbenchProps {
   initialProductId?: string;
 }
 
-// Convert numbers to Indonesian currency wording
-function numberToRupiahWords(num: number): string {
-  if (num === 100_000_000) return 'Seratus Juta Rupiah';
-  if (num === 250_000_000) return 'Dua Ratus Lima Puluh Juta Rupiah';
-  if (num === 500_000_000) return 'Lima Ratus Juta Rupiah';
-  if (num === 1_000_000_000) return 'Satu Miliar Rupiah';
-  if (num === 1_500_000_000) return 'Satu Koma Lima Miliar Rupiah';
-  if (num === 2_000_000_000) return 'Dua Miliar Rupiah';
-  if (num === 2_500_000_000) return 'Dua Koma Lima Miliar Rupiah';
-  if (num >= 1_000_000_000) {
-    const miliar = (num / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 });
-    return `${miliar} Miliar Rupiah`;
-  }
-  if (num >= 1_000_000) {
-    const juta = Math.round(num / 1_000_000);
-    return `${juta} Juta Rupiah`;
-  }
-  return `${num.toLocaleString('id-ID')} Rupiah`;
+// Convert numbers to Indonesian currency wording without misleading rounding
+export function numberToRupiahWords(num: number): string {
+  const rounded = Math.floor(num);
+  if (rounded <= 0) return 'Nol Rupiah';
+
+  const miliar = Math.floor(rounded / 1_000_000_000);
+  const sisaMiliar = rounded % 1_000_000_000;
+  const juta = Math.floor(sisaMiliar / 1_000_000);
+  const sisaJuta = sisaMiliar % 1_000_000;
+  const ribu = Math.floor(sisaJuta / 1_000);
+  const sisaRupiah = sisaJuta % 1_000;
+
+  const parts: string[] = [];
+  if (miliar > 0) parts.push(`${miliar} Miliar`);
+  if (juta > 0) parts.push(`${juta} Juta`);
+  if (ribu > 0) parts.push(`${ribu} Ribu`);
+  if (sisaRupiah > 0) parts.push(`${sisaRupiah}`);
+
+  return parts.length > 0 ? `${parts.join(' ')} Rupiah` : 'Nol Rupiah';
 }
 
 export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
@@ -68,11 +70,17 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     );
   });
 
-  const minTerm = 5;
-  const maxTerm = 20;
+  const minTerm = currentProduct?.minTermYears || 5;
+  const maxTerm = currentProduct?.maxTermYears || 30;
+  const productMinAge = currentProduct?.minAge || 18;
+  const productMaxAge = currentProduct?.maxAge || 60;
 
-  const [termYears, setTermYears] = useState<number>(10);
-  const [applicantAge, setApplicantAge] = useState<number>(32);
+  const [termYears, setTermYears] = useState<number>(() => {
+    return Math.max(minTerm, Math.min(10, maxTerm));
+  });
+  const [applicantAge, setApplicantAge] = useState<number>(() => {
+    return Math.max(productMinAge, Math.min(32, productMaxAge));
+  });
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [isSmoker, setIsSmoker] = useState<boolean>(false);
   const [occupationRisk, setOccupationRisk] = useState<'low' | 'standard' | 'high'>('low');
@@ -89,6 +97,12 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     if (newProduct) {
       setSumAssured((prev) =>
         Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+      );
+      const newMinTerm = newProduct.minTermYears || 5;
+      const newMaxTerm = newProduct.maxTermYears || 30;
+      setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+      setApplicantAge((prev) =>
+        Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
       );
       // Retain only riders available on the new product
       if (newProduct.riders) {
@@ -110,6 +124,12 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       if (newProduct) {
         setSumAssured((prev) =>
           Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+        );
+        const newMinTerm = newProduct.minTermYears || 5;
+        const newMaxTerm = newProduct.maxTermYears || 30;
+        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+        setApplicantAge((prev) =>
+          Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
         );
         if (newProduct.riders) {
           const availableRiderIds = newProduct.riders.map((r) => r.id);
@@ -140,8 +160,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     );
   };
 
-  // Dynamic Calculation Result via Clean Actuarial Service
-  const simulationResult = useMemo(() => {
+  // Initial Sync Calculation Result for instant preview
+  const syncSimulationResult = useMemo(() => {
     if (!currentProduct) return null;
     return simulationService.calculate(
       {
@@ -168,6 +188,65 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     occupationRisk,
     selectedRiderIds,
   ]);
+
+  const [asyncSimulationResult, setAsyncSimulationResult] = useState<SimulationResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+
+  // Fetch real quote calculation asynchronously from Core API
+  useEffect(() => {
+    if (!currentProduct) return;
+    let isMounted = true;
+    setIsCalculating(true);
+    setCalculationError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await simulationService.calculateAsync(
+          {
+            productId: currentProduct.id,
+            sumAssured,
+            termYears,
+            applicantAge,
+            isSmoker,
+            frequency,
+            gender,
+            occupationRisk,
+            selectedRiderIds,
+          },
+          currentProduct
+        );
+        if (isMounted) {
+          setAsyncSimulationResult(res);
+          setIsCalculating(false);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          setIsCalculating(false);
+          const msg =
+            err instanceof Error ? err.message : 'Gagal menghitung quote dari Core API';
+          setCalculationError(msg);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [
+    currentProduct,
+    sumAssured,
+    termYears,
+    applicantAge,
+    isSmoker,
+    frequency,
+    gender,
+    occupationRisk,
+    selectedRiderIds,
+  ]);
+
+  const simulationResult = asyncSimulationResult || syncSimulationResult;
 
   // Navigate to application page with pre-filled actuarial quote
   const handleContinueApply = () => {
@@ -234,30 +313,75 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     }));
   }, [initialProducts]);
 
-  // Preset buttons
-  const sumAssuredPresets = [
-    { label: 'Rp 100 Juta', value: 100_000_000 },
-    { label: 'Rp 250 Juta', value: 250_000_000 },
-    { label: 'Rp 500 Juta', value: 500_000_000 },
-    { label: 'Rp 1 Miliar', value: 1_000_000_000 },
-  ].filter(
-    (preset) =>
-      currentProduct &&
-      preset.value >= currentProduct.minSumAssured &&
-      preset.value <= currentProduct.maxSumAssured
-  );
+  // Preset buttons dynamically configured via Core API product pricing rules
+  const sumAssuredPresets = useMemo(() => {
+    if (!currentProduct) return [];
+    if (
+      currentProduct.sumAssuredPresets &&
+      currentProduct.sumAssuredPresets.length > 0
+    ) {
+      return currentProduct.sumAssuredPresets.map((val) => ({
+        label: formatRupiah(val),
+        value: val,
+      }));
+    }
 
-  const termPresets = [5, 10, 15, 20].filter(
-    (term) => term >= minTerm && term <= maxTerm
-  );
+    // Pure mathematical division if product does not specify explicit presets
+    const min = currentProduct.minSumAssured;
+    const max = currentProduct.maxSumAssured;
+    if (min >= max) {
+      return [{ label: formatRupiah(min), value: min }];
+    }
 
-  // Age risk bracket label
+    const step = (max - min) / 3;
+    const points = [min, min + step, min + step * 2, max];
+    return points.map((val) => {
+      const rounded = Math.round(val / 5_000_000) * 5_000_000;
+      return {
+        label: formatRupiah(rounded),
+        value: rounded,
+      };
+    });
+  }, [currentProduct]);
+
+  const termPresets = useMemo(() => {
+    if (!currentProduct) return [];
+    if (currentProduct.termPresets && currentProduct.termPresets.length > 0) {
+      return currentProduct.termPresets;
+    }
+
+    // Pure mathematical division across valid term range
+    if (minTerm >= maxTerm) return [minTerm];
+    const step = Math.max(1, Math.round((maxTerm - minTerm) / 3));
+    const points = [minTerm, minTerm + step, minTerm + step * 2, maxTerm];
+    return Array.from(new Set(points.filter((t) => t >= minTerm && t <= maxTerm)));
+  }, [currentProduct, minTerm, maxTerm]);
+
+  // Age risk bracket label dynamically matching Core API age_factors
   const ageRangeLabel = useMemo(() => {
-    if (applicantAge <= 30) return '18-30 thn';
-    if (applicantAge <= 40) return '31-40 thn';
-    if (applicantAge <= 50) return '41-50 thn';
-    return '51-65 thn';
-  }, [applicantAge]);
+    if (currentProduct?.ageFactors && currentProduct.ageFactors.length > 0) {
+      const matched = currentProduct.ageFactors.find(
+        (af) => applicantAge >= af.minAge && applicantAge <= af.maxAge
+      );
+      if (matched) {
+        return `${matched.minAge}-${matched.maxAge} thn`;
+      }
+    }
+    return `${applicantAge} thn`;
+  }, [applicantAge, currentProduct]);
+
+  // Helper for dynamic actuarial factor labels
+  const formatFactorLabel = (factor?: number, prefix = '') =>
+    factor !== undefined
+      ? ` (${prefix ? prefix + ': ' : ''}${factor.toFixed(2)}x)`
+      : '';
+
+  // Dynamic annual discount percentage based on product frequencyLoading
+  const annualDiscountPercent = useMemo(() => {
+    const monthlyLoading = currentProduct?.frequencyLoading?.monthly ?? 1.06;
+    const annualLoading = currentProduct?.frequencyLoading?.annual ?? 1.0;
+    return Math.round(((monthlyLoading - annualLoading) / monthlyLoading) * 100);
+  }, [currentProduct]);
 
   if (!currentProduct || !simulationResult) {
     return (
@@ -404,15 +528,15 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
 
               <div className="pt-2">
                 <Slider
-                  label="Geser untuk mengatur usia nasabah (18 - 65 tahun):"
-                  min={18}
-                  max={65}
+                  label={`Geser untuk mengatur usia nasabah (${productMinAge} - ${productMaxAge} tahun):`}
+                  min={productMinAge}
+                  max={productMaxAge}
                   step={1}
                   value={applicantAge}
                   onChange={setApplicantAge}
                   formatValue={(val) => `${val} Tahun`}
-                  minLabel="18 Thn"
-                  maxLabel="65 Thn"
+                  minLabel={`${productMinAge} Thn`}
+                  maxLabel={`${productMaxAge} Thn`}
                 />
               </div>
 
@@ -421,17 +545,19 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   id="input-age"
                   label="Input Manual Usia:"
                   type="number"
-                  min={18}
-                  max={65}
+                  min={productMinAge}
+                  max={productMaxAge}
                   value={applicantAge || ''}
                   onChange={(e) => {
                     const val = e.target.value;
                     setApplicantAge(val === '' ? 0 : Number(val));
                   }}
                   onBlur={() => {
-                    setApplicantAge((prev) => Math.min(65, Math.max(18, prev || 18)));
+                    setApplicantAge((prev) =>
+                      Math.min(productMaxAge, Math.max(productMinAge, prev || productMinAge))
+                    );
                   }}
-                  helperText="Rentang: 18 s/d 65 tahun."
+                  helperText={`Rentang: ${productMinAge} s/d ${productMaxAge} tahun.`}
                 />
               </div>
             </div>
@@ -452,7 +578,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {gender === 'male' ? '✓ ' : ''}Pria (Faktor: 1.05x)
+                  {gender === 'male' ? '✓ ' : ''}Pria{formatFactorLabel(currentProduct?.genderFactors?.male ?? 1.05, 'Faktor')}
                 </button>
                 <button
                   type="button"
@@ -464,7 +590,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {gender === 'female' ? '✓ ' : ''}Wanita (Faktor: 1.00x)
+                  {gender === 'female' ? '✓ ' : ''}Wanita{formatFactorLabel(currentProduct?.genderFactors?.female ?? 1.00, 'Faktor')}
                 </button>
               </div>
             </div>
@@ -485,7 +611,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {!isSmoker ? '✓ ' : ''}Bukan Perokok (1.00x)
+                  {!isSmoker ? '✓ ' : ''}Bukan Perokok{formatFactorLabel(currentProduct?.smokerFactors?.no ?? 1.00)}
                 </button>
                 <button
                   type="button"
@@ -497,7 +623,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {isSmoker ? '✓ ' : ''}Perokok Aktif (1.35x)
+                  {isSmoker ? '✓ ' : ''}Perokok Aktif{formatFactorLabel(currentProduct?.smokerFactors?.yes ?? 1.35)}
                 </button>
               </div>
             </div>
@@ -518,7 +644,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {occupationRisk === 'low' ? '✓ ' : ''}Rendah (0.95x)
+                  {occupationRisk === 'low' ? '✓ ' : ''}Rendah{formatFactorLabel(currentProduct?.occupationFactors?.low ?? 0.95)}
                 </button>
                 <button
                   type="button"
@@ -530,7 +656,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {occupationRisk === 'standard' ? '✓ ' : ''}Standar (1.00x)
+                  {occupationRisk === 'standard' ? '✓ ' : ''}Standar{formatFactorLabel(currentProduct?.occupationFactors?.standard ?? 1.00)}
                 </button>
                 <button
                   type="button"
@@ -542,7 +668,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  {occupationRisk === 'high' ? '✓ ' : ''}Tinggi (1.40x)
+                  {occupationRisk === 'high' ? '✓ ' : ''}Tinggi{formatFactorLabel(currentProduct?.occupationFactors?.high ?? 1.40)}
                 </button>
               </div>
             </div>
@@ -655,7 +781,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  Tahunan (Hemat 6% - Diskon API)
+                  Tahunan (Hemat {annualDiscountPercent}% - Diskon API)
                 </button>
                 <button
                   type="button"
@@ -749,12 +875,29 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         {/* Right Column: Sticky Result Panel (Y: 370 - 1520) */}
         <div className="lg:col-span-5 sticky top-24 space-y-4">
           <div className="bg-[#0f172a] text-white rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 text-left">
-            {/* Live Tag */}
-            <div>
+            {/* Live Tag & Status */}
+            <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e293b] text-[#38bdf8] text-[10px] font-bold tracking-wider uppercase">
-                ● LIVE CORE API QUOTE ENGINE
+                <span className={`w-1.5 h-1.5 rounded-full bg-[#38bdf8] ${isCalculating ? 'animate-ping' : ''}`} />
+                LIVE CORE API QUOTE ENGINE
+                {isCalculating && (
+                  <span className="text-[9px] text-slate-400 font-normal lowercase">
+                    (menghitung...)
+                  </span>
+                )}
               </span>
+              {simulationResult?.ojkTableReference && (
+                <span className="text-[10px] text-slate-400 truncate max-w-[180px]" title={simulationResult.ojkTableReference}>
+                  {simulationResult.ojkTableReference}
+                </span>
+              )}
             </div>
+
+            {calculationError && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                <span className="font-semibold">Info:</span> {calculationError}
+              </div>
+            )}
 
             {/* Header */}
             <div>
@@ -831,22 +974,18 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             <div className="space-y-2 text-xs">
               <h4 className="font-bold text-slate-200">Manfaat yang Langsung Aktif:</h4>
               <ul className="space-y-1.5 text-slate-300">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
-                  <span>Santunan Tutup Usia 100% UP ({formatRupiah(sumAssured)})</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
-                  <span>Terminal Illness santunan di muka hingga 50%</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
-                  <span>Accidental death rider tambahan proteksi kecelakaan</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
-                  <span>Persetujuan underwriting otomatis dalam 5 menit</span>
-                </li>
+                {(currentProduct.features && currentProduct.features.length > 0
+                  ? currentProduct.features
+                  : [
+                      `Santunan Proteksi UP (${formatRupiah(sumAssured)})`,
+                      'Persetujuan underwriting otomatis dalam 5 menit',
+                    ]
+                ).map((feature, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <span className="text-emerald-400 font-bold">✓</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -916,26 +1055,24 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <span>MANFAAT YANG DICAKUP (COVERED BENEFITS)</span>
             </div>
             <ul className="p-6 space-y-3 text-xs sm:text-sm text-slate-700">
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span>Santunan Meninggal Dunia karena sakit maupun kecelakaan 100% UP.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span>Uang duka dan percepatan klaim terminal illness hingga 50% UP tunai.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span>Masa tenggang pembayaran premi (grace period) 30 hari kalender.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span>Pendampingan pengajuan klaim online 24/7 melalui RAG AI Assistant.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span>Pengembalian premi tanpa potongan jika membatalkan dalam free-look 14 hari.</span>
-              </li>
+              {currentProduct.benefitsDetailed && currentProduct.benefitsDetailed.length > 0 ? (
+                currentProduct.benefitsDetailed.map((b, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold mt-0.5">•</span>
+                    <div>
+                      <span className="font-semibold">{b.title}</span>
+                      {b.description && b.description !== b.title && (
+                        <p className="text-slate-500 text-xs mt-0.5">{b.description}</p>
+                      )}
+                    </div>
+                  </li>
+                ))
+              ) : (
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-600 font-bold mt-0.5">•</span>
+                  <span>Santunan proteksi polis sesuai kesepakatan kontrak premi.</span>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -946,26 +1083,19 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <span>PENGECUALIAN RESMI (EXCLUSIONS)</span>
             </div>
             <ul className="p-6 space-y-3 text-xs sm:text-sm text-slate-700">
-              <li className="flex items-start gap-2">
-                <span className="text-rose-600 font-bold mt-0.5">•</span>
-                <span>Klaim terindikasi pemalsuan data identitas (fraudulent claims).</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-rose-600 font-bold mt-0.5">•</span>
-                <span>Kondisi kesehatan pra-eksisting dalam masa tunggu 90 hari.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-rose-600 font-bold mt-0.5">•</span>
-                <span>Kematian akibat tindakan melanggar hukum atau kejahatan terencana.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-rose-600 font-bold mt-0.5">•</span>
-                <span>Olahraga ekstrim berbahaya tanpa deklarasi rider tambahan khusus.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-rose-600 font-bold mt-0.5">•</span>
-                <span>Bunuh diri dalam kurun waktu 12 bulan sejak tanggal penerbitan polis.</span>
-              </li>
+              {currentProduct.exclusions && currentProduct.exclusions.length > 0 ? (
+                currentProduct.exclusions.map((ex, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold mt-0.5">•</span>
+                    <span>{ex}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="flex items-start gap-2">
+                  <span className="text-rose-600 font-bold mt-0.5">•</span>
+                  <span>Pengecualian standar sesuai ketentuan polis terdaftar di OJK.</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
@@ -1081,7 +1211,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 <div className="flex justify-between">
                   <span>Faktor Usia (Usia {simulationResult.applicantAge} Th):</span>
                   <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.ageFactor}x (TMI-IV baseline 20 th)
+                    {simulationResult.breakdown.ageFactor}x ({currentProduct.categoryKey === 'life' ? 'TMI-IV baseline 20 th' : 'Rentang ' + ageRangeLabel})
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SimulationService } from './simulation.service';
 import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 
@@ -217,7 +217,7 @@ describe('SimulationService', () => {
       },
       sampleProduct
     );
-    expect(underAge.applicantAge).toBe(18);
+    expect(underAge.applicantAge).toBe(sampleProduct.minAge || 18);
 
     const overAge = service.calculate(
       {
@@ -231,7 +231,7 @@ describe('SimulationService', () => {
       },
       sampleProduct
     );
-    expect(overAge.applicantAge).toBe(65);
+    expect(overAge.applicantAge).toBe(sampleProduct.maxAge || 60);
   });
 
   it('handles rider with undefined or malformed extraPrice defensively', () => {
@@ -263,5 +263,97 @@ describe('SimulationService', () => {
     expect(result.selectedRiders.length).toBe(1);
     expect(result.selectedRiders[0].monthlyCost).toBe(50_000);
     expect(result.selectedRiders[0].extraPriceLabel).toBe('');
+  });
+
+  describe('calculateAsync', () => {
+    it('calls productRepo.calculateQuote when repository is injected', async () => {
+      const mockQuoteResult = {
+        product_id: 'prod-term-life',
+        product_name: 'Term Life Guard Plus',
+        product_slug: 'prod-term-life',
+        currency: 'IDR',
+        age: 32,
+        gender: 'male',
+        sum_assured: 500_000_000,
+        payment_term: 10,
+        payment_frequency: 'monthly',
+        estimated_premium: 140_000,
+        estimated_annual_premium: 1_500_000,
+        breakdown: {
+          base_rate: 0.0035,
+          age_factor: 1.1,
+          gender_factor: 1.05,
+          smoker_factor: 1.0,
+          occupation_factor: 0.95,
+          health_factor: 1.0,
+          term_factor: 1.05,
+          frequency_loading: 1.1,
+        },
+        notes: ['OJK Note 1'],
+      };
+
+      const mockRepo = {
+        getFeaturedProducts: vi.fn(),
+        getProducts: vi.fn(),
+        getProductBySlug: vi.fn(),
+        getProductById: vi.fn(),
+        calculateQuote: vi.fn().mockResolvedValue(mockQuoteResult),
+      };
+
+      const asyncService = new SimulationService(mockRepo);
+      const res = await asyncService.calculateAsync(
+        {
+          productId: sampleProduct.id,
+          sumAssured: 500_000_000,
+          termYears: 10,
+          applicantAge: 32,
+          isSmoker: false,
+          frequency: 'monthly',
+          gender: 'male',
+          occupationRisk: 'low',
+          selectedRiderIds: ['rider-ci'],
+        },
+        sampleProduct
+      );
+
+      expect(mockRepo.calculateQuote).toHaveBeenCalledWith(
+        'prod-term-life',
+        expect.objectContaining({
+          age: 32,
+          gender: 'male',
+          sum_assured: 500_000_000,
+          payment_term: 10,
+          payment_frequency: 'monthly',
+          smoker: 'no',
+          occupation_class: 'low',
+        })
+      );
+
+      expect(res.breakdown.baseRate).toBe(0.0035);
+      expect(res.breakdown.ageFactor).toBe(1.1);
+      expect(res.breakdown.occupationFactor).toBe(0.95);
+      expect(res.selectedRiders).toHaveLength(1);
+      expect(res.activePremium).toBe(140_000 + 45_000); // base monthly from Core API + rider monthly
+      expect(res.ojkTableReference).toContain('Core API Actuarial Engine');
+    });
+
+    it('falls back to sync calculate when productRepo is not provided', async () => {
+      const plainService = new SimulationService();
+      const res = await plainService.calculateAsync(
+        {
+          productId: sampleProduct.id,
+          sumAssured: 500_000_000,
+          termYears: 10,
+          applicantAge: 32,
+          isSmoker: false,
+          frequency: 'monthly',
+          selectedRiderIds: [],
+        },
+        sampleProduct
+      );
+
+      expect(res.product.id).toBe('prod-term-life');
+      expect(res.activePremium).toBeGreaterThan(0);
+    });
   });
 });

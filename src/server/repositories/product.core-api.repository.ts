@@ -2,6 +2,8 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  QuoteCalculationRequest,
+  QuoteCalculationResult,
 } from './product.repository.interface';
 
 export interface CoreApiProduct {
@@ -25,6 +27,8 @@ export interface CoreApiProduct {
     occupation_factors?: Record<string, number>;
     health_factors?: Record<string, number>;
     frequency_loading?: Record<string, number>;
+    sum_assured_presets?: number[];
+    payment_term_presets?: number[];
   };
   benefits?: string[];
   exclusions?: string[];
@@ -105,11 +109,26 @@ export class CoreApiProductRepository implements IProductRepository {
       maxAge,
       minSumAssured: p.min_sum_assured,
       maxSumAssured: p.max_sum_assured,
+      minTermYears: p.min_payment_term,
+      maxTermYears: p.max_payment_term,
       benefitsDetailed: (p.benefits || []).map((b) => ({ title: b, description: b })),
       waitingPeriodDays: 0,
       claimMethod: 'cashless',
       underwritingNote: p.target_customer || '',
       riders: [],
+      ageFactors: (p.pricing_rules?.age_factors || []).map((af) => ({
+        minAge: af.min_age,
+        maxAge: af.max_age,
+        factor: af.factor,
+      })),
+      sumAssuredPresets: p.pricing_rules?.sum_assured_presets,
+      termPresets: p.pricing_rules?.payment_term_presets,
+      genderFactors: p.pricing_rules?.gender_factors,
+      smokerFactors: p.pricing_rules?.smoker_factors,
+      occupationFactors: p.pricing_rules?.occupation_factors,
+      healthFactors: p.pricing_rules?.health_factors,
+      frequencyLoading: p.pricing_rules?.frequency_loading,
+      exclusions: p.exclusions || [],
     };
   }
 
@@ -142,8 +161,9 @@ export class CoreApiProductRepository implements IProductRepository {
       throw new Error(`Core API error fetching products: HTTP ${res.status}`);
     }
 
-    const json = await res.json();
-    const rawProducts: CoreApiProduct[] = Array.isArray(json.data) ? json.data : [];
+    const json = await res.json().catch(() => null);
+    const rawProducts: CoreApiProduct[] =
+      json && typeof json === 'object' && Array.isArray(json.data) ? json.data : [];
     return rawProducts.map((p) => this.mapCoreApiProductToInsuranceProduct(p));
   }
 
@@ -166,8 +186,9 @@ export class CoreApiProductRepository implements IProductRepository {
       );
     }
 
-    const json = await res.json();
-    const rawProducts: CoreApiProduct[] = Array.isArray(json.data) ? json.data : [];
+    const json = await res.json().catch(() => null);
+    const rawProducts: CoreApiProduct[] =
+      json && typeof json === 'object' && Array.isArray(json.data) ? json.data : [];
     return rawProducts.map((p) => this.mapCoreApiProductToInsuranceProduct(p));
   }
 
@@ -199,8 +220,8 @@ export class CoreApiProductRepository implements IProductRepository {
       );
     }
 
-    const json = await res.json();
-    if (!json.data) {
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !json.data) {
       return null;
     }
 
@@ -209,5 +230,48 @@ export class CoreApiProductRepository implements IProductRepository {
 
   async getProductById(id: string): Promise<InsuranceProduct | null> {
     return this.getProductBySlug(id);
+  }
+
+  async calculateQuote(
+    slug: string,
+    request: QuoteCalculationRequest
+  ): Promise<QuoteCalculationResult> {
+    if (!this.baseUrl) {
+      throw new Error(
+        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+      );
+    }
+
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      throw new Error('Product slug is required for quote calculation');
+    }
+
+    const url = `${this.baseUrl}/api/v1/products/${encodeURIComponent(trimmedSlug)}/quotes`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      throw new Error(
+        `Core API error calculating quote for product ${trimmedSlug}: HTTP ${res.status}${
+          errorBody ? ` - ${errorBody}` : ''
+        }`
+      );
+    }
+
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json !== 'object' || !json.data) {
+      throw new Error('Invalid response structure from Core API quote calculation');
+    }
+
+    return json.data as QuoteCalculationResult;
   }
 }

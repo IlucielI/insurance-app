@@ -26,7 +26,7 @@ export const productRepository = useMock
   : new CoreApiProductRepository();
 export const productService = new ProductService(productRepository);
 
-export const simulationService = new SimulationService();
+export const simulationService = new SimulationService(productRepository);
 
 export const applicationRepository = new ApplicationMockRepository();
 export const applicationService = new ApplicationService(applicationRepository);

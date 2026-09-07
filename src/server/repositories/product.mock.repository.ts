@@ -2,6 +2,8 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  QuoteCalculationRequest,
+  QuoteCalculationResult,
 } from './product.repository.interface';
 
 export class ProductMockRepository implements IProductRepository {
@@ -60,6 +62,26 @@ export class ProductMockRepository implements IProductRepository {
           extraPrice: 'Rp 25.000 / bln',
           description: 'Akselerasi pencairan 50% dana pertanggungan jika terdiagnosa penyakit terminal.',
         },
+      ],
+      minTermYears: 5,
+      maxTermYears: 20,
+      ageFactors: [
+        { minAge: 18, maxAge: 30, factor: 1.0 },
+        { minAge: 31, maxAge: 40, factor: 1.25 },
+        { minAge: 41, maxAge: 50, factor: 1.75 },
+        { minAge: 51, maxAge: 60, factor: 2.5 },
+      ],
+      sumAssuredPresets: [100_000_000, 250_000_000, 500_000_000, 1_000_000_000],
+      termPresets: [5, 10, 15, 20],
+      genderFactors: { male: 1.05, female: 1.0 },
+      smokerFactors: { yes: 1.35, no: 1.0 },
+      occupationFactors: { low: 0.95, standard: 1.0, high: 1.4 },
+      healthFactors: { low: 1.0, medium: 1.25, high: 1.75 },
+      frequencyLoading: { annual: 1.0, semi_annual: 1.02, quarterly: 1.035, monthly: 1.06 },
+      exclusions: [
+        'Klaim terindikasi pemalsuan data identitas (fraudulent claims)',
+        'Kondisi kesehatan pra-eksisting dalam masa tunggu',
+        'Kematian akibat tindakan melanggar hukum atau kejahatan terencana',
       ],
     },
     {
@@ -333,5 +355,93 @@ export class ProductMockRepository implements IProductRepository {
 
   async getProductById(id: string): Promise<InsuranceProduct | null> {
     return this.getProductBySlug(id);
+  }
+
+  async calculateQuote(
+    slug: string,
+    request: QuoteCalculationRequest
+  ): Promise<QuoteCalculationResult> {
+    const product = await this.getProductBySlug(slug);
+    if (!product) {
+      throw new Error(`Product not found with slug ${slug}`);
+    }
+
+    const baseRate = product.baseRate || 0.0035;
+    const ageFactor = Number((1 + Math.max(0, (request.age - 20) * 0.025)).toFixed(3));
+    const genderFactor =
+      product.genderFactors?.[request.gender] ?? (request.gender === 'male' ? 1.05 : 1.0);
+    const smokerFactor =
+      product.smokerFactors?.[request.smoker] ?? (request.smoker === 'yes' ? 1.35 : 1.0);
+    const occupationFactor =
+      product.occupationFactors?.[request.occupation_class] ??
+      (request.occupation_class === 'low'
+        ? 0.95
+        : request.occupation_class === 'high'
+        ? 1.4
+        : 1.0);
+    const healthFactor =
+      product.healthFactors?.[request.health_risk || 'low'] ??
+      (request.health_risk === 'high'
+        ? 1.5
+        : request.health_risk === 'medium'
+        ? 1.2
+        : 1.0);
+    const termDelta = Math.max(0, request.payment_term - (product.minTermYears || 5));
+    const termFactor = 1 + termDelta * 0.01;
+
+    let frequencyDivisor = 12;
+    let frequencyLoading = product.frequencyLoading?.monthly ?? 1.1;
+    if (request.payment_frequency === 'annual') {
+      frequencyDivisor = 1;
+      frequencyLoading = product.frequencyLoading?.annual ?? 1.0;
+    } else if (request.payment_frequency === 'semi_annual') {
+      frequencyDivisor = 2;
+      frequencyLoading = product.frequencyLoading?.semi_annual ?? 1.03;
+    } else if (request.payment_frequency === 'quarterly') {
+      frequencyDivisor = 4;
+      frequencyLoading = product.frequencyLoading?.quarterly ?? 1.06;
+    }
+
+    const rawAnnual =
+      request.sum_assured *
+      baseRate *
+      ageFactor *
+      genderFactor *
+      smokerFactor *
+      occupationFactor *
+      healthFactor *
+      termFactor;
+
+    const estimatedAnnual = Math.ceil(rawAnnual / 1000) * 1000;
+    const estimatedPeriodic =
+      Math.ceil(((rawAnnual / frequencyDivisor) * frequencyLoading) / 1000) * 1000;
+
+    return {
+      product_id: product.id,
+      product_name: product.title,
+      product_slug: product.slug,
+      currency: 'IDR',
+      age: request.age,
+      gender: request.gender,
+      sum_assured: request.sum_assured,
+      payment_term: request.payment_term,
+      payment_frequency: request.payment_frequency,
+      estimated_premium: estimatedPeriodic,
+      estimated_annual_premium: estimatedAnnual,
+      breakdown: {
+        base_rate: baseRate,
+        age_factor: ageFactor,
+        gender_factor: genderFactor,
+        smoker_factor: smokerFactor,
+        occupation_factor: occupationFactor,
+        health_factor: healthFactor,
+        term_factor: termFactor,
+        frequency_loading: frequencyLoading,
+      },
+      notes: [
+        'This is an indicative quote, not a final offer.',
+        'Final premium may change after underwriting review.',
+      ],
+    };
   }
 }
