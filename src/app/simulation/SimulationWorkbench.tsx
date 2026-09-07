@@ -17,24 +17,25 @@ export interface SimulationWorkbenchProps {
   initialProductId?: string;
 }
 
-// Convert numbers to Indonesian currency wording
-function numberToRupiahWords(num: number): string {
-  if (num <= 0) return 'Nol Rupiah';
-  if (num >= 1_000_000_000) {
-    const miliar = num / 1_000_000_000;
-    const formatted = Number.isInteger(miliar)
-      ? miliar.toString()
-      : miliar.toFixed(1).replace('.', ',');
-    return `${formatted} Miliar Rupiah`;
-  }
-  if (num >= 1_000_000) {
-    const juta = num / 1_000_000;
-    const formatted = Number.isInteger(juta)
-      ? juta.toString()
-      : juta.toFixed(1).replace('.', ',');
-    return `${formatted} Juta Rupiah`;
-  }
-  return `${num.toLocaleString('id-ID')} Rupiah`;
+// Convert numbers to Indonesian currency wording without misleading rounding
+export function numberToRupiahWords(num: number): string {
+  const rounded = Math.floor(num);
+  if (rounded <= 0) return 'Nol Rupiah';
+
+  const miliar = Math.floor(rounded / 1_000_000_000);
+  const sisaMiliar = rounded % 1_000_000_000;
+  const juta = Math.floor(sisaMiliar / 1_000_000);
+  const sisaJuta = sisaMiliar % 1_000_000;
+  const ribu = Math.floor(sisaJuta / 1_000);
+  const sisaRupiah = sisaJuta % 1_000;
+
+  const parts: string[] = [];
+  if (miliar > 0) parts.push(`${miliar} Miliar`);
+  if (juta > 0) parts.push(`${juta} Juta`);
+  if (ribu > 0) parts.push(`${ribu} Ribu`);
+  if (sisaRupiah > 0) parts.push(`${sisaRupiah}`);
+
+  return parts.length > 0 ? `${parts.join(' ')} Rupiah` : 'Nol Rupiah';
 }
 
 export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({

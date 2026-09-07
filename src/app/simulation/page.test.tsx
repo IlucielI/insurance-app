@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import SimulationPage from './page';
-import { SimulationWorkbench } from './SimulationWorkbench';
+import { SimulationWorkbench, numberToRupiahWords } from './SimulationWorkbench';
 import { productService } from '@/server/di';
 
 const mockPush = vi.fn();
@@ -276,5 +276,32 @@ describe('SimulationPage & SimulationWorkbench', () => {
   it('renders loading placeholder if initialProducts is empty', () => {
     render(<SimulationWorkbench initialProducts={[]} />);
     expect(screen.getByText(/Memuat data kalkulator simulasi premi.../i)).toBeDefined();
+  });
+});
+
+describe('numberToRupiahWords', () => {
+  it('formats integer billion correctly (Happy Path)', () => {
+    expect(numberToRupiahWords(2_000_000_000)).toBe('2 Miliar Rupiah');
+  });
+
+  it('formats compound billion and million correctly', () => {
+    expect(numberToRupiahWords(1_500_000_000)).toBe('1 Miliar 500 Juta Rupiah');
+  });
+
+  it('does not mislead user with lossy rounding to 2,0 Miliar for 1_999_999_999 (Edge Case)', () => {
+    const result = numberToRupiahWords(1_999_999_999);
+    expect(result).not.toBe('2,0 Miliar Rupiah');
+    expect(result).not.toBe('2 Miliar Rupiah');
+    expect(result).toBe('1 Miliar 999 Juta 999 Ribu 999 Rupiah');
+  });
+
+  it('formats integer million amounts correctly', () => {
+    expect(numberToRupiahWords(500_000_000)).toBe('500 Juta Rupiah');
+    expect(numberToRupiahWords(100_000_000)).toBe('100 Juta Rupiah');
+  });
+
+  it('returns Nol Rupiah for zero or negative values', () => {
+    expect(numberToRupiahWords(0)).toBe('Nol Rupiah');
+    expect(numberToRupiahWords(-500)).toBe('Nol Rupiah');
   });
 });
