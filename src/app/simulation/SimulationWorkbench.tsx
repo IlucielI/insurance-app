@@ -302,64 +302,62 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     }));
   }, [initialProducts]);
 
-  // Preset buttons dynamically generated based on product constraints
+  // Preset buttons dynamically configured via Core API product pricing rules
   const sumAssuredPresets = useMemo(() => {
     if (!currentProduct) return [];
-    const min = currentProduct.minSumAssured;
-    const max = currentProduct.maxSumAssured;
-    const candidates = [
-      50_000_000,
-      100_000_000,
-      250_000_000,
-      500_000_000,
-      1_000_000_000,
-      1_500_000_000,
-      2_000_000_000,
-    ];
-    const available = candidates.filter((val) => val >= min && val <= max);
-    if (available.length < 2) {
-      const step = (max - min) / 3;
-      return [min, min + step, min + step * 2, max].map((val) => {
-        const rounded = Math.round(val / 10_000_000) * 10_000_000;
-        return {
-          label: formatRupiah(rounded),
-          value: rounded,
-        };
-      });
+    if (
+      currentProduct.sumAssuredPresets &&
+      currentProduct.sumAssuredPresets.length > 0
+    ) {
+      return currentProduct.sumAssuredPresets.map((val) => ({
+        label: formatRupiah(val),
+        value: val,
+      }));
     }
 
-    const selectedVals =
-      available.length <= 4
-        ? available
-        : [
-            available[0],
-            available[Math.floor(available.length * 0.33)],
-            available[Math.floor(available.length * 0.66)],
-            available[available.length - 1],
-          ];
+    // Pure mathematical division if product does not specify explicit presets
+    const min = currentProduct.minSumAssured;
+    const max = currentProduct.maxSumAssured;
+    if (min >= max) {
+      return [{ label: formatRupiah(min), value: min }];
+    }
 
-    return selectedVals.map((val) => ({
-      label: formatRupiah(val),
-      value: val,
-    }));
+    const step = (max - min) / 3;
+    const points = [min, min + step, min + step * 2, max];
+    return points.map((val) => {
+      const rounded = Math.round(val / 5_000_000) * 5_000_000;
+      return {
+        label: formatRupiah(rounded),
+        value: rounded,
+      };
+    });
   }, [currentProduct]);
 
   const termPresets = useMemo(() => {
-    const candidates = [5, 10, 15, 20, 25, 30];
-    const filtered = candidates.filter((term) => term >= minTerm && term <= maxTerm);
-    if (filtered.length === 0) {
-      return [minTerm, maxTerm];
+    if (!currentProduct) return [];
+    if (currentProduct.termPresets && currentProduct.termPresets.length > 0) {
+      return currentProduct.termPresets;
     }
-    return filtered.slice(0, 4);
-  }, [minTerm, maxTerm]);
 
-  // Age risk bracket label
+    // Pure mathematical division across valid term range
+    if (minTerm >= maxTerm) return [minTerm];
+    const step = Math.max(1, Math.round((maxTerm - minTerm) / 3));
+    const points = [minTerm, minTerm + step, minTerm + step * 2, maxTerm];
+    return Array.from(new Set(points.filter((t) => t >= minTerm && t <= maxTerm)));
+  }, [currentProduct, minTerm, maxTerm]);
+
+  // Age risk bracket label dynamically matching Core API age_factors
   const ageRangeLabel = useMemo(() => {
-    if (applicantAge <= 30) return '18-30 thn';
-    if (applicantAge <= 40) return '31-40 thn';
-    if (applicantAge <= 50) return '41-50 thn';
-    return '51-65 thn';
-  }, [applicantAge]);
+    if (currentProduct?.ageFactors && currentProduct.ageFactors.length > 0) {
+      const matched = currentProduct.ageFactors.find(
+        (af) => applicantAge >= af.minAge && applicantAge <= af.maxAge
+      );
+      if (matched) {
+        return `${matched.minAge}-${matched.maxAge} thn`;
+      }
+    }
+    return `${applicantAge} thn`;
+  }, [applicantAge, currentProduct]);
 
   if (!currentProduct || !simulationResult) {
     return (

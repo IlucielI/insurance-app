@@ -63,6 +63,16 @@ export class ProductMockRepository implements IProductRepository {
           description: 'Akselerasi pencairan 50% dana pertanggungan jika terdiagnosa penyakit terminal.',
         },
       ],
+      minTermYears: 5,
+      maxTermYears: 20,
+      ageFactors: [
+        { minAge: 18, maxAge: 30, factor: 1.0 },
+        { minAge: 31, maxAge: 40, factor: 1.25 },
+        { minAge: 41, maxAge: 50, factor: 1.75 },
+        { minAge: 51, maxAge: 60, factor: 2.5 },
+      ],
+      sumAssuredPresets: [100_000_000, 250_000_000, 500_000_000, 1_000_000_000],
+      termPresets: [5, 10, 15, 20],
     },
     {
       id: 'prod-critical-illness',

@@ -12,6 +12,12 @@ export interface ProductRider {
   description?: string;
 }
 
+export interface ProductAgeFactor {
+  minAge: number;
+  maxAge: number;
+  factor: number;
+}
+
 export interface InsuranceProduct {
   id: string;
   slug: string;
@@ -41,6 +47,9 @@ export interface InsuranceProduct {
   claimMethod: 'cashless' | 'instant_transfer' | 'reimbursement';
   underwritingNote: string;
   riders?: ProductRider[];
+  ageFactors?: ProductAgeFactor[];
+  sumAssuredPresets?: number[];
+  termPresets?: number[];
 }
 
 export interface QuoteCalculationRequest {

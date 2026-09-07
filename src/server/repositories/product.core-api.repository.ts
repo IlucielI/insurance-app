@@ -27,6 +27,8 @@ export interface CoreApiProduct {
     occupation_factors?: Record<string, number>;
     health_factors?: Record<string, number>;
     frequency_loading?: Record<string, number>;
+    sum_assured_presets?: number[];
+    payment_term_presets?: number[];
   };
   benefits?: string[];
   exclusions?: string[];
@@ -114,6 +116,13 @@ export class CoreApiProductRepository implements IProductRepository {
       claimMethod: 'cashless',
       underwritingNote: p.target_customer || '',
       riders: [],
+      ageFactors: (p.pricing_rules?.age_factors || []).map((af) => ({
+        minAge: af.min_age,
+        maxAge: af.max_age,
+        factor: af.factor,
+      })),
+      sumAssuredPresets: p.pricing_rules?.sum_assured_presets,
+      termPresets: p.pricing_rules?.payment_term_presets,
     };
   }
 
