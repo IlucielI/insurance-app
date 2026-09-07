@@ -32,6 +32,9 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
   const [inputText, setInputText] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
+  const [isClearingChat, setIsClearingChat] = useState<boolean>(false);
+  const [clearNotice, setClearNotice] = useState<string | null>(null);
 
   const activeSession =
     sessions.find((s) => s.id === activeSessionId) || sessions[0];
@@ -398,18 +401,56 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
     setIsSending(false);
   };
 
-  const handleClearChat = async () => {
-    if (!activeSession) return;
+  const handleOpenClearModal = () => {
+    setShowClearConfirmModal(true);
+  };
+
+  const handleConfirmClear = async () => {
+    if (!activeSession || isClearingChat) return;
+    setIsClearingChat(true);
     try {
-      await assistantService.resetSessionMessages(activeSession.id);
-      const refreshed = await assistantService.getChatSession(activeSession.id);
-      if (refreshed) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === activeSession.id ? refreshed : s))
-        );
+      // 1. Call BFF Route Handler DELETE /api/assistant/conversations/[id]
+      if (!activeSession.id.startsWith('temp-')) {
+        await fetch(`/api/assistant/conversations/${encodeURIComponent(activeSession.id)}`, {
+          method: 'DELETE',
+        }).catch((err) => {
+          console.warn('[AssistantWorkbench] Core API DELETE call failed:', err);
+        });
       }
+
+      // 2. Call local service reset
+      await assistantService.resetSessionMessages(activeSession.id).catch(() => {});
+
+      // 3. Reset local messages to pristine greeting state
+      messageCounterRef.current += 1;
+      const cleanMsg: ChatMessage = {
+        id: `msg-cleared-${messageCounterRef.current}`,
+        sender: 'assistant',
+        content:
+          'Percakapan telah dibersihkan. Silakan tanyakan hal lain seputar produk, syarat klaim, atau verifikasi underwriting.',
+        timestamp: 'Baru saja dibersihkan',
+      };
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id === activeSession.id) {
+            return {
+              ...s,
+              lastActive: 'Baru saja dibersihkan',
+              previewText: 'Percakapan telah dibersihkan.',
+              messages: [cleanMsg],
+            };
+          }
+          return s;
+        })
+      );
+
+      setClearNotice('Riwayat percakapan berhasil dibersihkan.');
+      setShowClearConfirmModal(false);
     } catch (error) {
       console.error('Failed to reset session', error);
+    } finally {
+      setIsClearingChat(false);
     }
   };
 
@@ -421,8 +462,11 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         if (target.startsWith('/') || target.startsWith('./')) {
           validUrl = target;
         } else {
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-          const parsed = new URL(target, origin);
+          const origin =
+            typeof window !== 'undefined' && window.location?.origin
+              ? window.location.origin
+              : undefined;
+          const parsed = origin ? new URL(target, origin) : new URL(target);
           if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
             console.error('Invalid URL scheme blocked:', parsed.protocol);
             return;
@@ -603,7 +647,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
               </div>
 
               <Button
-                onClick={handleClearChat}
+                onClick={handleOpenClearModal}
                 variant="outline"
                 size="sm"
                 className="text-xs bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 rounded-md font-semibold shrink-0"
@@ -613,6 +657,20 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
             </div>
 
             {/* Notification banner if action performed */}
+            {clearNotice && (
+              <div className="p-3 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs font-medium flex items-center justify-between animate-in fade-in">
+                <span>✓ {clearNotice}</span>
+                <button
+                  type="button"
+                  aria-label="Tutup notifikasi pembersihan"
+                  onClick={() => setClearNotice(null)}
+                  className="text-emerald-700 font-bold hover:text-emerald-900"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {downloadNotice && (
               <div className="p-3 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs font-medium flex items-center justify-between">
                 <span>✓ {downloadNotice}</span>
@@ -824,6 +882,59 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
           </Card>
         </section>
       </div>
+
+      {/* Clear Chat Confirmation Modal */}
+      {showClearConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="clear-modal-title"
+        >
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 text-lg shrink-0">
+                ⚠️
+              </div>
+              <div>
+                <h3 id="clear-modal-title" className="text-base font-bold text-slate-900">
+                  Bersihkan Riwayat Percakapan?
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Seluruh pesan dalam sesi percakapan ini akan dihapus dari server Core API dan memori lokal browser. Anda akan memulai kembali percakapan dengan konteks baru yang bersih.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isClearingChat}
+                onClick={() => setShowClearConfirmModal(false)}
+                className="text-xs rounded-lg text-slate-700 border-slate-300"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={isClearingChat}
+                onClick={handleConfirmClear}
+                className="text-xs rounded-lg font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+              >
+                {isClearingChat ? <Spinner size="sm" /> : 'Ya, Bersihkan Chat 🔄'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
