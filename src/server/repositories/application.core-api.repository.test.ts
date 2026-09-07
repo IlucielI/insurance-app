@@ -227,4 +227,31 @@ describe('CoreApiApplicationRepository', () => {
     expect(updated?.rfiDocuments).toHaveLength(1);
     expect(updated?.rfiDocuments?.[0].documentName).toBe('resume_medis.pdf');
   });
+
+  it('handles Core API HTTP error with structured error message gracefully', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: 'NIK tidak valid atau sudah terdaftar' }),
+    } as Response);
+
+    const repo = new CoreApiApplicationRepository(mockBaseUrl);
+    const result = await repo.create(sampleApplication);
+
+    expect(result.id).toBe('APP-2026-1234');
+  });
+
+  it('handles Core API HTTP error with null JSON body without throwing TypeError', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => null,
+    } as Response);
+
+    const repo = new CoreApiApplicationRepository(mockBaseUrl);
+    const result = await repo.create(sampleApplication);
+
+    expect(result.id).toBe('APP-2026-1234');
+  });
 });

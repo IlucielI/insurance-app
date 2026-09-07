@@ -121,10 +121,20 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
       if (!response.ok) {
         let errDetail = '';
         try {
-          const errJson = await response.json();
-          errDetail = errJson.message || errJson.error || JSON.stringify(errJson);
+          const errJson: unknown = await response.json();
+          if (errJson && typeof errJson === 'object') {
+            const record = errJson as Record<string, unknown>;
+            errDetail =
+              (typeof record.message === 'string' && record.message) ||
+              (typeof record.error === 'string' && record.error) ||
+              JSON.stringify(errJson);
+          } else if (errJson !== null && errJson !== undefined) {
+            errDetail = String(errJson);
+          } else {
+            errDetail = response.statusText || 'Unknown error';
+          }
         } catch {
-          errDetail = response.statusText;
+          errDetail = response.statusText || 'Unknown error';
         }
         throw new Error(`Core API application creation failed (${response.status}): ${errDetail}`);
       }
