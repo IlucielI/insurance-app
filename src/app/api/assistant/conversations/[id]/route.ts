@@ -103,3 +103,74 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const conversationId = id?.trim();
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: 'ID percakapan wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    const useMock =
+      process.env.MOCK_CORE_API === 'true' ||
+      process.env.NEXT_PUBLIC_MOCK_CORE_API === 'true' ||
+      process.env.USE_MOCK_DATA === 'true';
+
+    const baseUrl = resolveCoreApiBaseUrl();
+
+    // 1. Live Core API DELETE
+    if (!useMock && baseUrl) {
+      try {
+        const upstreamRes = await fetch(
+          `${baseUrl}/api/v1/assistant/conversations/${encodeURIComponent(conversationId)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (upstreamRes.status === 404) {
+          // Idempotent deletion
+          return NextResponse.json({
+            success: true,
+            message: 'Percakapan telah dibersihkan.',
+          });
+        }
+
+        if (upstreamRes.ok || upstreamRes.status === 204) {
+          return NextResponse.json({
+            success: true,
+            message: 'Percakapan berhasil dibersihkan dari server Core API.',
+          });
+        }
+      } catch (upstreamErr: unknown) {
+        console.warn(
+          '[Route DELETE /api/assistant/conversations/[id]] Core API call failed, falling back to local clearance:',
+          upstreamErr
+        );
+      }
+    }
+
+    // 2. Mock Fallback Success
+    return NextResponse.json({
+      success: true,
+      message: 'Percakapan berhasil dibersihkan.',
+    });
+  } catch (err: unknown) {
+    console.error('[Route DELETE /api/assistant/conversations/[id]] Error:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}

@@ -86,7 +86,7 @@ describe('AssistantPage & AssistantWorkbench', () => {
     });
   });
 
-  it('clears chat messages when clicking "Bersihkan Chat 🔄"', async () => {
+  it('clears chat messages when confirming in the "Bersihkan Chat 🔄" modal', async () => {
     const sessions = await assistantService.getChatSessions();
     const topics = await assistantService.getPopularTopics();
     const status = await assistantService.getEngineStatus();
@@ -102,9 +102,45 @@ describe('AssistantPage & AssistantWorkbench', () => {
     const clearBtn = screen.getByRole('button', { name: /Bersihkan Chat 🔄/i });
     fireEvent.click(clearBtn);
 
+    // Modal is opened
+    expect(screen.getByText(/Bersihkan Riwayat Percakapan\?/i)).toBeDefined();
+
+    // Click confirm in modal
+    const confirmBtn = screen.getByRole('button', { name: /Ya, Bersihkan Chat 🔄/i });
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
-      expect(screen.getByText(/Percakapan telah dibersihkan/i)).toBeDefined();
-      expect(screen.getByText(/Baru saja dibersihkan/i)).toBeDefined();
+      expect(screen.getAllByText(/Percakapan telah dibersihkan/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Baru saja dibersihkan/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Riwayat percakapan berhasil dibersihkan/i)).toBeDefined();
+    });
+  });
+
+  it('cancels clear chat when clicking Batal in the confirmation modal', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const clearBtn = screen.getByRole('button', { name: /Bersihkan Chat 🔄/i });
+    fireEvent.click(clearBtn);
+
+    expect(screen.getByText(/Bersihkan Riwayat Percakapan\?/i)).toBeDefined();
+
+    const cancelBtn = screen.getByRole('button', { name: /Batal/i });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Bersihkan Riwayat Percakapan\?/i)).toBeNull();
+      // Chat messages remain intact
+      expect(screen.queryByText(/Percakapan telah dibersihkan/i)).toBeNull();
     });
   });
 
