@@ -1,8 +1,34 @@
 export interface ChatMessageCitation {
   id: string;
   source: string;
+  title?: string;
+  sourceType?: string;
   page?: number;
   url?: string;
+  score?: number;
+  excerpt?: string;
+}
+
+export type AssistantStreamEventType =
+  | 'token'
+  | 'tool_call'
+  | 'tool_result'
+  | 'done'
+  | 'error';
+
+export interface AssistantStreamEvent {
+  type: AssistantStreamEventType;
+  content?: string;
+  tool_name?: string;
+  conversation_id?: string;
+  sources?: Array<{
+    title: string;
+    source_type?: string;
+    score?: number;
+    excerpt?: string;
+  }>;
+  tools_used?: string[];
+  error?: string;
 }
 
 export interface ChatAction {

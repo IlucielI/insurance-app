@@ -41,12 +41,17 @@ export class AssistantService implements IAssistantService {
     }
 
     // 1. Add user message
-    await this.repository.addMessage(sessionId, {
+    const res = await this.repository.addMessage(sessionId, {
       sender: 'user',
       content: trimmed,
     });
 
-    // 2. Synthesize AI RAG response
+    // If repository is live Core API, it directly returns the assistant response
+    if (res && res.sender === 'assistant') {
+      return res;
+    }
+
+    // 2. Synthesize AI RAG response for mock repository
     const aiResponse = this.synthesizeResponse(trimmed);
 
     // 3. Add AI message
