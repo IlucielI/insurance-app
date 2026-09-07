@@ -308,4 +308,46 @@ describe('AssistantPage & AssistantWorkbench', () => {
 
     consoleSpy.mockRestore();
   });
+
+  it('streams response tokens in real-time and renders RAG citations when SSE stream is received', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"type":"token","content":"Halo streaming"}\n\n'));
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"done","conversation_id":"conv-stream-123","sources":[{"title":"Polis Baku Bab I","score":0.97}]}\n\n'
+          )
+        );
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      body: mockStream,
+    });
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i);
+    const sendBtn = screen.getByRole('button', { name: /Kirim ➔/i });
+
+    fireEvent.change(input, { target: { value: 'Tes real-time streaming' } });
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Halo streaming/i)).toBeDefined();
+      expect(screen.getByText(/📚 Polis Baku Bab I/i)).toBeDefined();
+    });
+  });
 });

@@ -87,57 +87,215 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       })
     );
 
-    try {
-      const aiResponse = await assistantService.sendMessage(
-        activeSession.id,
-        textToSend
-      );
+    messageCounterRef.current += 1;
+    const streamAssistantId = `ai-stream-${messageCounterRef.current}`;
+    let streamSuccess = false;
 
-      // Attempt to refresh updated session with refreshed metadata (e.g. title)
-      try {
-        const refreshedSession = await assistantService.getChatSession(
-          activeSession.id
+    // 1. Attempt SSE Real-Time Streaming via /api/assistant/chat/stream
+    try {
+      const convIdParam =
+        activeSession.id.startsWith('temp-') || activeSession.id.startsWith('sess-')
+          ? undefined
+          : activeSession.id;
+
+      const streamUrl = '/api/assistant/chat/stream';
+
+      const res = await fetch(streamUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: textToSend,
+          conversation_id: convIdParam,
+        }),
+      });
+
+      if (res.ok && res.body) {
+        // Append initial empty assistant message for streaming
+        const initialAiMsg: ChatMessage = {
+          id: streamAssistantId,
+          sender: 'assistant',
+          content: '',
+          timestamp: 'Sedang mengetik...',
+        };
+
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSession.id) {
+              return {
+                ...s,
+                messages: [...s.messages, initialAiMsg],
+              };
+            }
+            return s;
+          })
         );
 
-        if (refreshedSession) {
-          setSessions((prev) =>
-            prev.map((s) => (s.id === activeSession.id ? refreshedSession : s))
-          );
-          return;
-        }
-      } catch (refreshErr) {
-        console.error('Failed to refresh session, applying fallback', refreshErr);
-      }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const accumulatedTokens: string[] = [];
+        let doneCitations: Array<{ id: string; source: string; score?: number; excerpt?: string }> = [];
 
-      // Fallback: append response directly if refresh unavailable
+        while (reader) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+            try {
+              const event = JSON.parse(trimmed.slice(6));
+              if (event.type === 'token' && typeof event.content === 'string') {
+                accumulatedTokens.push(event.content);
+                const nextContent = accumulatedTokens.join('');
+                setSessions((prev) =>
+                  prev.map((s) => {
+                    if (s.id === activeSession.id) {
+                      return {
+                        ...s,
+                        messages: s.messages.map((m) =>
+                          m.id === streamAssistantId
+                            ? {
+                                ...m,
+                                content: nextContent,
+                                timestamp: 'Sedang mengetik...',
+                              }
+                            : m
+                        ),
+                      };
+                    }
+                    return s;
+                  })
+                );
+              } else if (event.type === 'done') {
+                if (event.sources && Array.isArray(event.sources)) {
+                  doneCitations = event.sources.map((s: { title: string; score?: number; excerpt?: string }, idx: number) => ({
+                    id: `cit-${idx + 1}`,
+                    source: s.title,
+                    score: s.score,
+                    excerpt: s.excerpt,
+                  }));
+                }
+              }
+            } catch {
+              // ignore partial event parsing
+            }
+          }
+        }
+
+        // Finalize streaming message state
+        const finalContent = accumulatedTokens.join('');
+        if (finalContent.trim()) {
+          streamSuccess = true;
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id === activeSession.id) {
+                return {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === streamAssistantId
+                      ? {
+                          ...m,
+                          content: finalContent,
+                          timestamp: 'Baru saja • Selesai Disintesis',
+                          citations: doneCitations.length > 0 ? doneCitations : m.citations,
+                        }
+                      : m
+                  ),
+                };
+              }
+              return s;
+            })
+          );
+        } else {
+          // Remove empty stream message if no tokens arrived
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id === activeSession.id) {
+                return {
+                  ...s,
+                  messages: s.messages.filter((m) => m.id !== streamAssistantId),
+                };
+              }
+              return s;
+            })
+          );
+        }
+      }
+    } catch (streamErr: unknown) {
+      console.warn('[AssistantWorkbench] Stream fetch error, falling back to service:', streamErr);
+      // Remove placeholder if exists
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id === activeSession.id) {
             return {
               ...s,
-              messages: [...s.messages, aiResponse],
+              messages: s.messages.filter((m) => m.id !== streamAssistantId),
             };
           }
           return s;
         })
       );
-    } catch (error) {
-      console.error('Failed to send message', error);
-      // Rollback optimistic user message to prevent UI inconsistency on failure
-      setSessions((prev) =>
-        prev.map((s) => {
-          if (s.id === activeSession.id) {
-            return {
-              ...s,
-              messages: s.messages.filter((m) => m.id !== tempId),
-            };
-          }
-          return s;
-        })
-      );
-    } finally {
-      setIsSending(false);
     }
+
+    // 2. Fallback to assistantService.sendMessage if streaming did not produce content
+    if (!streamSuccess) {
+      try {
+        const aiResponse = await assistantService.sendMessage(
+          activeSession.id,
+          textToSend
+        );
+
+        // Attempt to refresh updated session with refreshed metadata (e.g. title)
+        try {
+          const refreshedSession = await assistantService.getChatSession(
+            activeSession.id
+          );
+
+          if (refreshedSession) {
+            setSessions((prev) =>
+              prev.map((s) => (s.id === activeSession.id ? refreshedSession : s))
+            );
+            return;
+          }
+        } catch (refreshErr) {
+          console.error('Failed to refresh session, applying fallback', refreshErr);
+        }
+
+        // Fallback: append response directly if refresh unavailable
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSession.id) {
+              return {
+                ...s,
+                messages: [...s.messages, aiResponse],
+              };
+            }
+            return s;
+          })
+        );
+      } catch (error) {
+        console.error('Failed to send message', error);
+        // Rollback optimistic user message to prevent UI inconsistency on failure
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSession.id) {
+              return {
+                ...s,
+                messages: s.messages.filter((m) => m.id !== tempId),
+              };
+            }
+            return s;
+          })
+        );
+      }
+    }
+
+    setIsSending(false);
   };
 
   const handleClearChat = async () => {
@@ -405,7 +563,14 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                             <span>Bayu Insurance AI • Resmi OJK</span>
                           </div>
                         )}
-                        <p>{msg.content}</p>
+                        {msg.content ? (
+                          <p>{msg.content}</p>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
+                            <Spinner size="sm" />
+                            <span>Sedang mensintesis rujukan polis OJK...</span>
+                          </div>
+                        )}
 
                         {/* Checklist Card */}
                         {msg.checklistCard && (
@@ -491,7 +656,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                 );
               })}
 
-              {isSending && (
+              {isSending && !activeSession?.messages.some((m) => m.id.startsWith('ai-stream-')) && (
                 <div className="flex gap-3 mr-auto max-w-md items-center">
                   <div className="w-[34px] h-[34px] rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-sm shrink-0">
                     ✨

@@ -11,6 +11,7 @@ import { CoreApiApplicationRepository } from '../repositories/application.core-a
 import { ApplicationService } from '../services/application.service';
 
 import { AssistantMockRepository } from '../repositories/assistant.mock.repository';
+import { CoreApiAssistantRepository } from '../repositories/assistant.core-api.repository';
 import { AssistantService } from '../services/assistant.service';
 
 const systemRepository = new SystemRepository();
@@ -34,7 +35,9 @@ export const applicationRepository = useMock
   : new CoreApiApplicationRepository();
 export const applicationService = new ApplicationService(applicationRepository);
 
-export const assistantRepository = new AssistantMockRepository();
+export const assistantRepository = useMock
+  ? new AssistantMockRepository()
+  : new CoreApiAssistantRepository();
 export const assistantService = new AssistantService(assistantRepository);
 
 
