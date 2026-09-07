@@ -42,6 +42,12 @@ export interface ChatMessageChecklist {
   items: string[];
 }
 
+export interface ToolCallStatus {
+  toolName: string;
+  label: string;
+  status: 'calling' | 'completed';
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';
@@ -50,6 +56,8 @@ export interface ChatMessage {
   citations?: ChatMessageCitation[];
   checklistCard?: ChatMessageChecklist;
   actionButtons?: ChatAction[];
+  toolCall?: ToolCallStatus;
+  toolsUsed?: string[];
   tags?: string[];
 }
 

@@ -7,6 +7,7 @@ import {
   ChatMessage,
   PopularTopic,
   KnowledgeEngineStatus,
+  ChatAction,
 } from '@/types/assistant.types';
 import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
@@ -18,18 +19,37 @@ export interface AssistantWorkbenchProps {
   initialSessions: ChatSession[];
   initialPopularTopics: PopularTopic[];
   initialEngineStatus: KnowledgeEngineStatus;
+  initialQuery?: string;
+}
+
+function getHumanReadableToolName(toolName: string): string {
+  switch (toolName) {
+    case 'calculate_quote':
+      return 'Kalkulator Premi Aktuaria';
+    case 'list_products':
+      return 'Katalog Produk Proteksi';
+    case 'get_product_detail':
+      return 'Spesifikasi Manfaat Polis';
+    case 'track_claim_status':
+      return 'Pelacakan Status Klaim';
+    case 'create_lead_consultation':
+      return 'Jadwal Konsultasi Underwriting';
+    default:
+      return `Tool Engine (${toolName})`;
+  }
 }
 
 export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
   initialSessions,
   initialPopularTopics,
   initialEngineStatus,
+  initialQuery,
 }) => {
   const [sessions, setSessions] = useState<ChatSession[]>(initialSessions);
   const [activeSessionId, setActiveSessionId] = useState<string>(
     initialSessions[0]?.id || ''
   );
-  const [inputText, setInputText] = useState<string>('');
+  const [inputText, setInputText] = useState<string>(initialQuery || '');
   const [isSending, setIsSending] = useState<boolean>(false);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
@@ -217,7 +237,9 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         let buffer = '';
         const accumulatedTokens: string[] = [];
         let doneCitations: Array<{ id: string; source: string; score?: number; excerpt?: string }> = [];
+        let doneToolsUsed: string[] = [];
         let capturedConvId: string | null = null;
+        let currentToolCall: { toolName: string; label: string; status: 'calling' | 'completed' } | null = null;
 
         while (reader) {
           const { done, value } = await reader.read();
@@ -232,7 +254,49 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
             if (!trimmed.startsWith('data: ')) continue;
             try {
               const event = JSON.parse(trimmed.slice(6));
-              if (event.type === 'token' && typeof event.content === 'string') {
+              if (event.type === 'tool_call' && event.tool_name) {
+                const label = getHumanReadableToolName(event.tool_name);
+                currentToolCall = { toolName: event.tool_name, label, status: 'calling' };
+                setSessions((prev) =>
+                  prev.map((s) => {
+                    if (s.id === activeSession.id) {
+                      return {
+                        ...s,
+                        messages: s.messages.map((m) =>
+                          m.id === streamAssistantId
+                            ? {
+                                ...m,
+                                toolCall: { ...currentToolCall! },
+                              }
+                            : m
+                        ),
+                      };
+                    }
+                    return s;
+                  })
+                );
+              } else if (event.type === 'tool_result' && event.tool_name) {
+                const label = getHumanReadableToolName(event.tool_name);
+                currentToolCall = { toolName: event.tool_name, label, status: 'completed' };
+                setSessions((prev) =>
+                  prev.map((s) => {
+                    if (s.id === activeSession.id) {
+                      return {
+                        ...s,
+                        messages: s.messages.map((m) =>
+                          m.id === streamAssistantId
+                            ? {
+                                ...m,
+                                toolCall: { ...currentToolCall! },
+                              }
+                            : m
+                        ),
+                      };
+                    }
+                    return s;
+                  })
+                );
+              } else if (event.type === 'token' && typeof event.content === 'string') {
                 accumulatedTokens.push(event.content);
                 const nextContent = accumulatedTokens.join('');
                 setSessions((prev) =>
@@ -246,6 +310,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                                 ...m,
                                 content: nextContent,
                                 timestamp: 'Sedang mengetik...',
+                                toolCall: currentToolCall ? { ...currentToolCall } : m.toolCall,
                               }
                             : m
                         ),
@@ -257,6 +322,9 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
               } else if (event.type === 'done') {
                 if (event.conversation_id && typeof event.conversation_id === 'string') {
                   capturedConvId = event.conversation_id;
+                }
+                if (event.tools_used && Array.isArray(event.tools_used)) {
+                  doneToolsUsed = event.tools_used;
                 }
                 if (event.sources && Array.isArray(event.sources)) {
                   doneCitations = event.sources.map((s: { title: string; score?: number; excerpt?: string }, idx: number) => ({
@@ -286,6 +354,30 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
             ? `💬 ${textToSend.slice(0, 30)}${textToSend.length > 30 ? '...' : ''}`
             : activeSession.title;
 
+          // Contextual Action Buttons based on tools used or topics
+          const contextualActions: ChatAction[] = [];
+          if (
+            doneToolsUsed.includes('calculate_quote') ||
+            finalContent.toLowerCase().includes('premi') ||
+            finalContent.toLowerCase().includes('simulasi')
+          ) {
+            contextualActions.push({
+              label: 'Buka Kalkulator Simulasi 🧮',
+              actionType: 'navigate',
+              target: '/simulation',
+            });
+          }
+          if (
+            doneToolsUsed.includes('track_claim_status') ||
+            finalContent.toLowerCase().includes('klaim')
+          ) {
+            contextualActions.push({
+              label: 'Ajukan & Lacak Klaim →',
+              actionType: 'navigate',
+              target: '/tracking',
+            });
+          }
+
           setSessions((prev) =>
             prev.map((s) => {
               if (s.id === targetSessionId) {
@@ -302,6 +394,14 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                           content: finalContent,
                           timestamp: 'Baru saja • Selesai Disintesis',
                           citations: doneCitations.length > 0 ? doneCitations : m.citations,
+                          toolsUsed: doneToolsUsed.length > 0 ? doneToolsUsed : m.toolsUsed,
+                          actionButtons:
+                            contextualActions.length > 0
+                              ? contextualActions
+                              : m.actionButtons,
+                          toolCall: currentToolCall
+                            ? { ...currentToolCall, status: 'completed' }
+                            : m.toolCall,
                         }
                       : m
                   ),
@@ -721,6 +821,27 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                             <span>Bayu Insurance AI • Resmi OJK</span>
                           </div>
                         )}
+
+                        {/* Live Tool Calling Status Badge */}
+                        {msg.toolCall && (
+                          <div
+                            className={`mb-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                              msg.toolCall.status === 'calling'
+                                ? 'bg-blue-100/70 border border-blue-200 text-blue-800 animate-pulse'
+                                : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                            }`}
+                          >
+                            {msg.toolCall.status === 'calling' ? (
+                              <>
+                                <Spinner size="sm" />
+                                <span>⚡ Memanggil Engine: {msg.toolCall.label}...</span>
+                              </>
+                            ) : (
+                              <span>✓ Selesai: {msg.toolCall.label} (Tereksekusi)</span>
+                            )}
+                          </div>
+                        )}
+
                         {msg.content ? (
                           <p>{msg.content}</p>
                         ) : (
@@ -765,13 +886,12 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                           <div className="mt-3 flex flex-wrap gap-2 pt-1">
                             {msg.actionButtons.map((btn, i) =>
                               btn.actionType === 'navigate' ? (
-                                <Link key={i} href={btn.target}>
-                                  <button
-                                    type="button"
-                                    className="h-9 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
-                                  >
-                                    {btn.label}
-                                  </button>
+                                <Link
+                                  key={i}
+                                  href={btn.target}
+                                  className="inline-flex items-center justify-center h-9 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                                >
+                                  {btn.label}
                                 </Link>
                               ) : (
                                 <button
