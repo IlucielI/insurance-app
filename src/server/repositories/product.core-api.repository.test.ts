@@ -237,6 +237,96 @@ describe('CoreApiProductRepository', () => {
         expect.anything()
       );
       expect(product?.slug).toBe('secure-life-plus');
+      expect(product?.minTermYears).toBe(5);
+      expect(product?.maxTermYears).toBe(20);
+    });
+  });
+
+  describe('calculateQuote', () => {
+    const sampleRequest = {
+      age: 30,
+      gender: 'male' as const,
+      sum_assured: 500_000_000,
+      payment_term: 10,
+      payment_frequency: 'annual' as const,
+      smoker: 'no' as const,
+      occupation_class: 'low' as const,
+      health_risk: 'low' as const,
+    };
+
+    it('throws error if Core API URL is missing', async () => {
+      const repo = new CoreApiProductRepository('');
+      await expect(
+        repo.calculateQuote('secure-life-plus', sampleRequest)
+      ).rejects.toThrow(
+        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+      );
+    });
+
+    it('throws error if slug is empty', async () => {
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      await expect(
+        repo.calculateQuote('   ', sampleRequest)
+      ).rejects.toThrow('Product slug is required for quote calculation');
+    });
+
+    it('successfully calls POST /api/v1/products/:slug/quotes and returns result', async () => {
+      const mockResult = {
+        product_id: 'prod-1',
+        product_name: 'Secure Life Plus',
+        product_slug: 'secure-life-plus',
+        currency: 'IDR',
+        age: 30,
+        gender: 'male',
+        sum_assured: 500_000_000,
+        payment_term: 10,
+        payment_frequency: 'annual',
+        estimated_premium: 1_500_000,
+        estimated_annual_premium: 1_500_000,
+        breakdown: {
+          base_rate: 0.003,
+          age_factor: 1.0,
+          gender_factor: 1.0,
+          smoker_factor: 1.0,
+          occupation_factor: 1.0,
+          health_factor: 1.0,
+          term_factor: 1.0,
+          frequency_loading: 1.0,
+        },
+        notes: ['Note 1'],
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: mockResult }),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      const res = await repo.calculateQuote('secure-life-plus', sampleRequest);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://core-api.example.com/api/v1/products/secure-life-plus/quotes',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(sampleRequest),
+        })
+      );
+      expect(res.product_slug).toBe('secure-life-plus');
+      expect(res.estimated_premium).toBe(1_500_000);
+    });
+
+    it('throws error on non-ok HTTP response', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({ error: 'invalid quote request' }),
+      });
+
+      const repo = new CoreApiProductRepository(mockBaseUrl);
+      await expect(
+        repo.calculateQuote('secure-life-plus', sampleRequest)
+      ).rejects.toThrow('Core API error calculating quote for product secure-life-plus: HTTP 400');
     });
   });
 });

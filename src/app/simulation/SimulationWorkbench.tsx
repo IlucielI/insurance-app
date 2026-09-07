@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
+import { SimulationResult } from '@/types/simulation.types';
 import { simulationService } from '@/server/di';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
@@ -18,20 +19,20 @@ export interface SimulationWorkbenchProps {
 
 // Convert numbers to Indonesian currency wording
 function numberToRupiahWords(num: number): string {
-  if (num === 100_000_000) return 'Seratus Juta Rupiah';
-  if (num === 250_000_000) return 'Dua Ratus Lima Puluh Juta Rupiah';
-  if (num === 500_000_000) return 'Lima Ratus Juta Rupiah';
-  if (num === 1_000_000_000) return 'Satu Miliar Rupiah';
-  if (num === 1_500_000_000) return 'Satu Koma Lima Miliar Rupiah';
-  if (num === 2_000_000_000) return 'Dua Miliar Rupiah';
-  if (num === 2_500_000_000) return 'Dua Koma Lima Miliar Rupiah';
+  if (num <= 0) return 'Nol Rupiah';
   if (num >= 1_000_000_000) {
-    const miliar = (num / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 });
-    return `${miliar} Miliar Rupiah`;
+    const miliar = num / 1_000_000_000;
+    const formatted = Number.isInteger(miliar)
+      ? miliar.toString()
+      : miliar.toFixed(1).replace('.', ',');
+    return `${formatted} Miliar Rupiah`;
   }
   if (num >= 1_000_000) {
-    const juta = Math.round(num / 1_000_000);
-    return `${juta} Juta Rupiah`;
+    const juta = num / 1_000_000;
+    const formatted = Number.isInteger(juta)
+      ? juta.toString()
+      : juta.toFixed(1).replace('.', ',');
+    return `${formatted} Juta Rupiah`;
   }
   return `${num.toLocaleString('id-ID')} Rupiah`;
 }
@@ -68,10 +69,12 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     );
   });
 
-  const minTerm = 5;
-  const maxTerm = 20;
+  const minTerm = currentProduct?.minTermYears || 5;
+  const maxTerm = currentProduct?.maxTermYears || 30;
 
-  const [termYears, setTermYears] = useState<number>(10);
+  const [termYears, setTermYears] = useState<number>(() => {
+    return Math.max(minTerm, Math.min(10, maxTerm));
+  });
   const [applicantAge, setApplicantAge] = useState<number>(32);
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [isSmoker, setIsSmoker] = useState<boolean>(false);
@@ -90,6 +93,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       setSumAssured((prev) =>
         Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
       );
+      const newMinTerm = newProduct.minTermYears || 5;
+      const newMaxTerm = newProduct.maxTermYears || 30;
+      setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
       // Retain only riders available on the new product
       if (newProduct.riders) {
         const availableRiderIds = newProduct.riders.map((r) => r.id);
@@ -111,6 +117,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         setSumAssured((prev) =>
           Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
         );
+        const newMinTerm = newProduct.minTermYears || 5;
+        const newMaxTerm = newProduct.maxTermYears || 30;
+        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
         if (newProduct.riders) {
           const availableRiderIds = newProduct.riders.map((r) => r.id);
           setSelectedRiderIds((prev) => prev.filter((id) => availableRiderIds.includes(id)));
@@ -140,8 +149,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     );
   };
 
-  // Dynamic Calculation Result via Clean Actuarial Service
-  const simulationResult = useMemo(() => {
+  // Initial Sync Calculation Result for instant preview
+  const syncSimulationResult = useMemo(() => {
     if (!currentProduct) return null;
     return simulationService.calculate(
       {
@@ -168,6 +177,65 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     occupationRisk,
     selectedRiderIds,
   ]);
+
+  const [asyncSimulationResult, setAsyncSimulationResult] = useState<SimulationResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+
+  // Fetch real quote calculation asynchronously from Core API
+  useEffect(() => {
+    if (!currentProduct) return;
+    let isMounted = true;
+    setIsCalculating(true);
+    setCalculationError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await simulationService.calculateAsync(
+          {
+            productId: currentProduct.id,
+            sumAssured,
+            termYears,
+            applicantAge,
+            isSmoker,
+            frequency,
+            gender,
+            occupationRisk,
+            selectedRiderIds,
+          },
+          currentProduct
+        );
+        if (isMounted) {
+          setAsyncSimulationResult(res);
+          setIsCalculating(false);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          setIsCalculating(false);
+          const msg =
+            err instanceof Error ? err.message : 'Gagal menghitung quote dari Core API';
+          setCalculationError(msg);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [
+    currentProduct,
+    sumAssured,
+    termYears,
+    applicantAge,
+    isSmoker,
+    frequency,
+    gender,
+    occupationRisk,
+    selectedRiderIds,
+  ]);
+
+  const simulationResult = asyncSimulationResult || syncSimulationResult;
 
   // Navigate to application page with pre-filled actuarial quote
   const handleContinueApply = () => {
@@ -234,22 +302,56 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     }));
   }, [initialProducts]);
 
-  // Preset buttons
-  const sumAssuredPresets = [
-    { label: 'Rp 100 Juta', value: 100_000_000 },
-    { label: 'Rp 250 Juta', value: 250_000_000 },
-    { label: 'Rp 500 Juta', value: 500_000_000 },
-    { label: 'Rp 1 Miliar', value: 1_000_000_000 },
-  ].filter(
-    (preset) =>
-      currentProduct &&
-      preset.value >= currentProduct.minSumAssured &&
-      preset.value <= currentProduct.maxSumAssured
-  );
+  // Preset buttons dynamically generated based on product constraints
+  const sumAssuredPresets = useMemo(() => {
+    if (!currentProduct) return [];
+    const min = currentProduct.minSumAssured;
+    const max = currentProduct.maxSumAssured;
+    const candidates = [
+      50_000_000,
+      100_000_000,
+      250_000_000,
+      500_000_000,
+      1_000_000_000,
+      1_500_000_000,
+      2_000_000_000,
+    ];
+    const available = candidates.filter((val) => val >= min && val <= max);
+    if (available.length < 2) {
+      const step = (max - min) / 3;
+      return [min, min + step, min + step * 2, max].map((val) => {
+        const rounded = Math.round(val / 10_000_000) * 10_000_000;
+        return {
+          label: formatRupiah(rounded),
+          value: rounded,
+        };
+      });
+    }
 
-  const termPresets = [5, 10, 15, 20].filter(
-    (term) => term >= minTerm && term <= maxTerm
-  );
+    const selectedVals =
+      available.length <= 4
+        ? available
+        : [
+            available[0],
+            available[Math.floor(available.length * 0.33)],
+            available[Math.floor(available.length * 0.66)],
+            available[available.length - 1],
+          ];
+
+    return selectedVals.map((val) => ({
+      label: formatRupiah(val),
+      value: val,
+    }));
+  }, [currentProduct]);
+
+  const termPresets = useMemo(() => {
+    const candidates = [5, 10, 15, 20, 25, 30];
+    const filtered = candidates.filter((term) => term >= minTerm && term <= maxTerm);
+    if (filtered.length === 0) {
+      return [minTerm, maxTerm];
+    }
+    return filtered.slice(0, 4);
+  }, [minTerm, maxTerm]);
 
   // Age risk bracket label
   const ageRangeLabel = useMemo(() => {
@@ -749,12 +851,29 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         {/* Right Column: Sticky Result Panel (Y: 370 - 1520) */}
         <div className="lg:col-span-5 sticky top-24 space-y-4">
           <div className="bg-[#0f172a] text-white rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 text-left">
-            {/* Live Tag */}
-            <div>
+            {/* Live Tag & Status */}
+            <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e293b] text-[#38bdf8] text-[10px] font-bold tracking-wider uppercase">
-                ● LIVE CORE API QUOTE ENGINE
+                <span className={`w-1.5 h-1.5 rounded-full bg-[#38bdf8] ${isCalculating ? 'animate-ping' : ''}`} />
+                LIVE CORE API QUOTE ENGINE
+                {isCalculating && (
+                  <span className="text-[9px] text-slate-400 font-normal lowercase">
+                    (menghitung...)
+                  </span>
+                )}
               </span>
+              {simulationResult?.ojkTableReference && (
+                <span className="text-[10px] text-slate-400 truncate max-w-[180px]" title={simulationResult.ojkTableReference}>
+                  {simulationResult.ojkTableReference}
+                </span>
+              )}
             </div>
+
+            {calculationError && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                <span className="font-semibold">Info:</span> {calculationError}
+              </div>
+            )}
 
             {/* Header */}
             <div>

@@ -1,4 +1,8 @@
-import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
+import {
+  InsuranceProduct,
+  IProductRepository,
+  QuoteCalculationRequest,
+} from '@/server/repositories/product.repository.interface';
 import {
   ISimulationService,
 } from './simulation.service.interface';
@@ -10,6 +14,8 @@ import {
 } from '@/types/simulation.types';
 
 export class SimulationService implements ISimulationService {
+  constructor(private readonly productRepo?: IProductRepository) {}
+
   public calculate(input: SimulationInput, product: InsuranceProduct): SimulationResult {
     const {
       sumAssured,
@@ -126,5 +132,129 @@ export class SimulationService implements ISimulationService {
       breakdown,
       ojkTableReference: 'Tabel Mortalita Indonesia IV (TMI-IV) & SE OJK No. 19/SEOJK.05/2020',
     };
+  }
+
+  public async calculateAsync(
+    input: SimulationInput,
+    product: InsuranceProduct
+  ): Promise<SimulationResult> {
+    if (this.productRepo) {
+      const slug = product.slug || product.id;
+      const quoteReq: QuoteCalculationRequest = {
+        age: Math.max(18, Math.min(65, input.applicantAge)),
+        gender: input.gender || 'male',
+        sum_assured: input.sumAssured,
+        payment_term: input.termYears,
+        payment_frequency: input.frequency === 'annually' ? 'annual' : 'monthly',
+        smoker: input.isSmoker ? 'yes' : 'no',
+        occupation_class: input.occupationRisk || 'standard',
+        health_risk: 'low',
+      };
+
+      const quoteResult = await this.productRepo.calculateQuote(slug, quoteReq);
+
+      const selectedRiders: RiderCostItem[] = [];
+      let ridersAnnualTotal = 0;
+      if (product.riders && product.riders.length > 0) {
+        const selectedSet = new Set(input.selectedRiderIds || []);
+        for (const rider of product.riders) {
+          if (selectedSet.has(rider.id)) {
+            const numericMatch = (rider.extraPrice || '').replace(/[^0-9]/g, '');
+            const monthlyCost = numericMatch ? parseInt(numericMatch, 10) : 50_000;
+            const annualCost = monthlyCost * 12;
+
+            ridersAnnualTotal += annualCost;
+            selectedRiders.push({
+              id: rider.id,
+              name: rider.name,
+              extraPriceLabel: rider.extraPrice || '',
+              annualCost,
+              monthlyCost,
+            });
+          }
+        }
+      }
+
+      const ridersMonthlyTotal = selectedRiders.reduce(
+        (acc, r) => acc + r.monthlyCost,
+        0
+      );
+
+      const baseAnnualPremium = quoteResult.estimated_annual_premium;
+      const annualPremium = baseAnnualPremium + ridersAnnualTotal;
+
+      let monthlyPremium: number;
+      if (input.frequency === 'monthly') {
+        monthlyPremium = quoteResult.estimated_premium + ridersMonthlyTotal;
+      } else {
+        monthlyPremium = Math.round(((annualPremium / 12) * 1.1) / 1000) * 1000;
+      }
+
+      const activePremium =
+        input.frequency === 'monthly' ? monthlyPremium : annualPremium;
+
+      const annualSavings = Math.max(0, monthlyPremium * 12 - annualPremium);
+
+      const normalizedAge = Math.max(18, Math.min(65, input.applicantAge));
+      let underwritingTier:
+        | 'guaranteed_issue'
+        | 'simplified'
+        | 'full_underwriting' = 'simplified';
+      let underwritingDescription =
+        'Simplified Issue (Kuesioner Kesehatan Digital & Verifikasi Tele-Underwriting OJK)';
+
+      if (
+        input.sumAssured <= 500_000_000 &&
+        normalizedAge <= 45 &&
+        !input.isSmoker
+      ) {
+        underwritingTier = 'guaranteed_issue';
+        underwritingDescription =
+          'Instant Approval (Persetujuan Otomatis tanpa Pemeriksaan Medis atau Dokumen Finansial)';
+      } else if (
+        input.sumAssured > 1_500_000_000 ||
+        normalizedAge > 55 ||
+        (input.isSmoker && input.sumAssured > 1_000_000_000)
+      ) {
+        underwritingTier = 'full_underwriting';
+        underwritingDescription =
+          'Full Underwriting (Pemeriksaan Medis Rekanan & Verifikasi Bukti Penghasilan Finansial)';
+      }
+
+      const breakdown: ActuarialBreakdown = {
+        baseRate: quoteResult.breakdown.base_rate,
+        ageFactor: quoteResult.breakdown.age_factor,
+        smokerFactor: quoteResult.breakdown.smoker_factor,
+        genderFactor: quoteResult.breakdown.gender_factor,
+        occupationFactor: quoteResult.breakdown.occupation_factor,
+        annualDiscountPercent: 10,
+        baseAnnualPremium,
+        ridersAnnualTotal,
+        ridersBreakdown: selectedRiders,
+        adminFee: 0,
+        underwritingTier,
+        underwritingDescription,
+      };
+
+      return {
+        product,
+        sumAssured: input.sumAssured,
+        termYears: input.termYears,
+        applicantAge: normalizedAge,
+        isSmoker: input.isSmoker,
+        frequency: input.frequency,
+        gender: input.gender || 'male',
+        occupationRisk: input.occupationRisk || 'standard',
+        monthlyPremium,
+        annualPremium,
+        annualSavings,
+        activePremium,
+        selectedRiders,
+        breakdown,
+        ojkTableReference: `Core API Actuarial Engine (Ref: ${quoteResult.product_slug})`,
+      };
+    }
+
+    return this.calculate(input, product);
   }
 }

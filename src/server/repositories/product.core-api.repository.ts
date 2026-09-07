@@ -2,6 +2,8 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  QuoteCalculationRequest,
+  QuoteCalculationResult,
 } from './product.repository.interface';
 
 export interface CoreApiProduct {
@@ -105,6 +107,8 @@ export class CoreApiProductRepository implements IProductRepository {
       maxAge,
       minSumAssured: p.min_sum_assured,
       maxSumAssured: p.max_sum_assured,
+      minTermYears: p.min_payment_term,
+      maxTermYears: p.max_payment_term,
       benefitsDetailed: (p.benefits || []).map((b) => ({ title: b, description: b })),
       waitingPeriodDays: 0,
       claimMethod: 'cashless',
@@ -209,5 +213,48 @@ export class CoreApiProductRepository implements IProductRepository {
 
   async getProductById(id: string): Promise<InsuranceProduct | null> {
     return this.getProductBySlug(id);
+  }
+
+  async calculateQuote(
+    slug: string,
+    request: QuoteCalculationRequest
+  ): Promise<QuoteCalculationResult> {
+    if (!this.baseUrl) {
+      throw new Error(
+        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+      );
+    }
+
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      throw new Error('Product slug is required for quote calculation');
+    }
+
+    const url = `${this.baseUrl}/api/v1/products/${encodeURIComponent(trimmedSlug)}/quotes`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      throw new Error(
+        `Core API error calculating quote for product ${trimmedSlug}: HTTP ${res.status}${
+          errorBody ? ` - ${errorBody}` : ''
+        }`
+      );
+    }
+
+    const json = await res.json();
+    if (!json.data) {
+      throw new Error('Invalid response structure from Core API quote calculation');
+    }
+
+    return json.data as QuoteCalculationResult;
   }
 }

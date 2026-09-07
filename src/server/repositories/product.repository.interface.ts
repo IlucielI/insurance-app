@@ -43,6 +43,44 @@ export interface InsuranceProduct {
   riders?: ProductRider[];
 }
 
+export interface QuoteCalculationRequest {
+  age: number;
+  gender: 'male' | 'female';
+  sum_assured: number;
+  payment_term: number;
+  payment_frequency: 'annual' | 'semi_annual' | 'quarterly' | 'monthly';
+  smoker: 'yes' | 'no';
+  occupation_class: 'low' | 'standard' | 'high';
+  health_risk?: 'low' | 'medium' | 'high';
+}
+
+export interface QuoteCalculationBreakdown {
+  base_rate: number;
+  age_factor: number;
+  gender_factor: number;
+  smoker_factor: number;
+  occupation_factor: number;
+  health_factor: number;
+  term_factor: number;
+  frequency_loading: number;
+}
+
+export interface QuoteCalculationResult {
+  product_id: string;
+  product_name: string;
+  product_slug: string;
+  currency: string;
+  age: number;
+  gender: string;
+  sum_assured: number;
+  payment_term: number;
+  payment_frequency: string;
+  estimated_premium: number;
+  estimated_annual_premium: number;
+  breakdown: QuoteCalculationBreakdown;
+  notes: string[];
+}
+
 export interface IProductRepository {
   getFeaturedProducts(): Promise<InsuranceProduct[]>;
   getProducts(
@@ -51,4 +89,8 @@ export interface IProductRepository {
   ): Promise<InsuranceProduct[]>;
   getProductBySlug(slug: string): Promise<InsuranceProduct | null>;
   getProductById(id: string): Promise<InsuranceProduct | null>;
+  calculateQuote(
+    slug: string,
+    request: QuoteCalculationRequest
+  ): Promise<QuoteCalculationResult>;
 }
