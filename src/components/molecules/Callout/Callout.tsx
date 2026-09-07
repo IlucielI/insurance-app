@@ -45,7 +45,7 @@ export const Callout: React.FC<CalloutProps> = ({
       <span className="shrink-0 text-base leading-none select-none">{variantConfig.icon}</span>
       <div className="flex-1 min-w-0">
         {title && <h5 className={`font-bold mb-1 ${variantConfig.title}`}>{title}</h5>}
-        <div className="text-slate-700">{children || description}</div>
+        <div className="text-slate-700">{children ?? description}</div>
       </div>
     </div>
   );
