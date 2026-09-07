@@ -298,7 +298,10 @@ describe('SimulationService', () => {
         getProductBySlug: vi.fn(),
         getProductById: vi.fn(),
         calculateQuote: vi.fn().mockResolvedValue(mockQuoteResult),
+        getPricingRules: vi.fn(),
+        getQuestionnaire: vi.fn(),
       };
+
 
       const asyncService = new SimulationService(mockRepo);
       const res = await asyncService.calculateAsync(
@@ -355,5 +358,104 @@ describe('SimulationService', () => {
       expect(res.product.id).toBe('prod-term-life');
       expect(res.activePremium).toBeGreaterThan(0);
     });
+
+    it('passes dynamic answers and maps dynamic factors in calculateAsync', async () => {
+      const mockRepo = {
+        getFeaturedProducts: vi.fn(),
+        getProducts: vi.fn(),
+        getProductBySlug: vi.fn(),
+        getProductById: vi.fn(),
+        getPricingRules: vi.fn(),
+        getQuestionnaire: vi.fn(),
+        calculateQuote: vi.fn().mockResolvedValue({
+          product_id: 'prod-term-life',
+          product_name: 'Term Life Guard Plus',
+          product_slug: 'prod-term-life',
+          currency: 'IDR',
+          age: 32,
+          gender: 'female',
+          sum_assured: 500_000_000,
+          payment_term: 10,
+          payment_frequency: 'monthly',
+          estimated_premium: 155_000,
+          estimated_annual_premium: 1_700_000,
+          breakdown: {
+            base_rate: 0.0035,
+            age_factor: 1.1,
+            gender_factor: 1.0,
+            smoker_factor: 1.25,
+            occupation_factor: 1.0,
+            health_factor: 1.0,
+            term_factor: 1.0,
+            frequency_loading: 1.06,
+            factors: [
+              { rule_code: 'smoker', rule_name: 'Faktor Status Merokok', factor: 1.25 },
+              { rule_code: 'hospitalization', rule_name: 'Riwayat Rawat Inap', factor: 1.3 },
+            ],
+          },
+          notes: ['Test quote'],
+        }),
+      };
+
+      const svc = new SimulationService(mockRepo);
+      const res = await svc.calculateAsync(
+        {
+          productId: sampleProduct.id,
+          sumAssured: 500_000_000,
+          termYears: 10,
+          applicantAge: 32,
+          frequency: 'monthly',
+          selectedRiderIds: [],
+          answers: {
+            gender: 'female',
+            is_smoker: 'yes',
+            hospitalization: 'yes',
+          },
+        },
+        sampleProduct
+      );
+
+      expect(mockRepo.calculateQuote).toHaveBeenCalledWith(
+        'prod-term-life',
+        expect.objectContaining({
+          gender: 'female',
+          smoker: 'yes',
+          answers: expect.arrayContaining([
+            { rule_code: 'gender', value: 'female' },
+            { rule_code: 'is_smoker', value: 'yes' },
+            { rule_code: 'hospitalization', value: 'yes' },
+          ]),
+        })
+      );
+
+      expect(res.breakdown.dynamicFactors).toHaveLength(2);
+      expect(res.breakdown.dynamicFactors?.[0].ruleCode).toBe('smoker');
+      expect(res.breakdown.dynamicFactors?.[1].ruleCode).toBe('hospitalization');
+    });
+
+    it('calculates with dynamic multipliers in synchronous calculate', () => {
+      const plainService = new SimulationService();
+      const res = plainService.calculate(
+        {
+          productId: sampleProduct.id,
+          sumAssured: 500_000_000,
+          termYears: 10,
+          applicantAge: 20,
+          frequency: 'annually',
+          selectedRiderIds: [],
+          dynamicMultipliers: {
+            extra_hazard: 1.2,
+          },
+        },
+        sampleProduct
+      );
+
+      expect(res.breakdown.dynamicFactors).toHaveLength(1);
+      expect(res.breakdown.dynamicFactors?.[0].ruleCode).toBe('extra_hazard');
+      expect(res.breakdown.dynamicFactors?.[0].factor).toBe(1.2);
+      // Base: 500M * 0.0035 * 1.0 * 1.0 * 1.0 * 1.0 * 1.2 = 2.1M
+      expect(res.breakdown.baseAnnualPremium).toBe(2_100_000);
+    });
   });
 });
+

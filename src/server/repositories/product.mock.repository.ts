@@ -2,9 +2,13 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  ProductPricingRuleDTO,
+  ProductQuestionDTO,
+  ProductQuestionnaireDTO,
   QuoteCalculationRequest,
   QuoteCalculationResult,
 } from './product.repository.interface';
+
 
 export class ProductMockRepository implements IProductRepository {
   private products: InsuranceProduct[] = [
@@ -370,15 +374,31 @@ export class ProductMockRepository implements IProductRepository {
     const ageFactor = Number((1 + Math.max(0, (request.age - 20) * 0.025)).toFixed(3));
     const genderFactor =
       product.genderFactors?.[request.gender] ?? (request.gender === 'male' ? 1.05 : 1.0);
+    const smokerKey =
+      request.smoker ||
+      (request.answers?.find((a) => a.rule_code === 'is_smoker' || a.rule_code === 'smoker')
+        ?.value === 'yes'
+        ? 'yes'
+        : 'no');
     const smokerFactor =
-      product.smokerFactors?.[request.smoker] ?? (request.smoker === 'yes' ? 1.35 : 1.0);
+      product.smokerFactors?.[smokerKey] ?? (smokerKey === 'yes' ? 1.35 : 1.0);
+
+    const occKey =
+      request.occupation_class ||
+      (request.answers?.find((a) => a.rule_code === 'occupation_class')?.value as
+        | 'low'
+        | 'standard'
+        | 'high'
+        | undefined) ||
+      'standard';
     const occupationFactor =
-      product.occupationFactors?.[request.occupation_class] ??
-      (request.occupation_class === 'low'
+      product.occupationFactors?.[occKey] ??
+      (occKey === 'low'
         ? 0.95
-        : request.occupation_class === 'high'
+        : occKey === 'high'
         ? 1.4
         : 1.0);
+
     const healthFactor =
       product.healthFactors?.[request.health_risk || 'low'] ??
       (request.health_risk === 'high'
@@ -416,6 +436,12 @@ export class ProductMockRepository implements IProductRepository {
     const estimatedPeriodic =
       Math.ceil(((rawAnnual / frequencyDivisor) * frequencyLoading) / 1000) * 1000;
 
+    const factors: { rule_code: string; rule_name: string; factor: number }[] = [
+      { rule_code: 'gender', rule_name: 'Faktor Jenis Kelamin', factor: genderFactor },
+      { rule_code: 'smoker', rule_name: 'Faktor Status Merokok', factor: smokerFactor },
+      { rule_code: 'occupation', rule_name: 'Faktor Tingkat Pekerjaan', factor: occupationFactor },
+    ];
+
     return {
       product_id: product.id,
       product_name: product.title,
@@ -437,6 +463,7 @@ export class ProductMockRepository implements IProductRepository {
         health_factor: healthFactor,
         term_factor: termFactor,
         frequency_loading: frequencyLoading,
+        factors,
       },
       notes: [
         'This is an indicative quote, not a final offer.',
@@ -444,4 +471,138 @@ export class ProductMockRepository implements IProductRepository {
       ],
     };
   }
+
+  async getPricingRules(slug: string): Promise<ProductPricingRuleDTO[]> {
+    const product = await this.getProductBySlug(slug);
+    if (!product) return [];
+    return [
+      {
+        id: `pr_${slug}_gender`,
+        product_id: product.id,
+        rule_code: 'gender',
+        rule_name: 'Faktor Jenis Kelamin',
+        rule_type: 'multiplier_map',
+        factors: product.genderFactors || { male: 1.05, female: 1.0 },
+        is_active: true,
+        order_index: 1,
+      },
+      {
+        id: `pr_${slug}_smoker`,
+        product_id: product.id,
+        rule_code: 'is_smoker',
+        rule_name: 'Faktor Status Merokok',
+        rule_type: 'multiplier_map',
+        factors: product.smokerFactors || { yes: 1.35, no: 1.0 },
+        is_active: true,
+        order_index: 2,
+      },
+      {
+        id: `pr_${slug}_occupation`,
+        product_id: product.id,
+        rule_code: 'occupation_class',
+        rule_name: 'Faktor Tingkat Risiko Pekerjaan',
+        rule_type: 'multiplier_map',
+        factors: product.occupationFactors || { low: 0.95, standard: 1.0, high: 1.4 },
+        is_active: true,
+        order_index: 3,
+      },
+    ];
+  }
+
+  async getQuestionnaire(slug: string): Promise<ProductQuestionnaireDTO | null> {
+    const product = await this.getProductBySlug(slug);
+    if (!product) return null;
+
+    const isVehicle = product.categoryKey === 'vehicle';
+
+    const questions: ProductQuestionDTO[] = isVehicle
+      ? [
+          {
+            id: 'q_vehicle_usage',
+            questionnaire_id: `quest_${slug}`,
+            step_number: 1,
+            pillar_type: 'risk_assessment',
+            code: 'occupation_class',
+            label: 'Penggunaan Utama Kendaraan',
+            help_text: 'Tentukan intensitas dan keperluan operasional kendaraan',
+            input_type: 'radio',
+            order_index: 1,
+            pricing_rule_id: `pr_${slug}_occupation`,
+            affects_pricing_field: 'occupation_class',
+            is_active: true,
+            options: [
+              { value: 'low', label: 'Pribadi / Komuter Santai', multiplier: 0.95 },
+              { value: 'standard', label: 'Harian Operasional Kota', multiplier: 1.0 },
+              { value: 'high', label: 'Komersial / Antar Barang Ekspedisi', multiplier: 1.15 },
+            ],
+          },
+        ]
+      : [
+          {
+            id: 'q_gender',
+            questionnaire_id: `quest_${slug}`,
+            step_number: 1,
+            pillar_type: 'identity_verified',
+            code: 'gender',
+            label: 'Jenis Kelamin',
+            input_type: 'radio',
+            order_index: 1,
+            pricing_rule_id: `pr_${slug}_gender`,
+            affects_pricing_field: 'gender',
+            is_active: true,
+            options: [
+              { value: 'male', label: 'Pria', multiplier: product.genderFactors?.male ?? 1.05 },
+              { value: 'female', label: 'Wanita', multiplier: product.genderFactors?.female ?? 1.0 },
+            ],
+          },
+          {
+            id: 'q_is_smoker',
+            questionnaire_id: `quest_${slug}`,
+            step_number: 1,
+            pillar_type: 'medical_history',
+            code: 'is_smoker',
+            label: 'Kebiasaan Merokok',
+            help_text: 'Termasuk rokok konvensional maupun elektrik (vape)',
+            input_type: 'radio',
+            order_index: 2,
+            pricing_rule_id: `pr_${slug}_smoker`,
+            affects_pricing_field: 'smoker',
+            is_active: true,
+            options: [
+              { value: 'no', label: 'Bukan Perokok', multiplier: product.smokerFactors?.no ?? 1.0 },
+              { value: 'yes', label: 'Perokok Aktif', multiplier: product.smokerFactors?.yes ?? 1.35 },
+            ],
+          },
+          {
+            id: 'q_occupation_class',
+            questionnaire_id: `quest_${slug}`,
+            step_number: 1,
+            pillar_type: 'financial_capacity',
+            code: 'occupation_class',
+            label: 'Tingkat Risiko Pekerjaan',
+            input_type: 'radio',
+            order_index: 3,
+            pricing_rule_id: `pr_${slug}_occupation`,
+            affects_pricing_field: 'occupation_class',
+            is_active: true,
+            options: [
+              { value: 'low', label: 'Rendah (Kantor / Non-Fisik)', multiplier: product.occupationFactors?.low ?? 0.95 },
+              { value: 'standard', label: 'Standar (Mobilitas Normal)', multiplier: product.occupationFactors?.standard ?? 1.0 },
+              { value: 'high', label: 'Tinggi (Operasional Lapangan / Alat Berat)', multiplier: product.occupationFactors?.high ?? 1.4 },
+            ],
+          },
+        ];
+
+    return {
+      id: `quest_${slug}`,
+      product_id: product.id,
+      category: product.categoryKey,
+      title: `Formulir Pertanyaan Risiko ${product.title}`,
+      description: 'Pertanyaan aktuaria penentu tarif premi',
+      version: 1,
+      is_active: true,
+      questions,
+    };
+  }
 }
+

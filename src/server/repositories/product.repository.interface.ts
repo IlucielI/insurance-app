@@ -58,15 +58,26 @@ export interface InsuranceProduct {
   exclusions?: string[];
 }
 
+export interface QuoteCalculationFactorItem {
+  rule_code: string;
+  rule_name: string;
+  factor: number;
+}
+
 export interface QuoteCalculationRequest {
   age: number;
   gender: 'male' | 'female';
   sum_assured: number;
   payment_term: number;
   payment_frequency: 'annual' | 'semi_annual' | 'quarterly' | 'monthly';
-  smoker: 'yes' | 'no';
-  occupation_class: 'low' | 'standard' | 'high';
+  smoker?: 'yes' | 'no';
+  occupation_class?: 'low' | 'standard' | 'high';
   health_risk?: 'low' | 'medium' | 'high';
+  answers?: {
+    rule_code?: string;
+    rule_id?: string;
+    value: string;
+  }[];
 }
 
 export interface QuoteCalculationBreakdown {
@@ -78,6 +89,7 @@ export interface QuoteCalculationBreakdown {
   health_factor: number;
   term_factor: number;
   frequency_loading: number;
+  factors?: QuoteCalculationFactorItem[];
 }
 
 export interface QuoteCalculationResult {
@@ -96,6 +108,56 @@ export interface QuoteCalculationResult {
   notes: string[];
 }
 
+export interface QuestionOptionDTO {
+  value: string;
+  label: string;
+  multiplier?: number;
+  risk_weight?: number;
+  risk_impact?: string;
+  rfi_required?: boolean;
+}
+
+export interface ProductQuestionDTO {
+  id: string;
+  questionnaire_id: string;
+  step_number: number;
+  pillar_type: string;
+  code: string;
+  label: string;
+  help_text?: string;
+  input_type: string;
+  placeholder?: string;
+  order_index: number;
+  options?: QuestionOptionDTO[];
+  parent_question_id?: string;
+  pricing_rule_id?: string;
+  affects_pricing_field?: string;
+  is_active: boolean;
+}
+
+export interface ProductQuestionnaireDTO {
+  id: string;
+  product_id?: string;
+  category: string;
+  title: string;
+  description?: string;
+  version: number;
+  is_active: boolean;
+  questions: ProductQuestionDTO[];
+}
+
+export interface ProductPricingRuleDTO {
+  id: string;
+  product_id: string;
+  rule_code: string;
+  rule_name: string;
+  rule_type: string;
+  factors: Record<string, unknown>;
+
+  is_active: boolean;
+  order_index: number;
+}
+
 export interface IProductRepository {
   getFeaturedProducts(): Promise<InsuranceProduct[]>;
   getProducts(
@@ -108,4 +170,7 @@ export interface IProductRepository {
     slug: string,
     request: QuoteCalculationRequest
   ): Promise<QuoteCalculationResult>;
+  getPricingRules(slug: string): Promise<ProductPricingRuleDTO[]>;
+  getQuestionnaire(slug: string): Promise<ProductQuestionnaireDTO | null>;
 }
+

@@ -2,6 +2,8 @@ import {
   IProductRepository,
   InsuranceProduct,
   ProductCategoryKey,
+  ProductPricingRuleDTO,
+  ProductQuestionnaireDTO,
 } from '../repositories/product.repository.interface';
 import { IProductService } from './product.service.interface';
 
@@ -35,4 +37,21 @@ export class ProductService implements IProductService {
     }
     return this.repository.getProductById(trimmedId);
   }
+
+  async getPricingRules(slug: string): Promise<ProductPricingRuleDTO[]> {
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      return [];
+    }
+    return this.repository.getPricingRules(trimmedSlug);
+  }
+
+  async getQuestionnaire(slug: string): Promise<ProductQuestionnaireDTO | null> {
+    const trimmedSlug = slug?.trim();
+    if (!trimmedSlug) {
+      return null;
+    }
+    return this.repository.getQuestionnaire(trimmedSlug);
+  }
 }
+
