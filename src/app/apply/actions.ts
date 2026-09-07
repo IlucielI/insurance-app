@@ -6,11 +6,7 @@ import {
   ApplicationSubmissionResult,
 } from '@/types/application.types';
 
-/**
- * Server Action for submitting an insurance policy application.
- * Runs on the Next.js server environment with access to internal network
- * variables (e.g. CORE_API_URL, CORE_API_INTERNAL_URL).
- */
+// Server Action for submitting an insurance policy application via Next.js server runtime.
 export async function submitApplicationAction(
   payload: CreateApplicationDTO
 ): Promise<ApplicationSubmissionResult> {
