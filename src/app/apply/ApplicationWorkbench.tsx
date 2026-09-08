@@ -60,9 +60,41 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return initialProducts[0] || null;
   }, [initialProducts, initialQuote.productId]);
 
-  const sumAssured = initialQuote.sumAssured || 500_000_000;
-  const termYears = initialQuote.termYears || 10;
-  const frequency = initialQuote.frequency || 'annually';
+  const [sumAssured, setSumAssured] = useState<number>(
+    initialQuote.sumAssured || 500_000_000
+  );
+  const [termYears, setTermYears] = useState<number>(
+    initialQuote.termYears || 10
+  );
+  const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
+    initialQuote.frequency || 'annually'
+  );
+
+  const sumAssuredPresets = useMemo(() => {
+    if (selectedProduct?.sumAssuredPresets && selectedProduct.sumAssuredPresets.length > 0) {
+      return selectedProduct.sumAssuredPresets.map((val) => ({
+        value: val,
+        label:
+          val >= 1_000_000_000
+            ? `Rp ${(val / 1_000_000_000).toLocaleString('id-ID')} Miliar`
+            : `Rp ${(val / 1_000_000).toLocaleString('id-ID')} Juta`,
+      }));
+    }
+    return [
+      { value: 100_000_000, label: 'Rp 100 Juta' },
+      { value: 250_000_000, label: 'Rp 250 Juta' },
+      { value: 500_000_000, label: 'Rp 500 Juta' },
+      { value: 1_000_000_000, label: 'Rp 1 Miliar' },
+    ];
+  }, [selectedProduct]);
+
+  const termPresets = useMemo(() => {
+    if (selectedProduct?.termPresets && selectedProduct.termPresets.length > 0) {
+      return selectedProduct.termPresets;
+    }
+    return [5, 10, 15, 20];
+  }, [selectedProduct]);
+
   const initialAge = initialQuote.applicantAge || 32;
   const initialSmoker = Boolean(initialQuote.isSmoker);
   const initialGender = initialQuote.gender || 'male';
@@ -1368,10 +1400,109 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </div>
               </div>
 
+              {/* 1. Pilihan Paket & Konfigurasi Perlindungan */}
+              <div className="pt-2 border-t border-slate-100 space-y-4">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">
+                    1. Pilihan Paket & Konfigurasi Perlindungan:
+                  </span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Sesuaikan kembali nominal santunan, tenor pembayaran, atau opsi frekuensi sebelum menerbitkan e-polis.
+                  </p>
+                </div>
+
+                {/* UP Presets */}
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-semibold text-slate-700">
+                    Uang Pertanggungan (Nilai Santunan):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {sumAssuredPresets.map((preset) => {
+                      const isActive = sumAssured === preset.value;
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setSumAssured(preset.value)}
+                          aria-pressed={isActive}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                            isActive
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isActive ? '✓ ' : ''}{preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Tenor Presets */}
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-semibold text-slate-700">
+                    Masa Pembayaran Premi (Tenor):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {termPresets.map((term) => {
+                      const isActive = termYears === term;
+                      return (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => setTermYears(term)}
+                          aria-pressed={isActive}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                            isActive
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isActive ? '✓ ' : ''}{term} Tahun
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Frekuensi Pembayaran Premi */}
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-semibold text-slate-700">
+                    Frekuensi Pembayaran Premi:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFrequency('annually')}
+                      aria-pressed={frequency === 'annually'}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        frequency === 'annually'
+                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {frequency === 'annually' ? '✓ ' : ''}Tahunan (Hemat 6% - Diskon API)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFrequency('monthly')}
+                      aria-pressed={frequency === 'monthly'}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        frequency === 'monthly'
+                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {frequency === 'monthly' ? '✓ ' : ''}Bulanan (Pembayaran Rutin)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Beneficiary Header */}
-              <div className="pt-2">
+              <div className="pt-2 border-t border-slate-100">
                 <span className="text-xs font-bold text-slate-900 block mb-3">
-                  Penerima Manfaat Utama (Ahli Waris Polis):
+                  2. Penerima Manfaat Utama (Ahli Waris Polis):
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
@@ -1472,7 +1603,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       Memproses Evaluasi Polis...
                     </span>
                   ) : (
-                    'Kirim Pengajuan & Terbitkan Polis Instan'
+                    `Kirim Pengajuan & Terbitkan Polis Instan (${formatRupiah(activePremium)})`
                   )}
                 </Button>
               </div>

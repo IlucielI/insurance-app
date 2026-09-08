@@ -444,6 +444,17 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
+  const productSliderRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScrollSlider = (direction: 'left' | 'right') => {
+    if (!productSliderRef.current) return;
+    const scrollAmount = productSliderRef.current.clientWidth * 0.75;
+    productSliderRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
   // Top 3 Canonical Products matching Penpot selector cards
   const canonicalCards = useMemo(() => {
     const list: InsuranceProduct[] = [];
@@ -591,53 +602,135 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       {/* 3 PRODUCT SELECTOR CARDS (Y: 240 - 370)                       */}
       {/* ------------------------------------------------------------- */}
       <section aria-label="Pilihan Produk Simulasi" className="space-y-3 text-left">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          {canonicalCards.map((product) => {
-            const isSelected = product.id === selectedProductId;
-            const isLife = product.categoryKey === 'life';
-            const isHealth = product.categoryKey === 'health';
-
-            return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => handleProductChange(product.id)}
-                aria-pressed={isSelected}
-                className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] border ${
-                  isSelected
-                    ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
-                    : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                }`}
+        {initialProducts.length > 3 ? (
+          <div className="space-y-2">
+            <div className="relative group">
+              <div
+                ref={productSliderRef}
+                className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x snap-mandatory scroll-smooth"
               >
-                <div className="flex items-center gap-2 mb-1.5">
-                  {isSelected ? (
-                    <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      PILIHAN
-                    </span>
-                  ) : isHealth ? (
-                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      KESEHATAN
-                    </span>
-                  ) : isLife ? (
-                    <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      JIWA
-                    </span>
-                  ) : (
-                    <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      KENDARAAN
-                    </span>
-                  )}
-                  <span className={`text-base font-extrabold ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
-                    {product.title}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 font-medium line-clamp-1">
-                  {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
-                </p>
+                {initialProducts.map((product) => {
+                  const isSelected = product.id === selectedProductId;
+                  const isLife = product.categoryKey === 'life';
+                  const isHealth = product.categoryKey === 'health';
+
+                  return (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => handleProductChange(product.id)}
+                      aria-pressed={isSelected}
+                      className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] shrink-0 w-[82%] sm:w-[calc((100%-1rem)/2.3)] lg:w-[calc((100%-3rem)/3.5)] snap-start border cursor-pointer ${
+                        isSelected
+                          ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {isSelected ? (
+                          <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            PILIHAN
+                          </span>
+                        ) : isHealth ? (
+                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            KESEHATAN
+                          </span>
+                        ) : isLife ? (
+                          <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            JIWA
+                          </span>
+                        ) : (
+                          <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            KENDARAAN
+                          </span>
+                        )}
+                        <span className={`text-base font-extrabold line-clamp-1 ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
+                          {product.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                        {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Left Arrow Nav Button */}
+              <button
+                type="button"
+                aria-label="Geser produk sebelumnya"
+                onClick={() => handleScrollSlider('left')}
+                className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-8 h-8 rounded-full bg-white/95 border border-slate-300 shadow-md text-slate-700 hover:bg-slate-50 items-center justify-center font-bold text-sm z-10 transition-transform active:scale-95 cursor-pointer"
+              >
+                ‹
               </button>
-            );
-          })}
-        </div>
+
+              {/* Right Arrow Nav Button */}
+              <button
+                type="button"
+                aria-label="Geser produk selanjutnya"
+                onClick={() => handleScrollSlider('right')}
+                className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-8 h-8 rounded-full bg-[#0f172a] text-white shadow-md hover:bg-slate-800 items-center justify-center font-bold text-sm z-10 transition-transform active:scale-95 cursor-pointer"
+              >
+                ›
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-0.5">
+              <span>‹ Menampilkan 3.5 kartu produk — geser ke samping untuk melihat produk lainnya ›</span>
+              <span className="hidden sm:inline text-slate-400">Total {initialProducts.length} produk aktif</span>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+            {canonicalCards.map((product) => {
+              const isSelected = product.id === selectedProductId;
+              const isLife = product.categoryKey === 'life';
+              const isHealth = product.categoryKey === 'health';
+
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => handleProductChange(product.id)}
+                  aria-pressed={isSelected}
+                  className={`relative p-5 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[104px] border ${
+                    isSelected
+                      ? 'bg-white border-[#0f172a] ring-2 ring-[#0f172a] shadow-md'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {isSelected ? (
+                      <span className="bg-[#0f172a] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        PILIHAN
+                      </span>
+                    ) : isHealth ? (
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        KESEHATAN
+                      </span>
+                    ) : isLife ? (
+                      <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        JIWA
+                      </span>
+                    ) : (
+                      <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        KENDARAAN
+                      </span>
+                    )}
+                    <span className={`text-base font-extrabold ${isSelected ? 'text-[#0f172a]' : 'text-slate-700'}`}>
+                      {product.title}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                    {product.tagline || product.description} • Mulai {product.monthlyPremiumStarting || product.startingPrice || 'Rp 100rb/bln'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Catalog Fallback Dropdown if more than 3 products */}
         {initialProducts.length > 3 && (
@@ -805,9 +898,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 <span className="text-xl sm:text-2xl font-extrabold text-[#0f172a]">
                   {formatRupiah(sumAssured)}
                 </span>
-                <span className="text-xs sm:text-sm font-medium text-slate-500">
-                  ({numberToRupiahWords(sumAssured)})
-                </span>
               </div>
 
               <div className="pt-2">
@@ -825,7 +915,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
 
               {/* 4 UP Preset Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
                 {sumAssuredPresets.map((preset) => {
                   const isPresetActive = sumAssured === preset.value;
                   return (
@@ -834,10 +924,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       type="button"
                       onClick={() => setSumAssured(preset.value)}
                       aria-pressed={isPresetActive}
-                      className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all text-center ${
+                      className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
                         isPresetActive
                           ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
                       {isPresetActive ? '✓ ' : ''}{preset.label}
