@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { PolicyApplication } from '@/types/application.types';
+import { PolicyApplication, PillarCheck } from '@/types/application.types';
 import { Card } from '@/components/atoms/Card';
 import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
@@ -10,7 +10,7 @@ import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
 import { FileUpload } from '@/components/atoms/FileUpload';
 import { Spinner } from '@/components/atoms/Spinner';
-import { applicationService } from '@/server/di';
+import { trackApplicationAction, submitRfiDocumentAction } from './actions';
 
 export interface TrackingWorkbenchProps {
   initialApplication?: PolicyApplication | null;
@@ -133,12 +133,12 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
     setRfiErrorMsg(null);
 
     try {
-      const result = await applicationService.trackApplication(q);
+      const result = await trackApplicationAction(q);
       setCurrentApp(result);
       if (!result) {
         setSearchError(`Data pengajuan tidak ditemukan untuk pencarian "${q}".`);
       } else {
-        const flaggedPillar = result.pillarChecks.find((p) => p.status === 'FLAGGED');
+        const flaggedPillar = result.pillarChecks.find((p: PillarCheck) => p.status === 'FLAGGED');
         if (flaggedPillar) {
           setSelectedPillar(flaggedPillar.pillarNumber);
         }
@@ -169,7 +169,7 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
     setRfiSuccessMsg(null);
 
     try {
-      const response = await applicationService.submitRfiDocument(
+      const response = await submitRfiDocumentAction(
         currentApp.id,
         selectedPillar,
         documentType,

@@ -14,7 +14,12 @@ import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';
 import { Spinner } from '@/components/atoms/Spinner';
-import { assistantService } from '@/server/di';
+import {
+  startNewSessionAction,
+  sendAssistantMessageAction,
+  getChatSessionAction,
+  resetSessionAction,
+} from './actions';
 import { ChatMessageContent } from './ChatMessageContent';
 
 export interface AssistantWorkbenchProps {
@@ -104,7 +109,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const handleCreateNewSession = async () => {
     try {
-      const created = await assistantService.startNewSession();
+      const created = await startNewSessionAction();
       const uniqueId = created?.id || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       messageCounterRef.current += 1;
       const initialMessages: ChatMessage[] =
@@ -441,14 +446,14 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
     // 2. Fallback to assistantService.sendMessage if streaming did not produce content
     if (!streamSuccess) {
       try {
-        const aiResponse = await assistantService.sendMessage(
+        const aiResponse = await sendAssistantMessageAction(
           activeSession.id,
           textToSend
         );
 
         // Attempt to refresh updated session with refreshed metadata (e.g. title)
         try {
-          const refreshedSession = await assistantService.getChatSession(
+          const refreshedSession = await getChatSessionAction(
             activeSession.id
           );
 
@@ -518,7 +523,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       }
 
       // 2. Call local service reset
-      await assistantService.resetSessionMessages(oldSessionId).catch(() => {});
+      await resetSessionAction(oldSessionId).catch(() => {});
 
       // 3. Generate a fresh new unique session ID
       const newSessionId = `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { InsuranceProduct, ProductQuestionDTO } from '@/server/repositories/product.repository.interface';
 import { SimulationResult } from '@/types/simulation.types';
-import { simulationService, productRepository } from '@/server/di';
+import { calculatePureSimulation } from '@/lib/simulation-calc';
+import { calculateSimulationAction, getQuestionnaireAction } from './actions';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
@@ -263,7 +264,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
 
     const fetchQuestionnaire = async () => {
       try {
-        const questionnaire = await productRepository.getQuestionnaire(currentSlug);
+        const questionnaire = await getQuestionnaireAction(currentSlug);
         if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
           let pricingQuestions = questionnaire.questions.filter(
             (q) =>
@@ -459,7 +460,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   // Initial Sync Calculation Result for instant preview
   const syncSimulationResult = useMemo(() => {
     if (!currentProduct) return null;
-    return simulationService.calculate(
+    return calculatePureSimulation(
       {
         productId: currentProduct.id,
         sumAssured,
@@ -504,7 +505,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       setCalculationError(null);
       try {
 
-        const res = await simulationService.calculateAsync(
+        const res = await calculateSimulationAction(
           {
             productId: currentProduct.id,
             sumAssured,
@@ -551,12 +552,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     answers,
     dynamicMultipliers,
   ]);
-
-
-  const isMockMode =
-    process.env.NODE_ENV === 'test' ||
-    process.env.NEXT_PUBLIC_MOCK_CORE_API === 'true' ||
-    process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
   const simulationResult = calculationError
     ? null

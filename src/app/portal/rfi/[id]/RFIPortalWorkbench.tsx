@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Card, Badge, Button, FileUpload, Spinner } from '@/components/atoms';
 import { PolicyApplication } from '@/types/application.types';
-import { applicationService } from '@/server/di';
+import { submitRfiDocumentAction } from '@/app/tracking/actions';
 
 export interface RFIPortalWorkbenchProps {
   initialApplication: PolicyApplication | null;
@@ -62,7 +62,7 @@ export const RFIPortalWorkbench: React.FC<RFIPortalWorkbenchProps> = ({
 
       // 1. Submit e-KTP if selected
       if (ktpFile) {
-        const resKtp = await applicationService.submitRfiDocument(
+        const resKtp = await submitRfiDocumentAction(
           currentApp.id,
           1,
           'Foto Fisik e-KTP (Resolusi Tinggi)',
@@ -73,7 +73,7 @@ export const RFIPortalWorkbench: React.FC<RFIPortalWorkbenchProps> = ({
 
       // 2. Submit Income document if selected
       if (incomeFile) {
-        const resIncome = await applicationService.submitRfiDocument(
+        const resIncome = await submitRfiDocumentAction(
           currentApp.id,
           2,
           'Slip Gaji 3 Bulan / Rekening Koran Legalisir',

@@ -8,8 +8,8 @@ import {
   ProductQuestionDTO,
   ProductQuestionnaireDTO,
 } from '@/server/repositories/product.repository.interface';
-import { productService, simulationService } from '@/server/di';
-import { submitApplicationAction } from './actions';
+import { calculatePureSimulation } from '@/lib/simulation-calc';
+import { submitApplicationAction, getQuestionnaireAction } from './actions';
 import {
   ApplicationAnswerItem,
   ApplicationSubmissionResult,
@@ -370,7 +370,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       return;
     }
     let isCancelled = false;
-    productService.getQuestionnaire(selectedProduct.slug).then((q) => {
+    getQuestionnaireAction(selectedProduct.slug).then((q) => {
       if (!isCancelled && q) {
         setFetchedQuestionnaire(q);
       }
@@ -409,7 +409,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   // Dynamic Recalculation of accurate premiums via actuarial rules
   const quoteResult = useMemo(() => {
     if (!selectedProduct) return null;
-    return simulationService.calculate(
+    return calculatePureSimulation(
       {
         productId: selectedProduct.id,
         sumAssured,
