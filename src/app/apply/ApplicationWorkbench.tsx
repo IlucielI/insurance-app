@@ -1419,31 +1419,42 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </>
               )}
 
-              {/* Any Extra Dynamic Questionnaire Questions for Step 3 */}
-              {stepQuestions.map((q) => {
-                // Skip if already rendered above
-                if (
-                  ['weight_kg', 'height_cm', 'is_smoker', 'has_critical_illness', 'has_hospitalization_2y', 'occupation_class', 'vehicle_plate'].includes(
-                    q.code
-                  )
-                ) {
-                  return null;
-                }
-                return (
-                  <div key={q.id} className="space-y-1">
-                    <Input
-                      id={q.code}
-                      label={q.label}
-                      placeholder={q.placeholder || ''}
-                      value={customAnswers[q.code] || ''}
-                      onChange={(e) =>
-                        setCustomAnswers((prev) => ({ ...prev, [q.code]: e.target.value }))
-                      }
-                      helperText={q.help_text}
-                    />
-                  </div>
-                );
-              })}
+              {/* Any Extra Dynamic Questionnaire Questions for Step 3 (Life/Health only) */}
+              {!isVehicleCategory &&
+                stepQuestions.map((q) => {
+                  // Skip if already rendered above
+                  if (
+                    [
+                      'weight_kg',
+                      'height_cm',
+                      'is_smoker',
+                      'has_critical_illness',
+                      'critical_illness_details',
+                      'has_hospitalization_2y',
+                      'hospitalization_details',
+                      'has_family_history',
+                      'occupation_class',
+                      'vehicle_plate',
+                      'vehicle_usage',
+                    ].includes(q.code)
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <div key={q.id} className="space-y-1">
+                      <Input
+                        id={q.code}
+                        label={q.label}
+                        placeholder={q.placeholder || ''}
+                        value={customAnswers[q.code] || ''}
+                        onChange={(e) =>
+                          setCustomAnswers((prev) => ({ ...prev, [q.code]: e.target.value }))
+                        }
+                        helperText={q.help_text}
+                      />
+                    </div>
+                  );
+                })}
 
               {/* Buttons */}
               <div className="pt-2 flex items-center gap-3">
@@ -1524,21 +1535,21 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   </span>
                 </div>
 
-                {/* Card 3: Skrining Medis */}
+                {/* Card 3: Skrining Medis / Objek Kendaraan */}
                 <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 text-left">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Skrining Medis
+                    {isVehicleCategory ? 'Objek Kendaraan' : 'Skrining Medis'}
                   </span>
                   <div>
                     <span className="text-sm font-bold text-[#0f172a] block">
-                      {isVehicleCategory ? 'Kendaraan Standar' : `BMI: ${calculatedBmi} (Normal)`}
+                      {isVehicleCategory ? 'Kendaraan Terdaftar' : `BMI: ${calculatedBmi} (Normal)`}
                     </span>
                     <span className="text-xs text-slate-500 block">
                       {isVehicleCategory ? vehiclePlate : (isSmoker ? 'Perokok Aktif (+45%)' : 'Non-Smoker Standard')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                    ✓ {isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab
+                    {isVehicleCategory ? '✓ Plat Terverifikasi' : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
                   </span>
                 </div>
               </div>
