@@ -67,17 +67,6 @@ describe('SimulationPage & SimulationWorkbench', () => {
     }
   });
 
-  it('switches product via fallback dropdown selector if more than 3 products exist', async () => {
-    const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} />);
-
-    const select = screen.queryByLabelText(/Katalog Produk Pilihan/i);
-    if (select) {
-      fireEvent.change(select, { target: { value: products[2].id } });
-      expect(screen.getAllByText(products[2].title).length).toBeGreaterThan(0);
-    }
-  });
-
   it('adjusts sum assured using quick preset chips', async () => {
     const products = await productService.getProducts();
     render(<SimulationWorkbench initialProducts={products} initialProductId={products[0].id} />);

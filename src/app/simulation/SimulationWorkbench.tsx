@@ -8,7 +8,6 @@ import { SimulationResult } from '@/types/simulation.types';
 import { simulationService, productRepository } from '@/server/di';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
-import { Select } from '@/components/atoms/Select';
 import { Button } from '@/components/atoms/Button';
 import { Callout } from '@/components/molecules/Callout';
 import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
@@ -471,13 +470,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     return list;
   }, [initialProducts, currentProduct]);
 
-  const productOptions = useMemo(() => {
-    return initialProducts.map((p) => ({
-      value: p.id,
-      label: `${p.title} (${p.category}) - Mulai ${p.monthlyPremiumStarting || p.startingPrice || 'Rp 100rb/bln'}`,
-    }));
-  }, [initialProducts]);
-
   // Preset buttons dynamically configured via Core API product pricing rules
   const sumAssuredPresets = useMemo(() => {
     if (!currentProduct) return [];
@@ -669,11 +661,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 ›
               </button>
             </div>
-
-            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-0.5">
-              <span>‹ Menampilkan 3.5 kartu produk — geser ke samping untuk melihat produk lainnya ›</span>
-              <span className="hidden sm:inline text-slate-400">Total {initialProducts.length} produk aktif</span>
-            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
@@ -722,22 +709,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 </button>
               );
             })}
-          </div>
-        )}
-
-        {/* Catalog Fallback Dropdown if more than 3 products */}
-        {initialProducts.length > 3 && (
-          <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
-            <span className="font-medium">Opsi Produk Lainnya di Database:</span>
-            <div className="w-full sm:w-80">
-              <Select
-                label=""
-                aria-label="Katalog Produk Pilihan"
-                value={selectedProductId}
-                options={productOptions}
-                onChange={(e) => handleProductChange(e.target.value)}
-              />
-            </div>
           </div>
         )}
       </section>
