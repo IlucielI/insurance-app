@@ -18,12 +18,13 @@ export interface SimulationWorkbenchProps {
 }
 
 export function getDefaultQuestionsForProduct(product?: InsuranceProduct): ProductQuestionDTO[] {
-  if (!product) return [];
-  if (product.categoryKey === 'vehicle') {
+  const prodId = product?.id ?? 'default';
+
+  if (product?.categoryKey === 'vehicle') {
     return [
       {
-        id: `q_${product.id}_vehicle_usage`,
-        questionnaire_id: `quest_${product.id}`,
+        id: `q_${prodId}_vehicle_usage`,
+        questionnaire_id: `quest_${prodId}`,
         step_number: 1,
         pillar_type: 'risk_assessment',
         code: 'occupation_class',
@@ -35,9 +36,9 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
         affects_pricing_field: 'occupation_class',
         is_active: true,
         options: [
-          { value: 'low', label: 'Pribadi / Santai', multiplier: product.occupationFactors?.low ?? 0.95 },
-          { value: 'standard', label: 'Harian Kota', multiplier: product.occupationFactors?.standard ?? 1.0 },
-          { value: 'high', label: 'Komersial / Logistik', multiplier: product.occupationFactors?.high ?? 1.15 },
+          { value: 'low', label: 'Pribadi / Santai', multiplier: product?.occupationFactors?.low ?? 0.95 },
+          { value: 'standard', label: 'Harian Kota', multiplier: product?.occupationFactors?.standard ?? 1.0 },
+          { value: 'high', label: 'Komersial / Logistik', multiplier: product?.occupationFactors?.high ?? 1.15 },
         ],
       },
     ];
@@ -45,8 +46,8 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
 
   return [
     {
-      id: `q_${product.id}_gender`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_gender`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'identity_verified',
       code: 'gender',
@@ -57,13 +58,13 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'gender',
       is_active: true,
       options: [
-        { value: 'male', label: 'Pria', multiplier: product.genderFactors?.male ?? 1.05 },
-        { value: 'female', label: 'Wanita', multiplier: product.genderFactors?.female ?? 1.0 },
+        { value: 'male', label: 'Pria', multiplier: product?.genderFactors?.male ?? 1.05 },
+        { value: 'female', label: 'Wanita', multiplier: product?.genderFactors?.female ?? 1.0 },
       ],
     },
     {
-      id: `q_${product.id}_is_smoker`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_is_smoker`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'medical_history',
       code: 'is_smoker',
@@ -75,13 +76,13 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'smoker',
       is_active: true,
       options: [
-        { value: 'no', label: 'Bukan Perokok', multiplier: product.smokerFactors?.no ?? 1.0 },
-        { value: 'yes', label: 'Perokok Aktif', multiplier: product.smokerFactors?.yes ?? 1.35 },
+        { value: 'no', label: 'Bukan Perokok', multiplier: product?.smokerFactors?.no ?? 1.0 },
+        { value: 'yes', label: 'Perokok Aktif', multiplier: product?.smokerFactors?.yes ?? 1.35 },
       ],
     },
     {
-      id: `q_${product.id}_occupation_class`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_occupation_class`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'financial_capacity',
       code: 'occupation_class',
@@ -92,9 +93,9 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'occupation_class',
       is_active: true,
       options: [
-        { value: 'low', label: 'Rendah', multiplier: product.occupationFactors?.low ?? 0.95 },
-        { value: 'standard', label: 'Standar', multiplier: product.occupationFactors?.standard ?? 1.0 },
-        { value: 'high', label: 'Tinggi', multiplier: product.occupationFactors?.high ?? 1.4 },
+        { value: 'low', label: 'Rendah', multiplier: product?.occupationFactors?.low ?? 0.95 },
+        { value: 'standard', label: 'Standar', multiplier: product?.occupationFactors?.standard ?? 1.0 },
+        { value: 'high', label: 'Tinggi', multiplier: product?.occupationFactors?.high ?? 1.4 },
       ],
     },
   ];
@@ -224,9 +225,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   label: 'Penggunaan Utama Kendaraan',
                   help_text: 'Tentukan intensitas dan keperluan operasional kendaraan',
                   options: [
-                    { value: 'low', label: 'Pribadi / Santai', multiplier: currentProduct.occupationFactors?.low ?? 0.95 },
-                    { value: 'standard', label: 'Harian Kota', multiplier: currentProduct.occupationFactors?.standard ?? 1.0 },
-                    { value: 'high', label: 'Komersial / Logistik', multiplier: currentProduct.occupationFactors?.high ?? 1.15 },
+                    { value: 'low', label: 'Pribadi / Santai', multiplier: currentProduct?.occupationFactors?.low ?? 0.95 },
+                    { value: 'standard', label: 'Harian Kota', multiplier: currentProduct?.occupationFactors?.standard ?? 1.0 },
+                    { value: 'high', label: 'Komersial / Logistik', multiplier: currentProduct?.occupationFactors?.high ?? 1.15 },
                   ],
                 };
               }
