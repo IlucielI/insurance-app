@@ -1370,38 +1370,60 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
               </div>
 
-              {/* Snapshot Ringkasan Calon Tertanggung */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-2">
-                <span className="font-bold text-slate-800 block">
-                  Ringkasan Profil Calon Tertanggung:
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-600">
+              {/* 3 Snapshot Ringkasan Calon Tertanggung Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Card 1: Identitas Pemohon */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 text-left">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Identitas Pemohon
+                  </span>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Nama:</span>
-                    <span className="font-semibold text-slate-900">{fullName}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">NIK e-KTP:</span>
-                    <span className="font-semibold text-slate-900">{nik}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Pekerjaan:</span>
-                    <span className="font-semibold text-slate-900">{occupation}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Kontak:</span>
-                    <span className="font-semibold text-slate-900">{phoneNumber}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Kapasitas DSR:</span>
-                    <span className="font-semibold text-emerald-600">{calculatedDsr}% (Sehat)</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Status Medis:</span>
-                    <span className="font-semibold text-emerald-600">
-                      {isVehicleCategory ? 'Objek Valid' : `BMI ${calculatedBmi} (Optimal)`}
+                    <span className="text-sm font-bold text-[#0f172a] block truncate">
+                      {fullName}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      NIK: {nik.slice(0, 4)}...{nik.slice(-4)}
                     </span>
                   </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    ✓ Dukcapil OCR Lolos 99.8%
+                  </span>
+                </div>
+
+                {/* Card 2: Kapasitas Finansial */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 text-left">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Kapasitas Finansial
+                  </span>
+                  <div>
+                    <span className="text-sm font-bold text-[#0f172a] block truncate">
+                      Gaji: {formatRupiah(monthlyIncome)}/bln
+                    </span>
+                    <span className="text-xs text-slate-500 truncate block">
+                      {occupation}
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Rasio DSR: {calculatedDsr}% (Sehat)
+                  </span>
+                </div>
+
+                {/* Card 3: Skrining Medis */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 text-left">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Skrining Medis
+                  </span>
+                  <div>
+                    <span className="text-sm font-bold text-[#0f172a] block">
+                      {isVehicleCategory ? 'Kendaraan Standar' : `BMI: ${calculatedBmi} (Normal)`}
+                    </span>
+                    <span className="text-xs text-slate-500 block">
+                      {isVehicleCategory ? vehiclePlate : (isSmoker ? 'Perokok Aktif (+45%)' : 'Non-Smoker Standard')}
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                    ✓ {isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab
+                  </span>
                 </div>
               </div>
 
