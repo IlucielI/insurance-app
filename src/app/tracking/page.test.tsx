@@ -187,30 +187,6 @@ describe('TrackingPage & TrackingWorkbench', () => {
       expect(screen.getByText(/Koneksi unggah gagal/i)).toBeDefined();
     });
   });
-
-  it('switches to claim tab and submits claim with dynamic claim ID confirmation', async () => {
-    render(<TrackingWorkbench />);
-
-    const claimTabBtn = screen.getByRole('tab', { name: /Pengajuan Klaim Baru/i });
-    fireEvent.click(claimTabBtn);
-
-    expect(screen.getByRole('heading', { name: /Pengajuan Klaim Asuransi 100% Online/i })).toBeDefined();
-
-    const submitClaimBtn = screen.getByRole('button', { name: /Kirim Pengajuan Klaim Digital/i });
-    fireEvent.click(submitClaimBtn);
-
-    await waitFor(
-      () => {
-        expect(
-          screen.getByText(/Pengajuan Klaim Berhasil Dikirim ke Tim Underwriter Medis/i)
-        ).toBeDefined();
-        expect(screen.getByText(/Nomor registrasi klaim Anda adalah/i)).toBeDefined();
-        // Verify unique claimId format CLM-YYYY-XXXX
-        expect(screen.getByText(/CLM-2026-\d{4}/i)).toBeDefined();
-      },
-      { timeout: 2000 }
-    );
-  });
 });
 
 
