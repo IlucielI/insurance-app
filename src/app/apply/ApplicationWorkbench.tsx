@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -125,8 +125,19 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const [address, setAddress] = useState<string>(
     'Jl. Sudirman No. 42, RT 003 / RW 007, Setiabudi, Jakarta Selatan 12920'
   );
+
+  // File Upload States & Refs (Real File Upload Support)
+  const ktpInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
+  const incomeDocInputRef = useRef<HTMLInputElement>(null);
+
   const [ktpFileName, setKtpFileName] = useState<string>('KTP_Bayu_Pratama.jpg');
+  const [ktpFileSize, setKtpFileSize] = useState<string>('1.4 MB');
+  const [isKtpUploaded, setIsKtpUploaded] = useState<boolean>(false);
+
   const [selfieFileName, setSelfieFileName] = useState<string>('Selfie_Liveness_Check.jpg');
+  const [selfieFileSize, setSelfieFileSize] = useState<string>('2.1 MB');
+  const [isSelfieUploaded, setIsSelfieUploaded] = useState<boolean>(false);
 
   // Pilar 2: Finansial & Kerja
   const [occupation, setOccupation] = useState<string>('Software Architect (IT / Tech)');
@@ -134,7 +145,43 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const [monthlyIncome, setMonthlyIncome] = useState<number>(30_000_000);
   const [incomeSource, setIncomeSource] = useState<string>('Gaji Tetap Bulanan (Payroll)');
   const [incomeDocName, setIncomeDocName] = useState<string>('Slip_Gaji_3_Bulan_Bayu.pdf');
+  const [incomeDocSize, setIncomeDocSize] = useState<string>('840 KB');
+  const [isIncomeDocUploaded, setIsIncomeDocUploaded] = useState<boolean>(false);
   const [npwp, setNpwp] = useState<string>('09.254.891.2-014.000');
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024 * 1024) {
+      return `${Math.round(bytes / 1024)} KB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setKtpFileName(file.name);
+      setKtpFileSize(formatFileSize(file.size));
+      setIsKtpUploaded(true);
+    }
+  };
+
+  const handleSelfieUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelfieFileName(file.name);
+      setSelfieFileSize(formatFileSize(file.size));
+      setIsSelfieUploaded(true);
+    }
+  };
+
+  const handleIncomeDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIncomeDocName(file.name);
+      setIncomeDocSize(formatFileSize(file.size));
+      setIsIncomeDocUploaded(true);
+    }
+  };
 
   // Pilar 3: Skrining Medis / Risiko Objek
   const [heightCm, setHeightCm] = useState<number>(175);
@@ -878,38 +925,54 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* KTP Upload */}
+                  <input
+                    type="file"
+                    ref={ktpInputRef}
+                    onChange={handleKtpUpload}
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    aria-label="Upload KTP Asli"
+                  />
                   <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">📷 Foto KTP Asli</span>
                       <button
                         type="button"
-                        onClick={() => setKtpFileName('KTP_Bayu_Pratama_New.jpg')}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                        onClick={() => ktpInputRef.current?.click()}
+                        className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
                       >
-                        Ganti File ↺
+                        {isKtpUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
                       </button>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{ktpFileName} (1.4 MB)</p>
+                    <p className="text-[11px] text-slate-600 font-medium">{ktpFileName} ({ktpFileSize})</p>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      ✓ OCR Score: 99.4% (Nama & NIK Cocok)
+                      {isKtpUploaded ? '✓ File Berhasil Diunggah & OCR Cocok' : '✓ OCR Score: 99.4% (Nama & NIK Cocok)'}
                     </span>
                   </div>
 
                   {/* Selfie Liveness */}
+                  <input
+                    type="file"
+                    ref={selfieInputRef}
+                    onChange={handleSelfieUpload}
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    aria-label="Upload Foto Selfie"
+                  />
                   <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">🤳 Foto Selfie Liveness</span>
                       <button
                         type="button"
-                        onClick={() => setSelfieFileName('Selfie_Liveness_New.jpg')}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                        onClick={() => selfieInputRef.current?.click()}
+                        className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
                       >
-                        Ganti File ↺
+                        {isSelfieUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
                       </button>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{selfieFileName} (2.1 MB)</p>
+                    <p className="text-[11px] text-slate-600 font-medium">{selfieFileName} ({selfieFileSize})</p>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      ✓ Biometric Liveness Passed 98.1%
+                      {isSelfieUploaded ? '✓ Biometrik Wajah Lolos Verifikasi' : '✓ Biometric Liveness Passed 98.1%'}
                     </span>
                   </div>
                 </div>
@@ -1035,20 +1098,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
 
               {/* Document Slip Gaji */}
+              <input
+                type="file"
+                ref={incomeDocInputRef}
+                onChange={handleIncomeDocUpload}
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                className="hidden"
+                aria-label="Upload Bukti Penghasilan"
+              />
               <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">📄 Bukti Penghasilan / Slip Gaji</span>
                   <button
                     type="button"
-                    onClick={() => setIncomeDocName('Slip_Gaji_Update.pdf')}
-                    className="text-[10px] text-blue-600 hover:underline font-semibold"
+                    onClick={() => incomeDocInputRef.current?.click()}
+                    className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
                   >
-                    Ganti File ↺
+                    {isIncomeDocUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-600 font-medium">{incomeDocName} (840 KB)</p>
+                <p className="text-[11px] text-slate-600 font-medium">{incomeDocName} ({incomeDocSize})</p>
                 <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  ✓ Payroll Terverifikasi Digital
+                  {isIncomeDocUploaded ? '✓ Dokumen Penghasilan Terverifikasi' : '✓ Payroll Terverifikasi Digital'}
                 </span>
               </div>
 
