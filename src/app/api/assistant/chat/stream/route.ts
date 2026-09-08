@@ -52,7 +52,7 @@ function getMockResponse(query: string): {
 
   return {
     answer:
-      'Halo! Saya asisten AI resmi Bayu Insurance yang diawasi OJK. Saya dapat membantu Anda menghitung simulasi premi, memeriksa status klaim, memahami klausul polis baku, serta persyaratan dokumen.',
+      'Halo! Saya asisten AI resmi Bayu Insurance yang diawasi OJK. Saya dapat membantu Anda menghitung simulasi premi, pendaftaran asuransi, memahami klausul polis baku, serta persyaratan dokumen.',
     sources: [
       {
         title: 'Ringkasan Informasi Produk dan Layanan (RIPLAY) Umum',

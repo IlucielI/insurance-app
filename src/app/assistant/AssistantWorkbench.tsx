@@ -123,7 +123,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                 id: `msg-welcome-${messageCounterRef.current}`,
                 sender: 'assistant',
                 content:
-                  'Halo! Saya asisten AI resmi Bayu Insurance yang diawasi OJK. Saya siap membantu Anda melakukan simulasi premi aktuaria, memeriksa klausul polis, memahami syarat klaim, atau menjawab pertanyaan proteksi lainnya. Apa yang ingin Anda tanyakan?',
+                  'Halo! Saya asisten AI resmi Bayu Insurance yang diawasi OJK. Saya siap membantu Anda melakukan simulasi premi aktuaria, memeriksa klausul polis, pendaftaran asuransi, atau menjawab pertanyaan proteksi lainnya. Apa yang ingin Anda tanyakan?',
                 timestamp: 'Baru saja',
               },
             ];
@@ -541,7 +541,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         id: `msg-cleared-${messageCounterRef.current}`,
         sender: 'assistant',
         content:
-          'Percakapan telah dibersihkan. Silakan tanyakan hal lain seputar produk, syarat klaim, atau verifikasi underwriting.',
+          'Percakapan telah dibersihkan. Silakan tanyakan hal lain seputar produk, pendaftaran asuransi, atau verifikasi underwriting.',
         timestamp: 'Baru saja dibersihkan',
       };
 
@@ -993,7 +993,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   <Input
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Ketik pertanyaan seputar produk, syarat klaim, simulasi premi, atau polis..."
+                    placeholder="Ketik pertanyaan seputar produk, pendaftaran asuransi, simulasi premi, atau polis..."
                     className="text-xs sm:text-sm h-11 pr-10 border-slate-300 rounded-xl"
                     disabled={isSending}
                   />
