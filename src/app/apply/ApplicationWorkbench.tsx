@@ -927,52 +927,58 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   {/* KTP Upload */}
                   <input
                     type="file"
+                    id="ktp-file-input"
                     ref={ktpInputRef}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                     onChange={handleKtpUpload}
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     className="hidden"
                     aria-label="Upload KTP Asli"
                   />
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">📷 Foto KTP Asli</span>
-                      <button
-                        type="button"
-                        onClick={() => ktpInputRef.current?.click()}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                      <label
+                        htmlFor="ktp-file-input"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                       >
-                        {isKtpUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
-                      </button>
+                        Ganti File ↺
+                      </label>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{ktpFileName} ({ktpFileSize})</p>
+                    <label htmlFor="ktp-file-input" className="block cursor-pointer">
+                      <p className="text-[11px] text-slate-700 font-medium truncate">{ktpFileName} ({ktpFileSize})</p>
+                    </label>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      {isKtpUploaded ? '✓ File Berhasil Diunggah & OCR Cocok' : '✓ OCR Score: 99.4% (Nama & NIK Cocok)'}
+                      {isKtpUploaded ? '✓ File Asli Berhasil Diunggah' : '✓ OCR Score: 99.4% (Nama & NIK Cocok)'}
                     </span>
                   </div>
 
                   {/* Selfie Liveness */}
                   <input
                     type="file"
+                    id="selfie-file-input"
                     ref={selfieInputRef}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                     onChange={handleSelfieUpload}
                     accept="image/jpeg,image/png,image/webp"
                     className="hidden"
                     aria-label="Upload Foto Selfie"
                   />
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">🤳 Foto Selfie Liveness</span>
-                      <button
-                        type="button"
-                        onClick={() => selfieInputRef.current?.click()}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                      <label
+                        htmlFor="selfie-file-input"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                       >
-                        {isSelfieUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
-                      </button>
+                        Ganti File ↺
+                      </label>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{selfieFileName} ({selfieFileSize})</p>
+                    <label htmlFor="selfie-file-input" className="block cursor-pointer">
+                      <p className="text-[11px] text-slate-700 font-medium truncate">{selfieFileName} ({selfieFileSize})</p>
+                    </label>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      {isSelfieUploaded ? '✓ Biometrik Wajah Lolos Verifikasi' : '✓ Biometric Liveness Passed 98.1%'}
+                      {isSelfieUploaded ? '✓ Biometrik Wajah Terverifikasi' : '✓ Biometric Liveness Passed 98.1%'}
                     </span>
                   </div>
                 </div>
@@ -1100,26 +1106,29 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               {/* Document Slip Gaji */}
               <input
                 type="file"
+                id="income-doc-file-input"
                 ref={incomeDocInputRef}
+                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                 onChange={handleIncomeDocUpload}
                 accept="application/pdf,image/jpeg,image/png,image/webp"
                 className="hidden"
                 aria-label="Upload Bukti Penghasilan"
               />
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">📄 Bukti Penghasilan / Slip Gaji</span>
-                  <button
-                    type="button"
-                    onClick={() => incomeDocInputRef.current?.click()}
-                    className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                  <label
+                    htmlFor="income-doc-file-input"
+                    className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                   >
-                    {isIncomeDocUploaded ? 'Ganti File ↺' : 'Ganti File ↺'}
-                  </button>
+                    Ganti File ↺
+                  </label>
                 </div>
-                <p className="text-[11px] text-slate-600 font-medium">{incomeDocName} ({incomeDocSize})</p>
+                <label htmlFor="income-doc-file-input" className="block cursor-pointer">
+                  <p className="text-[11px] text-slate-700 font-medium truncate">{incomeDocName} ({incomeDocSize})</p>
+                </label>
                 <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  {isIncomeDocUploaded ? '✓ Dokumen Penghasilan Terverifikasi' : '✓ Payroll Terverifikasi Digital'}
+                  {isIncomeDocUploaded ? '✓ Dokumen Penghasilan Asli Terverifikasi' : '✓ Payroll Terverifikasi Digital'}
                 </span>
               </div>
 
