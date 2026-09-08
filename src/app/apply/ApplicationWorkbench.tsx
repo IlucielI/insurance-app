@@ -253,6 +253,8 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
   const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
   const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
+  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
+  const savingsPercent = monthlyPremium > 0 ? Math.round((annualSavings / (monthlyPremium * 12)) * 100) : 9;
 
   // Dynamic Calculated Metrics
   const calculatedDsr = useMemo(() => {
@@ -1779,7 +1781,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             {/* Price Box */}
             <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
               <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? 'TAHUNAN (HEMAT 8%)' : 'BULANAN'}
+                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold tracking-tight text-white">
@@ -1790,7 +1792,9 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Setara dengan {formatRupiah(monthlyPremium)} per bulan
+                {frequency === 'monthly'
+                  ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
+                  : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
               </p>
             </div>
 
