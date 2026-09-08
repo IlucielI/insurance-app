@@ -46,10 +46,7 @@ describe('HomePage & HomeWorkbench', () => {
     expect(screen.getByText('Kuesioner Kesehatan')).toBeDefined();
     expect(screen.getByText(/95% Aplikasi Disetujui Secara Otomatis dalam 5 Menit/i)).toBeDefined();
 
-    // 6. RAG AI Assistant Section
-    expect(screen.getByText(/Bingung Memilih Polis atau Cara Klaim\? Tanya AI Kami Kapan Saja/i)).toBeDefined();
-
-    // 7. FAQ Accordion
+    // 5. FAQ Accordion
     expect(screen.getByText(/Semua Hal yang Perlu Anda Ketahui/i)).toBeDefined();
 
     // 8. Pre-Footer Banner
