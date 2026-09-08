@@ -52,7 +52,7 @@ export default async function ApplyPage({ searchParams }: ApplyPageProps) {
     : null;
 
   return (
-    <AppLayout currentPath="/apply">
+    <AppLayout currentPath="/apply" initialProducts={products}>
       <ApplicationWorkbench
         initialProducts={products}
         initialQuote={initialQuote}

@@ -12,7 +12,7 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
   const products = await productService.getProducts();
 
   return (
-    <AppLayout currentPath="/simulation">
+    <AppLayout currentPath="/simulation" initialProducts={products}>
       <SimulationWorkbench
         initialProducts={products}
         initialProductId={resolvedParams?.productId}
