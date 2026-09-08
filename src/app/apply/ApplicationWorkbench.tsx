@@ -1912,7 +1912,18 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   label="Pernyataan Kebenaran Data Underwriting"
                   description="Saya menyatakan seluruh data identitas, profil finansial, dan deklarasi kesehatan di atas adalah benar dan sesuai kenyataan sesungguhnya. Data akan divalidasi langsung oleh sistem underwriting resmi."
                   checked={agreeTruth}
-                  onChange={(e) => setAgreeTruth(e.target.checked)}
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setAgreeTruth(val);
+                    if (val) {
+                      setErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.agreeTruth;
+                        delete copy.submit;
+                        return copy;
+                      });
+                    }
+                  }}
                 />
                 {errors.agreeTruth && (
                   <p className="text-rose-600 text-[11px] font-medium pl-6">{errors.agreeTruth}</p>
@@ -1922,7 +1933,18 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   label="Persetujuan Klausul Polis & Izin Autodebet"
                   description={`Saya telah membaca, memahami, dan menyetujui seluruh Ketentuan Polis ${selectedProduct.title}, klausul pengecualian, masa tunggu, serta memberikan izin evaluasi underwriting digital.`}
                   checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setAgreeTerms(val);
+                    if (val) {
+                      setErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.agreeTerms;
+                        delete copy.submit;
+                        return copy;
+                      });
+                    }
+                  }}
                 />
                 {errors.agreeTerms && (
                   <p className="text-rose-600 text-[11px] font-medium pl-6">{errors.agreeTerms}</p>
