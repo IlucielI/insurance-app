@@ -38,9 +38,9 @@ describe('ProductsPage & ProductCatalogWorkbench', () => {
     expect(screen.getByText('4 Checks Underwriting')).toBeDefined();
 
     // 4. Pre-Footer AI Assistant Card
-    expect(screen.getByText('Konsultasi Asuransi Cerdas dengan AI')).toBeDefined();
+    expect(screen.getByText('Butuh Rekomendasi Polis yang Tepat?')).toBeDefined();
     expect(
-      screen.getByRole('button', { name: /Buka Chat AI Asisten →/i })
+      screen.getByRole('button', { name: /Tanya AI Sekarang ➔/i })
     ).toBeDefined();
   });
 

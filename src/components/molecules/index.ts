@@ -9,3 +9,4 @@ export * from './StatusTimeline';
 export * from './ChatMessageBubble';
 export * from './PillarStatusCard';
 export * from './PolicyCard';
+export * from './AIAssistantBanner';

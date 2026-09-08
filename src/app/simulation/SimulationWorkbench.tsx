@@ -11,6 +11,7 @@ import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
 import { Button } from '@/components/atoms/Button';
 import { Callout } from '@/components/molecules/Callout';
+import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
 
 export interface SimulationWorkbenchProps {
   initialProducts: InsuranceProduct[];
@@ -1513,6 +1514,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
           </div>
         </div>
       )}
+
+      {/* Pre-footer AI Assistant Banner */}
+      <AIAssistantBanner className="mt-8" />
     </div>
   );
 };

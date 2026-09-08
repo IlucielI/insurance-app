@@ -9,6 +9,7 @@ import {
 } from '@/server/repositories/product.repository.interface';
 import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
+import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
 
 export interface ProductCatalogWorkbenchProps {
   initialProducts: InsuranceProduct[];
@@ -609,32 +610,8 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
         </div>
       </section>
 
-      {/* 5. PRE-FOOTER AI ASSISTANT CARD (100% Penpot Canvas Spec) */}
-      <section className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 text-left">
-        <div className="space-y-2">
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-            AI ASSISTANT
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-            Konsultasi Asuransi Cerdas dengan AI
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-xl leading-relaxed">
-            Dapatkan rekomendasi produk proteksi dan estimasi nilai pertanggungan yang ideal untuk kondisi keluarga Anda.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 w-full lg:w-auto shrink-0">
-          <Link
-            href="/assistant"
-            className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-blue-600/20 text-center cursor-pointer whitespace-nowrap"
-          >
-            Buka Chat AI Asisten →
-          </Link>
-          <span className="text-[11px] text-slate-400 font-medium text-center sm:text-left lg:text-right">
-            ⚡ Siaga 24/7 • Respons &lt; 1 Detik
-          </span>
-        </div>
-      </section>
+      {/* 5. PRE-FOOTER AI ASSISTANT BANNER */}
+      <AIAssistantBanner />
 
       {/* 6. COMPARISON MATRIX TOGGLE & TABLE */}
       <div className="pt-2 text-left">

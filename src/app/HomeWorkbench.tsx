@@ -7,6 +7,7 @@ import { InsuranceProduct } from '@/server/repositories/product.repository.inter
 import { ProductCard } from '@/components/molecules/ProductCard';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
+import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
 
 export interface HomeWorkbenchProps {
   initialFeaturedProducts: InsuranceProduct[];
@@ -403,42 +404,8 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
         </div>
       </section>
 
-      {/* 8. PRE-FOOTER AI CONSULTATION BANNER */}
-      <section className="p-6 sm:p-8 rounded-3xl bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white border border-blue-800 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 text-left">
-        <div className="space-y-2 max-w-xl">
-          <span className="text-[11px] font-bold text-blue-300 uppercase tracking-wider block">
-            AI ASSISTANT
-          </span>
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            Butuh Rekomendasi Polis yang Tepat?
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            Konsultasikan kebutuhan proteksi keluarga Anda dengan AI Assistant kami yang siap 24/7.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex flex-wrap gap-2 text-[11px]">
-            <Link
-              href="/assistant"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-semibold transition-all"
-            >
-              Rekomendasi usia 30
-            </Link>
-            <Link
-              href="/assistant"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-semibold transition-all"
-            >
-              Cara klaim kesehatan
-            </Link>
-          </div>
-          <Link href="/assistant">
-            <Button size="md" variant="primary" className="h-10 px-5 font-bold text-xs shadow-md shadow-blue-500/30 whitespace-nowrap">
-              Tanya AI Sekarang ➔
-            </Button>
-          </Link>
-        </div>
-      </section>
+      {/* 6. PRE-FOOTER AI CONSULTATION BANNER */}
+      <AIAssistantBanner />
     </div>
   );
 };
