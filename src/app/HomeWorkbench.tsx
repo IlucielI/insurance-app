@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
@@ -8,6 +8,10 @@ import { ProductCard } from '@/components/molecules/ProductCard';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
+import {
+  PENPOT_CANONICAL_PRODUCTS,
+  CanonicalProductItem,
+} from '@/app/products/ProductCatalogWorkbench';
 
 export interface HomeWorkbenchProps {
   initialFeaturedProducts: InsuranceProduct[];
@@ -17,14 +21,77 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
   initialFeaturedProducts,
 }) => {
   const router = useRouter();
-  const [products] = useState<InsuranceProduct[]>(initialFeaturedProducts);
+  const [selectedProduct, setSelectedProduct] = useState<CanonicalProductItem | null>(null);
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
-  const handleSelectProduct = (productId: string) => {
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedProduct]);
+
+  const handleSelectSimulation = (productId: string) => {
     router.push(`/simulation?productId=${encodeURIComponent(productId)}`);
   };
+
+  const handleSelectApply = (productId: string) => {
+    router.push(`/apply?productId=${encodeURIComponent(productId)}`);
+  };
+
+  const productsToDisplay = useMemo(() => {
+    if (!Array.isArray(initialFeaturedProducts) || initialFeaturedProducts.length === 0) {
+      return PENPOT_CANONICAL_PRODUCTS;
+    }
+
+    return initialFeaturedProducts.map((p) => {
+      const canonical = PENPOT_CANONICAL_PRODUCTS.find(
+        (cp) =>
+          cp.slug === p.slug ||
+          cp.id === p.id ||
+          cp.slug === p.id ||
+          cp.title.toLowerCase() === p.title.toLowerCase()
+      );
+      if (canonical) {
+        return {
+          ...canonical,
+          id: p.id,
+          slug: p.slug || canonical.slug,
+        };
+      }
+      return {
+        ...p,
+        slug: p.slug || p.id,
+        categoryKey: (p.categoryKey || 'life') as any,
+        category: p.category.toUpperCase(),
+        tagline: p.description,
+        startingPrice: p.startingPrice,
+        coverageAmount: p.coverageAmount,
+        coverageTerm: p.coverageTerm,
+        features: p.features,
+        isPopular: p.isPopular,
+        badge: p.badge,
+        badgeVariant: p.badgeVariant,
+        baseRate: p.baseRate ?? 0.0035,
+        minAge: p.minAge ?? 18,
+        maxAge: p.maxAge ?? 60,
+        minSumAssured: p.minSumAssured ?? 100_000_000,
+        maxSumAssured: p.maxSumAssured ?? 2_000_000_000,
+        waitingPeriodDays: p.waitingPeriodDays ?? 0,
+        claimMethod: p.claimMethod ?? 'instant_transfer',
+        underwritingNote: p.underwritingNote ?? 'Verifikasi otomatis Core API.',
+        apiEndpoint: `POST /products/${p.slug || p.id}/quotes`,
+        benefitsDetailed: p.benefitsDetailed || [],
+        riders: p.riders || [],
+      };
+    });
+  }, [initialFeaturedProducts]);
 
   const faqItems = [
     {
@@ -235,21 +302,26 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
 
         {/* Product Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {products.map((product) => (
+          {productsToDisplay.map((product) => (
             <ProductCard
               key={product.id}
               id={product.id}
+              slug={product.slug}
               category={product.category}
               title={product.title}
-              description={product.description}
+              tagline={product.tagline}
+              description={product.tagline}
               startingPrice={product.startingPrice}
               coverageAmount={product.coverageAmount}
               coverageTerm={product.coverageTerm}
+              features={product.features}
+              isPopular={Boolean(product.isPopular)}
               badge={product.badge}
               badgeVariant={product.badgeVariant}
-              features={product.features}
-              isPopular={product.isPopular}
-              onSelect={handleSelectProduct}
+              apiEndpoint={product.apiEndpoint}
+              onSimulate={handleSelectSimulation}
+              onApply={handleSelectApply}
+              onDetails={() => setSelectedProduct(product as any)}
             />
           ))}
         </div>
@@ -406,6 +478,173 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
 
       {/* 6. PRE-FOOTER AI CONSULTATION BANNER */}
       <AIAssistantBanner />
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="home-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedProduct(null);
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 text-left">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4 sticky top-0 bg-white/95 backdrop-blur-md z-10">
+              <div>
+                <span className="text-[10px] font-bold text-blue-600 tracking-wider uppercase">
+                  {selectedProduct.category}
+                </span>
+                <h3 id="home-modal-title" className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
+                  {selectedProduct.title}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {selectedProduct.tagline}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup Detail Produk"
+                onClick={() => setSelectedProduct(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors shrink-0 cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Key Specs Pills */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Base Rate</span>
+                  <span className="font-extrabold text-slate-900 font-mono">
+                    {selectedProduct.baseRate ? `${(selectedProduct.baseRate * 100).toFixed(2)}%` : '0.35%'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Usia Masuk</span>
+                  <span className="font-extrabold text-slate-900 font-mono">
+                    {selectedProduct.minAge} - {selectedProduct.maxAge} Thn
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Masa Polis</span>
+                  <span className="font-bold text-slate-900 truncate block">
+                    {selectedProduct.coverageTerm || '10 - 20 Thn'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Klaim</span>
+                  <span className="font-bold text-slate-900 uppercase">
+                    {selectedProduct.claimMethod ? selectedProduct.claimMethod.replace('_', ' ') : 'Instant'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Benefits Detailed */}
+              {selectedProduct.benefitsDetailed && selectedProduct.benefitsDetailed.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🛡️</span>
+                    <span>Cakupan Manfaat Utama Polis</span>
+                  </h4>
+                  <div className="space-y-2.5">
+                    {selectedProduct.benefitsDetailed.map((b, idx) => (
+                      <div
+                        key={`b-${idx}`}
+                        className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/70 text-xs space-y-1"
+                      >
+                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <span className="text-emerald-500 font-bold">✓</span>
+                          {b.title}
+                        </span>
+                        <p className="text-slate-600 pl-4 leading-relaxed text-[11px]">
+                          {b.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Riders */}
+              {selectedProduct.riders && selectedProduct.riders.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>➕</span>
+                    <span>Asuransi Tambahan (Rider Opsional)</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {selectedProduct.riders.map((r) => (
+                      <div
+                        key={r.id}
+                        className="p-3 rounded-xl bg-blue-50/50 border border-blue-100 text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900">{r.name}</span>
+                          <span className="text-[11px] font-semibold text-blue-700">{r.extraPrice}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">{r.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Underwriting Assurance */}
+              <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 text-[11px] text-emerald-800 flex items-start gap-2.5">
+                <span className="text-base shrink-0">🏛️</span>
+                <div>
+                  <strong className="block text-emerald-900 font-bold mb-0.5">Underwriting OJK Terakreditasi</strong>
+                  <span>{selectedProduct.underwritingNote}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedProduct(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedProduct.slug || selectedProduct.id;
+                    setSelectedProduct(null);
+                    handleSelectApply(target);
+                  }}
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer shadow-xs shadow-blue-500/20"
+                >
+                  Daftar Sekarang →
+                </button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const target = selectedProduct.slug || selectedProduct.id;
+                    setSelectedProduct(null);
+                    handleSelectSimulation(target);
+                  }}
+                  className="font-bold text-xs"
+                >
+                  Simulasi Premi 🧮
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

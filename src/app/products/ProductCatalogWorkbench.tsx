@@ -10,6 +10,7 @@ import {
 import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
 import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
+import { ProductCard } from '@/components/molecules/ProductCard';
 
 export interface ProductCatalogWorkbenchProps {
   initialProducts: InsuranceProduct[];
@@ -42,7 +43,7 @@ export interface CanonicalProductItem {
   riders: { id: string; name: string; extraPrice: string; description?: string }[];
 }
 
-const PENPOT_CANONICAL_PRODUCTS: CanonicalProductItem[] = [
+export const PENPOT_CANONICAL_PRODUCTS: CanonicalProductItem[] = [
   {
     id: 'secure-life-plus',
     slug: 'secure-life-plus',
@@ -462,106 +463,28 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-          {filteredProducts.map((product) => {
-            const isHighlight = Boolean(product.isPopular);
-
-            return (
-              <div
-                key={product.id}
-                className={`relative flex flex-col justify-between rounded-2xl bg-white p-6 sm:p-7 transition-all hover:shadow-xl ${
-                  isHighlight
-                    ? 'border-2 border-blue-600 shadow-md shadow-blue-500/10'
-                    : 'border border-slate-200 shadow-xs'
-                }`}
-              >
-                {/* Header & Badges */}
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-bold text-blue-600 tracking-wider uppercase">
-                      {product.category}
-                    </span>
-
-                    {isHighlight && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 uppercase tracking-wider">
-                        PALING POPULER
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                    {product.title}
-                  </h3>
-
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {product.tagline}
-                  </p>
-
-                  {/* Rate Box (Penpot Spec: #f8fafc bg, #e2e8f0 border) */}
-                  <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-0.5">
-                    <div className="text-sm sm:text-base font-extrabold text-slate-900">
-                      {product.startingPrice}
-                    </div>
-                    <div className="text-[11px] font-bold text-emerald-600">
-                      {product.coverageAmount}
-                    </div>
-                  </div>
-
-                  {/* Features List with Checkmark */}
-                  <div className="mt-5 space-y-2.5">
-                    <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider block">
-                      Fitur &amp; Manfaat Unggulan:
-                    </span>
-                    <ul className="space-y-2 text-xs text-slate-600">
-                      {product.features.map((feat, idx) => (
-                        <li key={`feat-${idx}`} className="flex items-start gap-2 leading-relaxed">
-                          <span className="text-slate-800 font-bold shrink-0">✓</span>
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Bottom Actions & Core API Integration */}
-                <div className="mt-6 pt-4 border-t border-slate-100 space-y-3">
-                  {/* Two Buttons Side by Side */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      aria-label={`Simulasi premi untuk ${product.title}`}
-                      onClick={() => handleSelectSimulation(product.slug || product.id)}
-                      className="w-full py-2.5 px-3 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors text-center cursor-pointer shadow-xs"
-                    >
-                      Simulasi Premi ↗
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Daftar sekarang untuk ${product.title}`}
-                      onClick={() => handleSelectApply(product.slug || product.id)}
-                      className="w-full py-2.5 px-3 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors text-center cursor-pointer shadow-xs shadow-blue-500/20"
-                    >
-                      Daftar Sekarang →
-                    </button>
-                  </div>
-
-                  {/* Footnote Core API Integration */}
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-mono truncate">
-                      Terintegrasi Core API: {product.apiEndpoint}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Lihat rincian manfaat dan riders untuk ${product.title}`}
-                      onClick={() => setSelectedProduct(product)}
-                      className="font-semibold text-blue-600 hover:text-blue-700 hover:underline shrink-0 ml-2 cursor-pointer"
-                    >
-                      Rincian 🔍
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              id={product.id}
+              slug={product.slug}
+              category={product.category}
+              title={product.title}
+              tagline={product.tagline}
+              description={product.tagline}
+              startingPrice={product.startingPrice}
+              coverageAmount={product.coverageAmount}
+              coverageTerm={product.coverageTerm}
+              features={product.features}
+              isPopular={Boolean(product.isPopular)}
+              badge={product.badge}
+              badgeVariant={product.badgeVariant}
+              apiEndpoint={product.apiEndpoint}
+              onSimulate={handleSelectSimulation}
+              onApply={handleSelectApply}
+              onDetails={() => setSelectedProduct(product)}
+            />
+          ))}
         </div>
       )}
 
