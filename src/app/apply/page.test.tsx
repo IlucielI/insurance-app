@@ -588,4 +588,60 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     const activeTenorBtn = screen.getByRole('button', { name: /✓ 5 Tahun/i });
     expect(activeTenorBtn).toBeDefined();
   });
+
+  it('verifies BMI label, standardized button styles, and dynamic pricing rules surcharges for critical illness and hospitalization', async () => {
+    const products = await productService.getProducts();
+    render(<ApplicationWorkbench initialProducts={products} />);
+
+    // Advance to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+
+    // Advance to Step 3
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+    expect(screen.getByText(/Pilar 3: Skrining Medis & Deklarasi Kesehatan Mandiri/i)).toBeDefined();
+
+    // 1. Verify exact BMI label
+    expect(screen.getByText(/^Indeks Massa Tubuh \(BMI\):$/i)).toBeDefined();
+
+    // 2. Verify pricing rules on Smoker buttons
+    const nonSmokerBtn = screen.getByRole('button', { name: /Tidak Merokok \(Standar 0%\)/i });
+    const smokerBtn = screen.getByRole('button', { name: /Perokok Aktif \(Surcharge/i });
+    expect(nonSmokerBtn).toBeDefined();
+    expect(smokerBtn).toBeDefined();
+
+    // 3. Verify pricing rules on Critical Illness and Hospitalization buttons
+    const noEverBtns = screen.getAllByRole('button', { name: /Tidak Pernah \(Standar 0%\)/i });
+    expect(noEverBtns.length).toBe(2); // One for critical illness, one for hospitalization
+    const critBtn = screen.getByRole('button', { name: /Pernah \(Surcharge \+30%\)/i });
+    const hospBtn = screen.getByRole('button', { name: /Pernah \(Surcharge \+20%\)/i });
+    expect(critBtn).toBeDefined();
+    expect(hospBtn).toBeDefined();
+
+    // Verify button styling consistency (py-2.5 px-3.5 rounded-xl)
+    expect(critBtn.className).toContain('py-2.5');
+    expect(critBtn.className).toContain('px-3.5');
+    expect(critBtn.className).toContain('rounded-xl');
+    expect(hospBtn.className).toContain('py-2.5');
+    expect(hospBtn.className).toContain('px-3.5');
+    expect(hospBtn.className).toContain('rounded-xl');
+
+    // 4. Test dynamic pricing surcharge calculation
+    // Initial premium without critical illness/hospitalization
+    const initialPriceText = screen.getAllByText(/Rp\s*[0-9.]+/i)[0].textContent;
+
+    // Toggle Critical Illness "Pernah"
+    fireEvent.click(critBtn);
+    expect(screen.getByText(/Loading Riwayat Penyakit/i)).toBeDefined();
+    expect(screen.getAllByText(/\+30%/i).length).toBeGreaterThanOrEqual(1);
+
+    // Toggle Hospitalization "Pernah"
+    fireEvent.click(hospBtn);
+    expect(screen.getByText(/Loading Rawat Inap/i)).toBeDefined();
+    expect(screen.getAllByText(/\+20%/i).length).toBeGreaterThanOrEqual(1);
+
+    // Premium should have increased from initial price
+    const updatedPriceText = screen.getAllByText(/Rp\s*[0-9.]+/i)[0].textContent;
+    expect(updatedPriceText).not.toEqual(initialPriceText);
+  });
 });
+

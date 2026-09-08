@@ -346,58 +346,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return diff > 0 ? diff : initialAge;
   }, [birthDate, initialAge]);
 
-  // Dynamic Recalculation of accurate premiums via actuarial rules
-  const quoteResult = useMemo(() => {
-    if (!selectedProduct) return null;
-    return simulationService.calculate(
-      {
-        productId: selectedProduct.id,
-        sumAssured,
-        termYears,
-        applicantAge: applicantAgeYears,
-        isSmoker: isVehicleCategory ? false : isSmoker,
-        gender: isVehicleCategory ? 'male' : gender,
-        occupationRisk: isVehicleCategory
-          ? (vehicleUsage as 'low' | 'standard' | 'high')
-          : initialOccupationRisk,
-        frequency,
-        selectedRiderIds: selectedRiders,
-      },
-      selectedProduct
-    );
-  }, [
-    selectedProduct,
-    sumAssured,
-    termYears,
-    applicantAgeYears,
-    isSmoker,
-    gender,
-    isVehicleCategory,
-    vehicleUsage,
-    initialOccupationRisk,
-    frequency,
-    selectedRiders,
-  ]);
-
-  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
-  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
-  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
-  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
-  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
-
-  // Dynamic Calculated Metrics
-  const calculatedDsr = useMemo(() => {
-    const annualEstIncome = Math.max(1, monthlyIncome * 12);
-    return Number(((annualPremium / annualEstIncome) * 100).toFixed(1));
-  }, [monthlyIncome, annualPremium]);
-
-  const calculatedBmi = useMemo(() => {
-    const heightM = Math.max(0.5, heightCm / 100);
-    return Number((weightKg / (heightM * heightM)).toFixed(1));
-  }, [weightKg, heightCm]);
-
-  const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
-
   // Dynamic Questionnaire State (kept for optional schema fallback)
   const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
 
@@ -431,6 +379,96 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       isCancelled = true;
     };
   }, [selectedProduct, initialQuestionnaire]);
+
+  // Medical Pricing Factors & Surcharges from questionnaire / pricing rules
+  const criticalIllnessMultiplier = useMemo(() => {
+    const q = questionnaire?.questions?.find((item) => item.code === 'has_critical_illness');
+    const yesOpt = q?.options?.find((opt) => opt.value === 'yes');
+    if (yesOpt?.multiplier && yesOpt.multiplier > 1.0) {
+      return yesOpt.multiplier;
+    }
+    return 1.30;
+  }, [questionnaire]);
+
+  const hospitalizationMultiplier = useMemo(() => {
+    const q = questionnaire?.questions?.find(
+      (item) => item.code === 'has_hospitalization_2y' || item.code === 'has_hospitalization'
+    );
+    const yesOpt = q?.options?.find((opt) => opt.value === 'yes');
+    if (yesOpt?.multiplier && yesOpt.multiplier > 1.0) {
+      return yesOpt.multiplier;
+    }
+    return 1.20;
+  }, [questionnaire]);
+
+  const smokerMultiplier = selectedProduct?.smokerFactors?.yes ?? 1.35;
+  const smokerSurchargePct = Math.round((smokerMultiplier - 1) * 100);
+  const critSurchargePct = Math.round((criticalIllnessMultiplier - 1) * 100);
+  const hospSurchargePct = Math.round((hospitalizationMultiplier - 1) * 100);
+
+  // Dynamic Recalculation of accurate premiums via actuarial rules
+  const quoteResult = useMemo(() => {
+    if (!selectedProduct) return null;
+    return simulationService.calculate(
+      {
+        productId: selectedProduct.id,
+        sumAssured,
+        termYears,
+        applicantAge: applicantAgeYears,
+        isSmoker: isVehicleCategory ? false : isSmoker,
+        gender: isVehicleCategory ? 'male' : gender,
+        occupationRisk: isVehicleCategory
+          ? (vehicleUsage as 'low' | 'standard' | 'high')
+          : initialOccupationRisk,
+        frequency,
+        selectedRiderIds: selectedRiders,
+        dynamicMultipliers: {
+          ...(!isVehicleCategory && hasCriticalIllness
+            ? { 'Riwayat Penyakit Kritis': criticalIllnessMultiplier }
+            : {}),
+          ...(!isVehicleCategory && hasHospitalization
+            ? { 'Riwayat Rawat Inap (Opname)': hospitalizationMultiplier }
+            : {}),
+        },
+      },
+      selectedProduct
+    );
+  }, [
+    selectedProduct,
+    sumAssured,
+    termYears,
+    applicantAgeYears,
+    isSmoker,
+    gender,
+    isVehicleCategory,
+    vehicleUsage,
+    initialOccupationRisk,
+    frequency,
+    selectedRiders,
+    hasCriticalIllness,
+    criticalIllnessMultiplier,
+    hasHospitalization,
+    hospitalizationMultiplier,
+  ]);
+
+  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
+  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
+  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
+  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
+  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
+
+  // Dynamic Calculated Metrics
+  const calculatedDsr = useMemo(() => {
+    const annualEstIncome = Math.max(1, monthlyIncome * 12);
+    return Number(((annualPremium / annualEstIncome) * 100).toFixed(1));
+  }, [monthlyIncome, annualPremium]);
+
+  const calculatedBmi = useMemo(() => {
+    const heightM = Math.max(0.5, heightCm / 100);
+    return Number((weightKg / (heightM * heightM)).toFixed(1));
+  }, [weightKg, heightCm]);
+
+  const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
   // Step Validation
   const validateStep = (step: number): boolean => {
@@ -1381,7 +1419,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
                     <div className="w-full space-y-1.5 text-left">
                       <span className="block text-xs font-semibold text-slate-700 select-none">
-                        Kalkulasi Indeks Massa Tubuh (BMI):
+                        Indeks Massa Tubuh (BMI):
                       </span>
                       <div className="h-[38px] px-3.5 rounded-lg border border-emerald-300 bg-emerald-50/80 flex items-center justify-center text-xs sm:text-sm font-bold text-emerald-800 shadow-2xs">
                         BMI: {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Normal / Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
@@ -1399,25 +1437,25 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         type="button"
                         onClick={() => setIsSmoker(false)}
                         aria-pressed={!isSmoker}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           !isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {!isSmoker ? '✓ ' : ''}Tidak Merokok (Non-Smoker Standard)
+                        {!isSmoker ? '✓ ' : ''}Tidak Merokok (Standar 0%)
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsSmoker(true)}
                         aria-pressed={isSmoker}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {isSmoker ? '✓ ' : ''}Perokok Aktif (Surcharge +45%)
+                        {isSmoker ? '✓ ' : ''}Perokok Aktif (Surcharge +{smokerSurchargePct}%)
                       </button>
                     </div>
                   </div>
@@ -1437,25 +1475,25 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         type="button"
                         onClick={() => setHasCriticalIllness(false)}
                         aria-pressed={!hasCriticalIllness}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           !hasCriticalIllness
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
+                        {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah (Standar 0%)
                       </button>
                       <button
                         type="button"
                         onClick={() => setHasCriticalIllness(true)}
                         aria-pressed={hasCriticalIllness}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           hasCriticalIllness
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {hasCriticalIllness ? '✓ ' : ''}Pernah
+                        {hasCriticalIllness ? '✓ ' : ''}Pernah (Surcharge +{critSurchargePct}%)
                       </button>
                     </div>
 
@@ -1489,25 +1527,25 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         type="button"
                         onClick={() => setHasHospitalization(false)}
                         aria-pressed={!hasHospitalization}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           !hasHospitalization
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
+                        {!hasHospitalization ? '✓ ' : ''}Tidak Pernah (Standar 0%)
                       </button>
                       <button
                         type="button"
                         onClick={() => setHasHospitalization(true)}
                         aria-pressed={hasHospitalization}
-                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           hasHospitalization
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {hasHospitalization ? '✓ ' : ''}Pernah
+                        {hasHospitalization ? '✓ ' : ''}Pernah (Surcharge +{hospSurchargePct}%)
                       </button>
                     </div>
 
@@ -1670,11 +1708,23 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       {isVehicleCategory ? 'Kendaraan Terdaftar' : `BMI: ${calculatedBmi} (Normal)`}
                     </span>
                     <span className="text-xs text-slate-500 block">
-                      {isVehicleCategory ? vehiclePlate : (isSmoker ? 'Perokok Aktif (+45%)' : 'Non-Smoker Standard')}
+                      {isVehicleCategory
+                        ? vehiclePlate
+                        : [
+                            isSmoker ? `Perokok (+${smokerSurchargePct}%)` : 'Non-Smoker',
+                            hasCriticalIllness ? `Penyakit (+${critSurchargePct}%)` : null,
+                            hasHospitalization ? `Rawat Inap (+${hospSurchargePct}%)` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                    {isVehicleCategory ? '✓ Plat Terverifikasi' : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
+                    {isVehicleCategory
+                      ? '✓ Plat Terverifikasi'
+                      : hasCriticalIllness || hasHospitalization
+                      ? '✓ Deklarasi Terisi'
+                      : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
                   </span>
                 </div>
               </div>
@@ -2045,6 +2095,18 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     <span className="font-semibold text-emerald-400">
                       {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
                     </span>
+                  </div>
+                )}
+                {!isVehicleCategory && hasCriticalIllness && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Loading Riwayat Penyakit</span>
+                    <span className="font-semibold text-amber-400">+{critSurchargePct}%</span>
+                  </div>
+                )}
+                {!isVehicleCategory && hasHospitalization && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Loading Rawat Inap</span>
+                    <span className="font-semibold text-amber-400">+{hospSurchargePct}%</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
