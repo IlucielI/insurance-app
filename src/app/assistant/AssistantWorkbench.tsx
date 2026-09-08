@@ -15,6 +15,7 @@ import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';
 import { Spinner } from '@/components/atoms/Spinner';
 import { assistantService } from '@/server/di';
+import { ChatMessageContent } from './ChatMessageContent';
 
 export interface AssistantWorkbenchProps {
   initialSessions: ChatSession[];
@@ -40,96 +41,8 @@ function getHumanReadableToolName(toolName: string): string {
   }
 }
 
-function formatInlineBold(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={idx} className="font-bold text-slate-900">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    return part;
-  });
-}
-
 function renderFormattedContent(text: string) {
-  if (!text) return null;
-
-  const trimmed = text.trim();
-  if (trimmed.startsWith('[{') && trimmed.endsWith('}]')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-        return (
-          <div className="space-y-2 text-left my-1">
-            <p className="font-semibold text-slate-800">Daftar produk asuransi yang tersedia:</p>
-            <div className="grid grid-cols-1 gap-2 mt-1">
-              {parsed.map((p: { name: string; category?: string; description?: string; min_sum_assured?: number; max_sum_assured?: number; min_payment_term?: number; max_payment_term?: number }, idx: number) => (
-                <div key={idx} className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-700 text-xs">{idx + 1}. {p.name}</span>
-                    {p.category && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">
-                        {p.category}
-                      </span>
-                    )}
-                  </div>
-                  {p.description && <p className="text-[11px] text-slate-600 mt-1">{p.description}</p>}
-                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 mt-1.5 pt-1 border-t border-slate-100">
-                    {p.min_sum_assured && (
-                      <span>UP: Rp {Number(p.min_sum_assured).toLocaleString('id-ID')} - Rp {Number(p.max_sum_assured).toLocaleString('id-ID')}</span>
-                    )}
-                    {p.min_payment_term && (
-                      <span>• Tenor: {p.min_payment_term}-{p.max_payment_term} thn</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      }
-    } catch {
-      // Fallback
-    }
-  }
-
-  const lines = text.split('\n');
-  return (
-    <div className="space-y-1.5 text-left leading-relaxed">
-      {lines.map((line, lineIdx) => {
-        const lineTrim = line.trim();
-        if (!lineTrim) return <div key={lineIdx} className="h-1" />;
-
-        if (lineTrim.startsWith('### ') || lineTrim.startsWith('## ')) {
-          const headerText = lineTrim.replace(/^#+\s*/, '');
-          return (
-            <h4 key={lineIdx} className="font-bold text-slate-900 text-xs sm:text-sm mt-2 mb-1">
-              {formatInlineBold(headerText)}
-            </h4>
-          );
-        }
-
-        if (lineTrim.startsWith('- ') || lineTrim.startsWith('* ') || lineTrim.startsWith('• ')) {
-          const bulletText = lineTrim.replace(/^[-*•]\s*/, '');
-          return (
-            <div key={lineIdx} className="flex items-start gap-1.5 pl-1 text-xs sm:text-[13px]">
-              <span className="text-blue-600 font-bold leading-none mt-1">•</span>
-              <span className="flex-1">{formatInlineBold(bulletText)}</span>
-            </div>
-          );
-        }
-
-        return (
-          <p key={lineIdx} className="text-xs sm:text-[13px]">
-            {formatInlineBold(line)}
-          </p>
-        );
-      })}
-    </div>
-  );
+  return <ChatMessageContent content={text} />;
 }
 
 export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
