@@ -172,7 +172,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   const [frequency, setFrequency] = useState<'monthly' | 'annually'>('annually');
   const [selectedRiderIds, setSelectedRiderIds] = useState<string[]>([]);
   const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState<boolean>(false);
-  const [aiAssistantQuery, setAiAssistantQuery] = useState<string>('');
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
 
   const [dynamicQuestions, setDynamicQuestions] = useState<ProductQuestionDTO[]>(() =>
@@ -434,13 +433,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       window.print();
       setDownloadNotice(null);
     }, 600);
-  };
-
-  // Submit AI Assistant prompt
-  const handleAskAI = (promptText?: string) => {
-    const query = promptText || aiAssistantQuery;
-    if (!query.trim()) return;
-    router.push(`/assistant?q=${encodeURIComponent(query.trim())}`);
   };
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
@@ -1318,66 +1310,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 </li>
               )}
             </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------- */}
-      {/* SECTION 5: PRE-FOOTER AI ASSISTANT CARD (Y: 1990 - 2150)      */}
-      {/* ------------------------------------------------------------- */}
-      <section aria-labelledby="heading-ai-card" className="pt-4">
-        <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6 text-left">
-          <div className="space-y-1.5 max-w-xl">
-            <span className="bg-indigo-100 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md inline-block uppercase">
-              AI ASSISTANT
-            </span>
-            <h2 id="heading-ai-card" className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
-              Butuh Rekomendasi Simulasi yang Tepat?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Tanyakan langsung perbandingan tenor, frekuensi bayar, atau simulasi khusus ke AI kami.
-            </p>
-          </div>
-
-          <div className="space-y-3 w-full lg:w-auto shrink-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleAskAI('Berapa UP ideal untuk gaji 15jt?')}
-                className="py-1.5 px-3.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-medium transition-colors"
-              >
-                Berapa UP ideal untuk gaji 15jt?
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAskAI('Beda bayar tahunan vs bulanan')}
-                className="py-1.5 px-3.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-medium transition-colors"
-              >
-                Beda bayar tahunan vs bulanan
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAskAI();
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={aiAssistantQuery}
-                onChange={(e) => setAiAssistantQuery(e.target.value)}
-                placeholder="Tanyakan seputar simulasi atau premi polis..."
-                className="py-2.5 px-4 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f172a] flex-1 min-w-[240px] sm:min-w-[320px]"
-              />
-              <button
-                type="submit"
-                className="py-2.5 px-5 rounded-xl bg-[#0f172a] hover:bg-slate-800 text-white font-semibold text-xs transition-all shrink-0"
-              >
-                Tanya AI
-              </button>
-            </form>
           </div>
         </div>
       </section>

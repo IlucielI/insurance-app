@@ -37,9 +37,6 @@ describe('SimulationPage & SimulationWorkbench', () => {
     // Inclusions & Exclusions clauses
     expect(screen.getByText(/MANFAAT YANG DICAKUP \(COVERED BENEFITS\)/i)).toBeDefined();
     expect(screen.getByText(/PENGECUALIAN RESMI \(EXCLUSIONS\)/i)).toBeDefined();
-
-    // Pre-footer AI Assistant card
-    expect(screen.getByText(/Butuh Rekomendasi Simulasi yang Tepat\?/i)).toBeDefined();
   });
 
   it('pre-selects product specified in searchParams', async () => {
@@ -219,26 +216,6 @@ describe('SimulationPage & SimulationWorkbench', () => {
     });
     expect(window.print).toHaveBeenCalled();
     vi.useRealTimers();
-  });
-
-  it('submits AI assistant prompt chip and input query', async () => {
-    const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} initialProductId={products[0].id} />);
-
-    const chipBtn = screen.getByRole('button', { name: 'Berapa UP ideal untuk gaji 15jt?' });
-    fireEvent.click(chipBtn);
-
-    expect(mockPush).toHaveBeenCalledWith('/assistant?q=Berapa%20UP%20ideal%20untuk%20gaji%2015jt%3F');
-
-    const input = screen.getByPlaceholderText(/Tanyakan seputar simulasi atau premi polis.../i);
-    fireEvent.change(input, { target: { value: 'Bandingkan tenor 10 vs 20 tahun' } });
-
-    const submitBtn = screen.getByRole('button', { name: 'Tanya AI' });
-    fireEvent.click(submitBtn);
-
-    expect(mockPush).toHaveBeenCalledWith(
-      '/assistant?q=Bandingkan%20tenor%2010%20vs%2020%20tahun'
-    );
   });
 
   it('clamps age input on blur to product age range', async () => {
