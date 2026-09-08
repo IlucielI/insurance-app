@@ -151,16 +151,11 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
 
       return this.mapCoreApiApplication(created, application);
     } catch (err) {
-      // If Core API is unreachable or responds with error, log warning and fallback to returning application with generated ID
-      console.warn('[CoreApiApplicationRepository] Create failed, falling back to local simulation:', err);
-      const fallbackId = application.id.startsWith('APP-')
-        ? application.id
-        : `APP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      return {
-        ...application,
-        id: fallbackId,
-      };
+      console.error('[CoreApiApplicationRepository] Create failed:', err);
+      if (err instanceof Error) {
+        throw err;
+      }
+      throw new Error(`Gagal menghubungkan ke Core API: ${String(err)}`);
     }
   }
 

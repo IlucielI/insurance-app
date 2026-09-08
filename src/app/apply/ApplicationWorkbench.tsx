@@ -683,6 +683,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       setErrors({
         submit: message,
       });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -1927,8 +1928,15 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
 
               {errors.submit && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
-                  {errors.submit}
+                <div
+                  role="alert"
+                  className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-900 text-sm font-semibold flex items-start gap-3 shadow-xs"
+                >
+                  <span className="text-rose-600 text-xl leading-none shrink-0">⚠️</span>
+                  <div className="space-y-1 text-left">
+                    <span className="font-bold block text-rose-800">Gagal Mengirim Pengajuan ke Core API:</span>
+                    <span className="text-xs text-rose-700 block font-normal leading-relaxed">{errors.submit}</span>
+                  </div>
                 </div>
               )}
 
