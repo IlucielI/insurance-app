@@ -1,6 +1,7 @@
 import React from 'react';
 
 export interface SliderProps {
+  id?: string;
   label: string;
   value: number;
   min: number;
@@ -15,6 +16,7 @@ export interface SliderProps {
 }
 
 export const Slider: React.FC<SliderProps> = ({
+  id,
   label,
   value,
   min,
@@ -28,11 +30,14 @@ export const Slider: React.FC<SliderProps> = ({
   disabled = false,
 }) => {
   const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+  const inputId = id || `slider-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
   return (
     <div className={`w-full space-y-2 text-left ${className}`}>
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-slate-700 select-none">{label}</label>
+        <label htmlFor={inputId} className="text-xs font-semibold text-slate-700 select-none">
+          {label}
+        </label>
         <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100">
           {formatValue(value)}
         </span>
@@ -40,6 +45,8 @@ export const Slider: React.FC<SliderProps> = ({
 
       <div className="relative flex items-center py-1">
         <input
+          id={inputId}
+          aria-label={label}
           type="range"
           min={min}
           max={max}
