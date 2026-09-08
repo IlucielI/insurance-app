@@ -52,8 +52,13 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   // Selected Product & Actuarial Quote Resolution
   const selectedProduct = useMemo(() => {
     if (initialQuote.productId) {
+      const target = initialQuote.productId.toLowerCase();
       const found = initialProducts.find(
-        (p) => p.id === initialQuote.productId || p.slug === initialQuote.productId
+        (p) =>
+          p.id.toLowerCase() === target ||
+          p.slug.toLowerCase() === target ||
+          p.categoryKey.toLowerCase() === target ||
+          p.title.toLowerCase().includes(target)
       );
       if (found) return found;
     }
@@ -103,73 +108,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     () => initialQuote.selectedRiders || [],
     [initialQuote.selectedRiders]
   );
-
-  // Recalculate accurate premiums
-  const quoteResult = useMemo(() => {
-    if (!selectedProduct) return null;
-    return simulationService.calculate(
-      {
-        productId: selectedProduct.id,
-        sumAssured,
-        termYears,
-        applicantAge: initialAge,
-        isSmoker: initialSmoker,
-        gender: initialGender,
-        occupationRisk: initialOccupationRisk,
-        frequency,
-        selectedRiderIds: selectedRiders,
-      },
-      selectedProduct
-    );
-  }, [
-    selectedProduct,
-    sumAssured,
-    termYears,
-    initialAge,
-    initialSmoker,
-    initialGender,
-    initialOccupationRisk,
-    frequency,
-    selectedRiders,
-  ]);
-
-  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
-  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
-  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
-
-  // Dynamic Questionnaire State
-  const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
-
-  const questionnaire = useMemo(() => {
-    if (
-      initialQuestionnaire &&
-      (initialQuestionnaire.product_id === selectedProduct?.id ||
-        initialQuestionnaire.product_slug === selectedProduct?.slug)
-    ) {
-      return initialQuestionnaire;
-    }
-    return fetchedQuestionnaire;
-  }, [initialQuestionnaire, selectedProduct, fetchedQuestionnaire]);
-
-  useEffect(() => {
-    if (!selectedProduct) return;
-    if (
-      initialQuestionnaire &&
-      (initialQuestionnaire.product_id === selectedProduct.id ||
-        initialQuestionnaire.product_slug === selectedProduct.slug)
-    ) {
-      return;
-    }
-    let isCancelled = false;
-    productService.getQuestionnaire(selectedProduct.slug).then((q) => {
-      if (!isCancelled && q) {
-        setFetchedQuestionnaire(q);
-      }
-    });
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedProduct, initialQuestionnaire]);
 
   // Wizard Step State: 1 to 4
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -226,6 +164,48 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Age calculation from birthdate
+  const applicantAgeYears = useMemo(() => {
+    if (!birthDate) return initialAge;
+    const birthYear = new Date(birthDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const diff = currentYear - birthYear;
+    return diff > 0 ? diff : initialAge;
+  }, [birthDate, initialAge]);
+
+  // Dynamic Recalculation of accurate premiums via actuarial rules
+  const quoteResult = useMemo(() => {
+    if (!selectedProduct) return null;
+    return simulationService.calculate(
+      {
+        productId: selectedProduct.id,
+        sumAssured,
+        termYears,
+        applicantAge: applicantAgeYears,
+        isSmoker: isSmoker,
+        gender: initialGender,
+        occupationRisk: initialOccupationRisk,
+        frequency,
+        selectedRiderIds: selectedRiders,
+      },
+      selectedProduct
+    );
+  }, [
+    selectedProduct,
+    sumAssured,
+    termYears,
+    applicantAgeYears,
+    isSmoker,
+    initialGender,
+    initialOccupationRisk,
+    frequency,
+    selectedRiders,
+  ]);
+
+  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
+  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
+  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
+
   // Dynamic Calculated Metrics
   const calculatedDsr = useMemo(() => {
     const annualEstIncome = Math.max(1, monthlyIncome * 12);
@@ -239,16 +219,41 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
-  // Age calculation from birthdate
-  const applicantAgeYears = useMemo(() => {
-    if (!birthDate) return 32;
-    const birthYear = new Date(birthDate).getFullYear();
-    const currentYear = new Date().getFullYear();
-    const diff = currentYear - birthYear;
-    return diff > 0 ? diff : 32;
-  }, [birthDate]);
-
   const isVehicleCategory = selectedProduct?.categoryKey === 'vehicle';
+
+  // Dynamic Questionnaire State (kept for optional schema fallback)
+  const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
+
+  const questionnaire = useMemo(() => {
+    if (
+      initialQuestionnaire &&
+      (initialQuestionnaire.product_id === selectedProduct?.id ||
+        initialQuestionnaire.product_slug === selectedProduct?.slug)
+    ) {
+      return initialQuestionnaire;
+    }
+    return fetchedQuestionnaire;
+  }, [initialQuestionnaire, selectedProduct, fetchedQuestionnaire]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    if (
+      initialQuestionnaire &&
+      (initialQuestionnaire.product_id === selectedProduct.id ||
+        initialQuestionnaire.product_slug === selectedProduct.slug)
+    ) {
+      return;
+    }
+    let isCancelled = false;
+    productService.getQuestionnaire(selectedProduct.slug).then((q) => {
+      if (!isCancelled && q) {
+        setFetchedQuestionnaire(q);
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedProduct, initialQuestionnaire]);
 
   // Step Validation
   const validateStep = (step: number): boolean => {

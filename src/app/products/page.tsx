@@ -18,7 +18,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps =
   const products = await productService.getProducts(categoryKey, search);
 
   return (
-    <AppLayout currentPath="/products">
+    <AppLayout currentPath="/products" initialProducts={products}>
       <ProductCatalogWorkbench initialProducts={products} />
     </AppLayout>
   );

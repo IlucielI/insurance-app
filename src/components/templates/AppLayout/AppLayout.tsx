@@ -1,16 +1,22 @@
 import React from 'react';
 import Link from 'next/link';
 import { HeaderNav } from '@/components/molecules/HeaderNav';
+import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 
 export interface AppLayoutProps {
   children: React.ReactNode;
   currentPath?: string;
+  initialProducts?: InsuranceProduct[];
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ children, currentPath = '/' }) => {
+export const AppLayout: React.FC<AppLayoutProps> = ({
+  children,
+  currentPath = '/',
+  initialProducts,
+}) => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <HeaderNav currentPath={currentPath} />
+      <HeaderNav currentPath={currentPath} initialProducts={initialProducts} />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         {children}
