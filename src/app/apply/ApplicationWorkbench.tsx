@@ -1821,29 +1821,31 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   <span className="block text-xs font-semibold text-slate-700">
                     Frekuensi Pembayaran Premi:
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200/80">
                     <button
                       type="button"
                       onClick={() => setFrequency('annually')}
                       aria-pressed={frequency === 'annually'}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                         frequency === 'annually'
-                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                          : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
-                      {frequency === 'annually' ? '✓ ' : ''}Tahunan (Hemat 6% - Diskon API)
+                      <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'annually' ? 'bg-emerald-400' : 'bg-transparent'}`} />
+                      {frequency === 'annually' ? '✓ ' : ''}Tahunan (Hemat {savingsPercent}% - Diskon API)
                     </button>
                     <button
                       type="button"
                       onClick={() => setFrequency('monthly')}
                       aria-pressed={frequency === 'monthly'}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                         frequency === 'monthly'
-                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                          : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
+                      <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'monthly' ? 'bg-sky-400' : 'bg-transparent'}`} />
                       {frequency === 'monthly' ? '✓ ' : ''}Bulanan (Pembayaran Rutin)
                     </button>
                   </div>
@@ -1994,23 +1996,35 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             </div>
 
             {/* Price Box */}
-            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
-              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight text-white">
-                  {formatRupiah(activePremium)}
-                </span>
-                <span className="text-xs text-slate-400">
-                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5 transition-all duration-300 shadow-inner">
+              <div key={`app-badge-${frequency}`} className="animate-badge-fade">
+                <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                  PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                {frequency === 'monthly'
-                  ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
-                  : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
-              </p>
+              <div className="flex items-baseline gap-2">
+                <div
+                  key={`app-price-${frequency}-${activePremium}`}
+                  className="flex items-baseline gap-2 animate-price-fade"
+                >
+                  <span className="text-3xl font-extrabold tracking-tight text-white">
+                    {formatRupiah(activePremium)}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">
+                    / {frequency === 'annually' ? 'tahun' : 'bulan'}
+                  </span>
+                </div>
+              </div>
+              <div
+                key={`app-desc-${frequency}-${annualPremium}-${monthlyPremium}`}
+                className="animate-desc-fade min-h-[1.25rem]"
+              >
+                <p className="text-xs text-slate-400">
+                  {frequency === 'monthly'
+                    ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
+                    : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
+                </p>
+              </div>
             </div>
 
             {/* Policy Parameters */}
@@ -2028,7 +2042,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center text-slate-300">
                 <span>Frekuensi Pembayaran</span>
-                <span className="font-semibold text-white capitalize">
+                <span
+                  key={`app-freq-val-${frequency}`}
+                  className="font-semibold text-white capitalize animate-smooth-fade"
+                >
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
@@ -2123,7 +2140,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </div>
                 <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
                   <span className="text-slate-400">Skema Pembayaran</span>
-                  <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                  <span
+                    key={`app-schema-freq-${frequency}`}
+                    className={`animate-smooth-fade ${frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}`}
+                  >
                     {frequency === 'annually' ? `Tahunan (Hemat ${quoteResult?.breakdown?.annualDiscountPercent ?? 6}%)` : 'Bulanan Rutin'}
                   </span>
                 </div>

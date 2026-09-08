@@ -56,8 +56,11 @@ export const SimulationResultCard: React.FC<SimulationResultCardProps> = ({
 
       <CardContent className="space-y-4">
         {/* Main Price Highlight Box */}
-        <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-md shadow-slate-900/10 space-y-1 text-left">
-          <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-md shadow-slate-900/10 space-y-1 text-left transition-all duration-300">
+          <div
+            key={`sim-head-${paymentFrequency}`}
+            className="flex items-center justify-between text-xs text-slate-400 animate-badge-fade"
+          >
             <span>Estimasi Premi ({paymentFrequency === 'monthly' ? 'Bulanan' : 'Tahunan'})</span>
             {paymentFrequency === 'annually' && annualSavings > 0 && (
               <span className="text-emerald-400 font-bold text-[11px]">
@@ -66,12 +69,17 @@ export const SimulationResultCard: React.FC<SimulationResultCardProps> = ({
             )}
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-extrabold tracking-tight text-white">
-              {formatRupiah(currentPremium)}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">
-              / {paymentFrequency === 'monthly' ? 'bulan' : 'tahun'}
-            </span>
+            <div
+              key={`sim-price-${paymentFrequency}-${currentPremium}`}
+              className="flex items-baseline gap-1.5 animate-price-fade"
+            >
+              <span className="text-3xl font-extrabold tracking-tight text-white">
+                {formatRupiah(currentPremium)}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                / {paymentFrequency === 'monthly' ? 'bulan' : 'tahun'}
+              </span>
+            </div>
           </div>
         </div>
 

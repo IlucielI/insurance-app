@@ -1090,29 +1090,31 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <span className="block text-xs sm:text-sm font-semibold text-slate-700">
                 Frekuensi Pembayaran Premi:
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1 rounded-2xl bg-slate-100 border border-slate-200/80">
                 <button
                   type="button"
                   onClick={() => setFrequency('annually')}
                   aria-pressed={frequency === 'annually'}
-                  className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                  className={`p-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                     frequency === 'annually'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                      ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
+                  <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'annually' ? 'bg-emerald-400' : 'bg-transparent'}`} />
                   Tahunan (Hemat {annualDiscountPercent}% - Diskon API)
                 </button>
                 <button
                   type="button"
                   onClick={() => setFrequency('monthly')}
                   aria-pressed={frequency === 'monthly'}
-                  className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                  className={`p-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                     frequency === 'monthly'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                      ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
+                  <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'monthly' ? 'bg-sky-400' : 'bg-transparent'}`} />
                   Bulanan (Pembayaran Rutin)
                 </button>
               </div>
@@ -1221,37 +1223,62 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             </div>
 
             {/* Price Box */}
-            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
-              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight text-white">
-                  {isCalculating
-                    ? 'Menghitung...'
-                    : simulationResult
-                    ? formatRupiah(simulationResult.activePremium)
-                    : 'Rp -'}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5 transition-all duration-300 shadow-inner">
+              <div key={`badge-${frequency}`} className="animate-badge-fade">
+                <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                  PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
                 </span>
-                {simulationResult && (
-                  <span className="text-xs text-slate-400">
-                    / {frequency === 'annually' ? 'tahun' : 'bulan'}
+              </div>
+              <div className="flex items-baseline gap-2">
+                <div
+                  key={`val-${frequency}-${simulationResult?.activePremium ?? 'loading'}`}
+                  className="flex items-baseline gap-2 animate-price-fade"
+                >
+                  <span
+                    className={`text-3xl font-extrabold tracking-tight text-white transition-opacity duration-200 ${
+                      isCalculating && simulationResult ? 'opacity-85' : 'opacity-100'
+                    }`}
+                  >
+                    {isCalculating && !simulationResult
+                      ? 'Menghitung...'
+                      : simulationResult
+                      ? formatRupiah(simulationResult.activePremium)
+                      : 'Rp -'}
+                  </span>
+                  {simulationResult && (
+                    <span className="text-xs text-slate-400">
+                      / {frequency === 'annually' ? 'tahun' : 'bulan'}
+                    </span>
+                  )}
+                </div>
+                {isCalculating && simulationResult && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-500/20 text-sky-300 animate-pulse ml-1"
+                    title="Menyinkronkan tarif..."
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                    Sync
                   </span>
                 )}
               </div>
-              {simulationResult ? (
-                <p className="text-xs text-slate-400">
-                  {frequency === 'monthly'
-                    ? `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} per tahun`
-                    : `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} per bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`}
-                </p>
-              ) : (
-                <p className="text-xs text-slate-400">
-                  {calculationError
-                    ? 'Gagal memuat tarif aktuaria dari API'
-                    : 'Sedang menghitung estimasi premi aktuaria...'}
-                </p>
-              )}
+              <div
+                key={`desc-${frequency}-${simulationResult?.monthlyPremium}-${simulationResult?.annualPremium}`}
+                className="animate-desc-fade min-h-[1.25rem]"
+              >
+                {simulationResult ? (
+                  <p className="text-xs text-slate-400">
+                    {frequency === 'monthly'
+                      ? `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} per tahun`
+                      : `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} per bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    {calculationError
+                      ? 'Gagal memuat tarif aktuaria dari API'
+                      : 'Sedang menghitung estimasi premi aktuaria...'}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Policy Parameters */}
@@ -1269,7 +1296,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center text-slate-300">
                 <span>Frekuensi Pembayaran</span>
-                <span className="font-semibold text-white capitalize">
+                <span
+                  key={`param-freq-${frequency}`}
+                  className="font-semibold text-white capitalize animate-smooth-fade"
+                >
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
@@ -1354,7 +1384,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
                 <span className="text-slate-400">Skema Pembayaran</span>
-                <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                <span
+                  key={`schema-freq-${frequency}`}
+                  className={`animate-smooth-fade ${frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}`}
+                >
                   {frequency === 'annually' ? `Tahunan (Hemat ${annualDiscountPercent}%)` : 'Bulanan Rutin'}
                 </span>
               </div>
@@ -1372,7 +1405,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 variant="primary"
                 className="w-full font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3.5 shadow-md transition-all text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleContinueApply}
-                disabled={Boolean(calculationError || !simulationResult || isCalculating)}
+                disabled={Boolean(calculationError || !simulationResult)}
               >
                 Lanjut ke Form Pendaftaran Polis (Step 1) →
               </Button>
