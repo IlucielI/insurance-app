@@ -1359,15 +1359,15 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               ) : (
                 /* Life / Health medical questions */
                 <>
-                  {/* Height & Weight */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Height, Weight & BMI - 3 columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
                     <Input
                       label="Tinggi Badan (cm):"
                       type="number"
                       value={String(heightCm)}
                       onChange={(e) => setHeightCm(Number(e.target.value))}
                       errorMessage={errors.heightCm}
-                      helperText="Minimal 100 cm s/d 250 cm"
+                      placeholder="175 cm"
                     />
 
                     <Input
@@ -1376,109 +1376,92 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       value={String(weightKg)}
                       onChange={(e) => setWeightKg(Number(e.target.value))}
                       errorMessage={errors.weightKg}
-                      helperText="Minimal 30 kg s/d 200 kg"
+                      placeholder="68 kg"
                     />
-                  </div>
 
-                  {/* BMI Result Badge */}
-                  <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-emerald-900 block">
-                        Indeks Massa Tubuh (BMI): {calculatedBmi}
+                    <div className="w-full space-y-1.5 text-left">
+                      <span className="block text-xs font-semibold text-slate-700 select-none">
+                        Kalkulasi Indeks Massa Tubuh (BMI):
                       </span>
-                      <span className="text-emerald-800/80 text-[11px]">
-                        {calculatedBmi >= 18.5 && calculatedBmi <= 24.9
-                          ? 'Rentang Normal / Sehat (Ideal Risk Level)'
-                          : calculatedBmi < 18.5
-                          ? 'Berat Badan Kurang (Underweight)'
-                          : 'Berat Badan Berlebih (Perlu Penyesuaian)'}
-                      </span>
+                      <div className="h-[38px] px-3.5 rounded-lg border border-emerald-300 bg-emerald-50/80 flex items-center justify-center text-xs sm:text-sm font-bold text-emerald-800 shadow-2xs">
+                        BMI: {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Normal / Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                      </div>
                     </div>
-                    <span className="text-xs font-extrabold px-3 py-1 bg-white text-emerald-700 border border-emerald-300 rounded-full">
-                      ✓ BMI OPTIMAL
-                    </span>
                   </div>
 
                   {/* Smoker Toggle */}
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 block">
-                        Status Penggunaan Tembakau & Rokok:
-                      </span>
-                      <p className="text-[11px] text-slate-500">
-                        Termasuk rokok konvensional maupun elektrik (vape) dalam 12 bulan terakhir.
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-xs font-semibold text-slate-700 select-none">
+                      Status Kebiasaan Merokok / Tembakau / Vape:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setIsSmoker(false)}
                         aria-pressed={!isSmoker}
-                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
                           !isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        {!isSmoker ? '✓ ' : ''}Bukan Perokok
+                        {!isSmoker ? '✓ ' : ''}Tidak Merokok (Non-Smoker Standard)
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsSmoker(true)}
                         aria-pressed={isSmoker}
-                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
                           isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        {isSmoker ? '✓ ' : ''}Perokok Aktif
+                        {isSmoker ? '✓ ' : ''}Perokok Aktif (Surcharge +45%)
                       </button>
                     </div>
                   </div>
 
-                  {/* Critical Illness Question with Dynamic Branching */}
-                  <div className="space-y-2 p-4 rounded-2xl border border-slate-200 bg-slate-50/30">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-slate-900 block">
-                          Riwayat Penyakit Kritis:
-                        </span>
-                        <p className="text-[11px] text-slate-500">
-                          Pernahkah didiagnosis kanker, serangan jantung, stroke, ginjal, atau diabetes?
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setHasCriticalIllness(false)}
-                          aria-pressed={!hasCriticalIllness}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            !hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHasCriticalIllness(true)}
-                          aria-pressed={hasCriticalIllness}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {hasCriticalIllness ? '✓ ' : ''}Pernah
-                        </button>
-                      </div>
+                  {/* Critical Illness Question */}
+                  <div className="space-y-1.5 text-left">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 select-none">
+                        Riwayat Penyakit Kritis:
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Pernahkah didiagnosis kanker, serangan jantung, stroke, ginjal, atau diabetes?
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasCriticalIllness(false)}
+                        aria-pressed={!hasCriticalIllness}
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                          !hasCriticalIllness
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHasCriticalIllness(true)}
+                        aria-pressed={hasCriticalIllness}
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                          hasCriticalIllness
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {hasCriticalIllness ? '✓ ' : ''}Pernah
+                      </button>
                     </div>
 
                     {/* Conditional Branching for Critical Illness */}
                     {hasCriticalIllness && (
-                      <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="pt-2">
                         <Input
                           label="Rincian Diagnosa & Tahun Terjadinya Penyakit Kritis:"
                           placeholder="Contoh: Diabetes tipe 2 tahun 2023, pengobatan rutin"
@@ -1491,48 +1474,46 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     )}
                   </div>
 
-                  {/* Hospitalization Question with Dynamic Branching */}
-                  <div className="space-y-2 p-4 rounded-2xl border border-slate-200 bg-slate-50/30">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-slate-900 block">
-                          Riwayat Rawat Inap (Opname) 2 Tahun Terakhir:
-                        </span>
-                        <p className="text-[11px] text-slate-500">
-                          Apakah pernah menjalani rawat inap di rumah sakit atau operasi bedah?
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setHasHospitalization(false)}
-                          aria-pressed={!hasHospitalization}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            !hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHasHospitalization(true)}
-                          aria-pressed={hasHospitalization}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {hasHospitalization ? '✓ ' : ''}Pernah
-                        </button>
-                      </div>
+                  {/* Hospitalization Question */}
+                  <div className="space-y-1.5 text-left">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 select-none">
+                        Riwayat Rawat Inap (Opname) 2 Tahun Terakhir:
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Apakah pernah menjalani rawat inap di rumah sakit atau operasi bedah?
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasHospitalization(false)}
+                        aria-pressed={!hasHospitalization}
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                          !hasHospitalization
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHasHospitalization(true)}
+                        aria-pressed={hasHospitalization}
+                        className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                          hasHospitalization
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {hasHospitalization ? '✓ ' : ''}Pernah
+                      </button>
                     </div>
 
                     {/* Conditional Branching for Hospitalization */}
                     {hasHospitalization && (
-                      <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="pt-2">
                         <Input
                           label="Rincian Alasan Rawat Inap & Nama Rumah Sakit:"
                           placeholder="Contoh: Operasi usus buntu tahun 2025 di RS Siloam, sembuh total"
