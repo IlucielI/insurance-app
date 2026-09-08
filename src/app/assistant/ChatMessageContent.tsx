@@ -34,9 +34,11 @@ export function formatInlineMarkdown(text: string): React.ReactNode[] {
     // Link: [label](url)
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
-      const [, label, url] = linkMatch;
-      const isInternal = url.startsWith('/');
-      if (isInternal) {
+      const [, label, rawUrl] = linkMatch;
+      const url = rawUrl.trim();
+
+      // Internal link: must start with / and not //
+      if (url.startsWith('/') && !url.startsWith('//')) {
         return (
           <Link
             key={index}
@@ -47,16 +49,27 @@ export function formatInlineMarkdown(text: string): React.ReactNode[] {
           </Link>
         );
       }
+
+      // External link: allow only http:// and https://
+      if (/^https?:\/\//i.test(url)) {
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-blue-600 font-semibold underline underline-offset-2 hover:text-blue-800 transition-colors"
+          >
+            {label} ↗
+          </a>
+        );
+      }
+
+      // Unsafe or unsupported scheme (e.g. javascript:, data:, vbscript:) -> render safe text without active link
       return (
-        <a
-          key={index}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 text-blue-600 font-semibold underline underline-offset-2 hover:text-blue-800 transition-colors"
-        >
-          {label} ↗
-        </a>
+        <span key={index} className="text-slate-800 font-medium">
+          {label}
+        </span>
       );
     }
 
@@ -211,23 +224,28 @@ export const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content,
 
   // 1. Check if there is an embedded JSON array of products (either full text or inside markdown block)
   const jsonMatch = content.match(/\[\s*\{[\s\S]*?"name"[\s\S]*?\}\s*\]/);
+  let parsedProducts: ProductItem[] | null = null;
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-        const preJson = content.slice(0, jsonMatch.index).trim();
-        const postJson = content.slice((jsonMatch.index || 0) + jsonMatch[0].length).trim();
-        return (
-          <div className={`space-y-2 text-left leading-relaxed ${className}`}>
-            {preJson && <ChatMessageContent content={preJson} />}
-            {renderProductCards(parsed)}
-            {postJson && <ChatMessageContent content={postJson} />}
-          </div>
-        );
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.name) {
+        parsedProducts = parsed;
       }
     } catch {
       // ignore json parse error and fallback to standard markdown rendering
     }
+  }
+
+  if (jsonMatch && parsedProducts) {
+    const preJson = content.slice(0, jsonMatch.index).trim();
+    const postJson = content.slice((jsonMatch.index || 0) + jsonMatch[0].length).trim();
+    return (
+      <div className={`space-y-2 text-left leading-relaxed ${className}`}>
+        {preJson && <ChatMessageContent content={preJson} />}
+        {renderProductCards(parsedProducts)}
+        {postJson && <ChatMessageContent content={postJson} />}
+      </div>
+    );
   }
 
   // 2. Parse into Markdown Blocks

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ChatMessageContent, formatInlineMarkdown } from './ChatMessageContent';
+import { ChatMessageContent } from './ChatMessageContent';
 
 describe('ChatMessageContent', () => {
   it('renders inline bold, italic, inline code, and links correctly', () => {
@@ -32,6 +32,21 @@ describe('ChatMessageContent', () => {
     expect(linkEl.getAttribute('href')).toBe('https://ojk.go.id');
     expect(linkEl.getAttribute('target')).toBe('_blank');
     expect(linkEl.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('rejects unsafe url schemes (javascript:, data:) and protocol-relative URLs without rendering active links', () => {
+    const malicious = 'Akses [Script](javascript:alert(1)), [Data](data:text/html,<script>alert(1)</script>), dan [Phishing](//evil.com).';
+    render(<ChatMessageContent content={malicious} />);
+
+    // Unsafe links must NOT be rendered as active <a> elements
+    expect(screen.queryByRole('link', { name: /Script/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Data/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Phishing/i })).toBeNull();
+
+    // The text content should still be rendered safely
+    expect(screen.getByText('Script')).toBeDefined();
+    expect(screen.getByText('Data')).toBeDefined();
+    expect(screen.getByText('Phishing')).toBeDefined();
   });
 
   it('renders headings (H1, H2, H3) with proper typography', () => {
