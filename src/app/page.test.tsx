@@ -62,11 +62,17 @@ describe('HomePage & HomeWorkbench', () => {
     const featured = await productService.getFeaturedProducts();
     render(<HomeWorkbench initialFeaturedProducts={featured} />);
 
-    const selectButtons = screen.getAllByRole('button', { name: /Pilih & Simulasi Premi →/i });
+    const selectButtons = screen.getAllByRole('button', { name: /^Simulasi premi untuk/i });
     expect(selectButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(selectButtons[0]);
     expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${featured[0].id}`);
+
+    const applyButtons = screen.getAllByRole('button', { name: /^Daftar sekarang untuk/i });
+    expect(applyButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(applyButtons[1]);
+    expect(mockPush).toHaveBeenCalledWith(`/apply?productId=${featured[1].id}`);
   });
 
   it('toggles FAQ accordion items when clicked', async () => {

@@ -8,8 +8,8 @@ import {
   ProductQuestionDTO,
   ProductQuestionnaireDTO,
 } from '@/server/repositories/product.repository.interface';
-import { productService, simulationService } from '@/server/di';
-import { submitApplicationAction } from './actions';
+import { calculatePureSimulation } from '@/lib/simulation-calc';
+import { submitApplicationAction, getQuestionnaireAction } from './actions';
 import {
   ApplicationAnswerItem,
   ApplicationSubmissionResult,
@@ -346,58 +346,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return diff > 0 ? diff : initialAge;
   }, [birthDate, initialAge]);
 
-  // Dynamic Recalculation of accurate premiums via actuarial rules
-  const quoteResult = useMemo(() => {
-    if (!selectedProduct) return null;
-    return simulationService.calculate(
-      {
-        productId: selectedProduct.id,
-        sumAssured,
-        termYears,
-        applicantAge: applicantAgeYears,
-        isSmoker: isVehicleCategory ? false : isSmoker,
-        gender: isVehicleCategory ? 'male' : gender,
-        occupationRisk: isVehicleCategory
-          ? (vehicleUsage as 'low' | 'standard' | 'high')
-          : initialOccupationRisk,
-        frequency,
-        selectedRiderIds: selectedRiders,
-      },
-      selectedProduct
-    );
-  }, [
-    selectedProduct,
-    sumAssured,
-    termYears,
-    applicantAgeYears,
-    isSmoker,
-    gender,
-    isVehicleCategory,
-    vehicleUsage,
-    initialOccupationRisk,
-    frequency,
-    selectedRiders,
-  ]);
-
-  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
-  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
-  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
-  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
-  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
-
-  // Dynamic Calculated Metrics
-  const calculatedDsr = useMemo(() => {
-    const annualEstIncome = Math.max(1, monthlyIncome * 12);
-    return Number(((annualPremium / annualEstIncome) * 100).toFixed(1));
-  }, [monthlyIncome, annualPremium]);
-
-  const calculatedBmi = useMemo(() => {
-    const heightM = Math.max(0.5, heightCm / 100);
-    return Number((weightKg / (heightM * heightM)).toFixed(1));
-  }, [weightKg, heightCm]);
-
-  const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
-
   // Dynamic Questionnaire State (kept for optional schema fallback)
   const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
 
@@ -422,7 +370,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       return;
     }
     let isCancelled = false;
-    productService.getQuestionnaire(selectedProduct.slug).then((q) => {
+    getQuestionnaireAction(selectedProduct.slug).then((q) => {
       if (!isCancelled && q) {
         setFetchedQuestionnaire(q);
       }
@@ -431,6 +379,96 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       isCancelled = true;
     };
   }, [selectedProduct, initialQuestionnaire]);
+
+  // Medical Pricing Factors & Surcharges from questionnaire / pricing rules
+  const criticalIllnessMultiplier = useMemo(() => {
+    const q = questionnaire?.questions?.find((item) => item.code === 'has_critical_illness');
+    const yesOpt = q?.options?.find((opt) => opt.value === 'yes');
+    if (yesOpt?.multiplier && yesOpt.multiplier > 1.0) {
+      return yesOpt.multiplier;
+    }
+    return 1.30;
+  }, [questionnaire]);
+
+  const hospitalizationMultiplier = useMemo(() => {
+    const q = questionnaire?.questions?.find(
+      (item) => item.code === 'has_hospitalization_2y' || item.code === 'has_hospitalization'
+    );
+    const yesOpt = q?.options?.find((opt) => opt.value === 'yes');
+    if (yesOpt?.multiplier && yesOpt.multiplier > 1.0) {
+      return yesOpt.multiplier;
+    }
+    return 1.20;
+  }, [questionnaire]);
+
+  const smokerMultiplier = selectedProduct?.smokerFactors?.yes ?? 1.35;
+  const smokerSurchargePct = Math.round((smokerMultiplier - 1) * 100);
+  const critSurchargePct = Math.round((criticalIllnessMultiplier - 1) * 100);
+  const hospSurchargePct = Math.round((hospitalizationMultiplier - 1) * 100);
+
+  // Dynamic Recalculation of accurate premiums via actuarial rules
+  const quoteResult = useMemo(() => {
+    if (!selectedProduct) return null;
+    return calculatePureSimulation(
+      {
+        productId: selectedProduct.id,
+        sumAssured,
+        termYears,
+        applicantAge: applicantAgeYears,
+        isSmoker: isVehicleCategory ? false : isSmoker,
+        gender: isVehicleCategory ? 'male' : gender,
+        occupationRisk: isVehicleCategory
+          ? (vehicleUsage as 'low' | 'standard' | 'high')
+          : initialOccupationRisk,
+        frequency,
+        selectedRiderIds: selectedRiders,
+        dynamicMultipliers: {
+          ...(!isVehicleCategory && hasCriticalIllness
+            ? { 'Riwayat Penyakit Kritis': criticalIllnessMultiplier }
+            : {}),
+          ...(!isVehicleCategory && hasHospitalization
+            ? { 'Riwayat Rawat Inap (Opname)': hospitalizationMultiplier }
+            : {}),
+        },
+      },
+      selectedProduct
+    );
+  }, [
+    selectedProduct,
+    sumAssured,
+    termYears,
+    applicantAgeYears,
+    isSmoker,
+    gender,
+    isVehicleCategory,
+    vehicleUsage,
+    initialOccupationRisk,
+    frequency,
+    selectedRiders,
+    hasCriticalIllness,
+    criticalIllnessMultiplier,
+    hasHospitalization,
+    hospitalizationMultiplier,
+  ]);
+
+  const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
+  const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
+  const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
+  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
+  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
+
+  // Dynamic Calculated Metrics
+  const calculatedDsr = useMemo(() => {
+    const annualEstIncome = Math.max(1, monthlyIncome * 12);
+    return Number(((annualPremium / annualEstIncome) * 100).toFixed(1));
+  }, [monthlyIncome, annualPremium]);
+
+  const calculatedBmi = useMemo(() => {
+    const heightM = Math.max(0.5, heightCm / 100);
+    return Number((weightKg / (heightM * heightM)).toFixed(1));
+  }, [weightKg, heightCm]);
+
+  const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
   // Step Validation
   const validateStep = (step: number): boolean => {
@@ -645,6 +683,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       setErrors({
         submit: message,
       });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -1359,15 +1398,15 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               ) : (
                 /* Life / Health medical questions */
                 <>
-                  {/* Height & Weight */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Height, Weight & BMI - 3 columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
                     <Input
                       label="Tinggi Badan (cm):"
                       type="number"
                       value={String(heightCm)}
                       onChange={(e) => setHeightCm(Number(e.target.value))}
                       errorMessage={errors.heightCm}
-                      helperText="Minimal 100 cm s/d 250 cm"
+                      placeholder="175 cm"
                     />
 
                     <Input
@@ -1376,109 +1415,92 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       value={String(weightKg)}
                       onChange={(e) => setWeightKg(Number(e.target.value))}
                       errorMessage={errors.weightKg}
-                      helperText="Minimal 30 kg s/d 200 kg"
+                      placeholder="68 kg"
                     />
-                  </div>
 
-                  {/* BMI Result Badge */}
-                  <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-emerald-900 block">
-                        Indeks Massa Tubuh (BMI): {calculatedBmi}
+                    <div className="w-full space-y-1.5 text-left">
+                      <span className="block text-xs font-semibold text-slate-700 select-none">
+                        Indeks Massa Tubuh (BMI):
                       </span>
-                      <span className="text-emerald-800/80 text-[11px]">
-                        {calculatedBmi >= 18.5 && calculatedBmi <= 24.9
-                          ? 'Rentang Normal / Sehat (Ideal Risk Level)'
-                          : calculatedBmi < 18.5
-                          ? 'Berat Badan Kurang (Underweight)'
-                          : 'Berat Badan Berlebih (Perlu Penyesuaian)'}
-                      </span>
+                      <div className="h-[38px] px-3.5 rounded-lg border border-emerald-300 bg-emerald-50/80 flex items-center justify-center text-xs sm:text-sm font-bold text-emerald-800 shadow-2xs">
+                        BMI: {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Normal / Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                      </div>
                     </div>
-                    <span className="text-xs font-extrabold px-3 py-1 bg-white text-emerald-700 border border-emerald-300 rounded-full">
-                      ✓ BMI OPTIMAL
-                    </span>
                   </div>
 
                   {/* Smoker Toggle */}
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 block">
-                        Status Penggunaan Tembakau & Rokok:
-                      </span>
-                      <p className="text-[11px] text-slate-500">
-                        Termasuk rokok konvensional maupun elektrik (vape) dalam 12 bulan terakhir.
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-xs font-semibold text-slate-700 select-none">
+                      Status Kebiasaan Merokok / Tembakau / Vape:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setIsSmoker(false)}
                         aria-pressed={!isSmoker}
-                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           !isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {!isSmoker ? '✓ ' : ''}Bukan Perokok
+                        {!isSmoker ? '✓ ' : ''}Tidak Merokok (Standar 0%)
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsSmoker(true)}
                         aria-pressed={isSmoker}
-                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                           isSmoker
                             ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {isSmoker ? '✓ ' : ''}Perokok Aktif
+                        {isSmoker ? '✓ ' : ''}Perokok Aktif (Surcharge +{smokerSurchargePct}%)
                       </button>
                     </div>
                   </div>
 
-                  {/* Critical Illness Question with Dynamic Branching */}
-                  <div className="space-y-2 p-4 rounded-2xl border border-slate-200 bg-slate-50/30">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-slate-900 block">
-                          Riwayat Penyakit Kritis:
-                        </span>
-                        <p className="text-[11px] text-slate-500">
-                          Pernahkah didiagnosis kanker, serangan jantung, stroke, ginjal, atau diabetes?
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setHasCriticalIllness(false)}
-                          aria-pressed={!hasCriticalIllness}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            !hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHasCriticalIllness(true)}
-                          aria-pressed={hasCriticalIllness}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {hasCriticalIllness ? '✓ ' : ''}Pernah
-                        </button>
-                      </div>
+                  {/* Critical Illness Question */}
+                  <div className="space-y-1.5 text-left">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 select-none">
+                        Riwayat Penyakit Kritis:
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Pernahkah didiagnosis kanker, serangan jantung, stroke, ginjal, atau diabetes?
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasCriticalIllness(false)}
+                        aria-pressed={!hasCriticalIllness}
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                          !hasCriticalIllness
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah (Standar 0%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHasCriticalIllness(true)}
+                        aria-pressed={hasCriticalIllness}
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                          hasCriticalIllness
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {hasCriticalIllness ? '✓ ' : ''}Pernah (Surcharge +{critSurchargePct}%)
+                      </button>
                     </div>
 
                     {/* Conditional Branching for Critical Illness */}
                     {hasCriticalIllness && (
-                      <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="pt-2">
                         <Input
                           label="Rincian Diagnosa & Tahun Terjadinya Penyakit Kritis:"
                           placeholder="Contoh: Diabetes tipe 2 tahun 2023, pengobatan rutin"
@@ -1491,48 +1513,46 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     )}
                   </div>
 
-                  {/* Hospitalization Question with Dynamic Branching */}
-                  <div className="space-y-2 p-4 rounded-2xl border border-slate-200 bg-slate-50/30">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-slate-900 block">
-                          Riwayat Rawat Inap (Opname) 2 Tahun Terakhir:
-                        </span>
-                        <p className="text-[11px] text-slate-500">
-                          Apakah pernah menjalani rawat inap di rumah sakit atau operasi bedah?
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setHasHospitalization(false)}
-                          aria-pressed={!hasHospitalization}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            !hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHasHospitalization(true)}
-                          aria-pressed={hasHospitalization}
-                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                            hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                          }`}
-                        >
-                          {hasHospitalization ? '✓ ' : ''}Pernah
-                        </button>
-                      </div>
+                  {/* Hospitalization Question */}
+                  <div className="space-y-1.5 text-left">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 select-none">
+                        Riwayat Rawat Inap (Opname) 2 Tahun Terakhir:
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Apakah pernah menjalani rawat inap di rumah sakit atau operasi bedah?
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasHospitalization(false)}
+                        aria-pressed={!hasHospitalization}
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                          !hasHospitalization
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {!hasHospitalization ? '✓ ' : ''}Tidak Pernah (Standar 0%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHasHospitalization(true)}
+                        aria-pressed={hasHospitalization}
+                        className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                          hasHospitalization
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {hasHospitalization ? '✓ ' : ''}Pernah (Surcharge +{hospSurchargePct}%)
+                      </button>
                     </div>
 
                     {/* Conditional Branching for Hospitalization */}
                     {hasHospitalization && (
-                      <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="pt-2">
                         <Input
                           label="Rincian Alasan Rawat Inap & Nama Rumah Sakit:"
                           placeholder="Contoh: Operasi usus buntu tahun 2025 di RS Siloam, sembuh total"
@@ -1689,11 +1709,23 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       {isVehicleCategory ? 'Kendaraan Terdaftar' : `BMI: ${calculatedBmi} (Normal)`}
                     </span>
                     <span className="text-xs text-slate-500 block">
-                      {isVehicleCategory ? vehiclePlate : (isSmoker ? 'Perokok Aktif (+45%)' : 'Non-Smoker Standard')}
+                      {isVehicleCategory
+                        ? vehiclePlate
+                        : [
+                            isSmoker ? `Perokok (+${smokerSurchargePct}%)` : 'Non-Smoker',
+                            hasCriticalIllness ? `Penyakit (+${critSurchargePct}%)` : null,
+                            hasHospitalization ? `Rawat Inap (+${hospSurchargePct}%)` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                    {isVehicleCategory ? '✓ Plat Terverifikasi' : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
+                    {isVehicleCategory
+                      ? '✓ Plat Terverifikasi'
+                      : hasCriticalIllness || hasHospitalization
+                      ? '✓ Deklarasi Terisi'
+                      : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
                   </span>
                 </div>
               </div>
@@ -1789,29 +1821,31 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   <span className="block text-xs font-semibold text-slate-700">
                     Frekuensi Pembayaran Premi:
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200/80">
                     <button
                       type="button"
                       onClick={() => setFrequency('annually')}
                       aria-pressed={frequency === 'annually'}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                         frequency === 'annually'
-                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                          : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
-                      {frequency === 'annually' ? '✓ ' : ''}Tahunan (Hemat 6% - Diskon API)
+                      <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'annually' ? 'bg-emerald-400' : 'bg-transparent'}`} />
+                      {frequency === 'annually' ? '✓ ' : ''}Tahunan (Hemat {savingsPercent}% - Diskon API)
                     </button>
                     <button
                       type="button"
                       onClick={() => setFrequency('monthly')}
                       aria-pressed={frequency === 'monthly'}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                         frequency === 'monthly'
-                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                          : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
+                      <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'monthly' ? 'bg-sky-400' : 'bg-transparent'}`} />
                       {frequency === 'monthly' ? '✓ ' : ''}Bulanan (Pembayaran Rutin)
                     </button>
                   </div>
@@ -1896,8 +1930,15 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
 
               {errors.submit && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
-                  {errors.submit}
+                <div
+                  role="alert"
+                  className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-900 text-sm font-semibold flex items-start gap-3 shadow-xs"
+                >
+                  <span className="text-rose-600 text-xl leading-none shrink-0">⚠️</span>
+                  <div className="space-y-1 text-left">
+                    <span className="font-bold block text-rose-800">Gagal Mengirim Pengajuan ke Core API:</span>
+                    <span className="text-xs text-rose-700 block font-normal leading-relaxed">{errors.submit}</span>
+                  </div>
                 </div>
               )}
 
@@ -1955,23 +1996,35 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             </div>
 
             {/* Price Box */}
-            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
-              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight text-white">
-                  {formatRupiah(activePremium)}
-                </span>
-                <span className="text-xs text-slate-400">
-                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5 transition-all duration-300 shadow-inner">
+              <div key={`app-badge-${frequency}`} className="animate-badge-fade">
+                <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                  PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                {frequency === 'monthly'
-                  ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
-                  : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
-              </p>
+              <div className="flex items-baseline gap-2">
+                <div
+                  key={`app-price-${frequency}-${activePremium}`}
+                  className="flex items-baseline gap-2 animate-price-fade"
+                >
+                  <span className="text-3xl font-extrabold tracking-tight text-white">
+                    {formatRupiah(activePremium)}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">
+                    / {frequency === 'annually' ? 'tahun' : 'bulan'}
+                  </span>
+                </div>
+              </div>
+              <div
+                key={`app-desc-${frequency}-${annualPremium}-${monthlyPremium}`}
+                className="animate-desc-fade min-h-[1.25rem]"
+              >
+                <p className="text-xs text-slate-400">
+                  {frequency === 'monthly'
+                    ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
+                    : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
+                </p>
+              </div>
             </div>
 
             {/* Policy Parameters */}
@@ -1989,7 +2042,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center text-slate-300">
                 <span>Frekuensi Pembayaran</span>
-                <span className="font-semibold text-white capitalize">
+                <span
+                  key={`app-freq-val-${frequency}`}
+                  className="font-semibold text-white capitalize animate-smooth-fade"
+                >
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
@@ -2066,13 +2122,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     </span>
                   </div>
                 )}
+                {!isVehicleCategory && hasCriticalIllness && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Loading Riwayat Penyakit</span>
+                    <span className="font-semibold text-amber-400">+{critSurchargePct}%</span>
+                  </div>
+                )}
+                {!isVehicleCategory && hasHospitalization && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Loading Rawat Inap</span>
+                    <span className="font-semibold text-amber-400">+{hospSurchargePct}%</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
                   <span className="font-semibold text-emerald-400">{calculatedDsr}% (Aman &lt; 35%)</span>
                 </div>
                 <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
                   <span className="text-slate-400">Skema Pembayaran</span>
-                  <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                  <span
+                    key={`app-schema-freq-${frequency}`}
+                    className={`animate-smooth-fade ${frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}`}
+                  >
                     {frequency === 'annually' ? `Tahunan (Hemat ${quoteResult?.breakdown?.annualDiscountPercent ?? 6}%)` : 'Bulanan Rutin'}
                   </span>
                 </div>

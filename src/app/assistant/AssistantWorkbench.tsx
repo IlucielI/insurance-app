@@ -12,9 +12,13 @@ import {
 } from '@/types/assistant.types';
 import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
-import { Input } from '@/components/atoms/Input';
 import { Spinner } from '@/components/atoms/Spinner';
-import { assistantService } from '@/server/di';
+import {
+  startNewSessionAction,
+  sendAssistantMessageAction,
+  getChatSessionAction,
+  resetSessionAction,
+} from './actions';
 import { ChatMessageContent } from './ChatMessageContent';
 
 export interface AssistantWorkbenchProps {
@@ -68,15 +72,17 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [activeSession?.messages, isSending]);
-
   const messageCounterRef = useRef(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea to fit multiline input up to max-h
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+    }
+  }, [inputText]);
 
   // 1. Hydrate sessions from localStorage on client mount
   useEffect(() => {
@@ -112,7 +118,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const handleCreateNewSession = async () => {
     try {
-      const created = await assistantService.startNewSession();
+      const created = await startNewSessionAction();
       const uniqueId = created?.id || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       messageCounterRef.current += 1;
       const initialMessages: ChatMessage[] =
@@ -181,7 +187,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
     messageCounterRef.current += 1;
     const tempId = `temp-${messageCounterRef.current}`;
-    // Optimistically append user message to UI
+    // Optimistically append user message and initial assistant placeholder to UI immediately
     const tempUserMsg: ChatMessage = {
       id: tempId,
       sender: 'user',
@@ -189,20 +195,28 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       timestamp: 'Baru saja',
     };
 
+    messageCounterRef.current += 1;
+    const streamAssistantId = `ai-stream-${messageCounterRef.current}`;
+
+    const initialAiMsg: ChatMessage = {
+      id: streamAssistantId,
+      sender: 'assistant',
+      content: '',
+      timestamp: 'Sedang mengetik...',
+    };
+
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSession.id) {
           return {
             ...s,
-            messages: [...s.messages, tempUserMsg],
+            messages: [...s.messages, tempUserMsg, initialAiMsg],
           };
         }
         return s;
       })
     );
 
-    messageCounterRef.current += 1;
-    const streamAssistantId = `ai-stream-${messageCounterRef.current}`;
     let streamSuccess = false;
 
     // 1. Attempt SSE Real-Time Streaming via /api/assistant/chat/stream
@@ -224,25 +238,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       });
 
       if (res.ok && res.body) {
-        // Append initial empty assistant message for streaming
-        const initialAiMsg: ChatMessage = {
-          id: streamAssistantId,
-          sender: 'assistant',
-          content: '',
-          timestamp: 'Sedang mengetik...',
-        };
-
-        setSessions((prev) =>
-          prev.map((s) => {
-            if (s.id === activeSession.id) {
-              return {
-                ...s,
-                messages: [...s.messages, initialAiMsg],
-              };
-            }
-            return s;
-          })
-        );
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -460,14 +455,14 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
     // 2. Fallback to assistantService.sendMessage if streaming did not produce content
     if (!streamSuccess) {
       try {
-        const aiResponse = await assistantService.sendMessage(
+        const aiResponse = await sendAssistantMessageAction(
           activeSession.id,
           textToSend
         );
 
         // Attempt to refresh updated session with refreshed metadata (e.g. title)
         try {
-          const refreshedSession = await assistantService.getChatSession(
+          const refreshedSession = await getChatSessionAction(
             activeSession.id
           );
 
@@ -481,13 +476,16 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
           console.error('Failed to refresh session, applying fallback', refreshErr);
         }
 
-        // Fallback: append response directly if refresh unavailable
+        // Fallback: update placeholder response with answer
         setSessions((prev) =>
           prev.map((s) => {
             if (s.id === activeSession.id) {
+              const hasPlaceholder = s.messages.some((m) => m.id === streamAssistantId);
               return {
                 ...s,
-                messages: [...s.messages, aiResponse],
+                messages: hasPlaceholder
+                  ? s.messages.map((m) => (m.id === streamAssistantId ? aiResponse : m))
+                  : [...s.messages, aiResponse],
               };
             }
             return s;
@@ -495,13 +493,15 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         );
       } catch (error) {
         console.error('Failed to send message', error);
-        // Rollback optimistic user message to prevent UI inconsistency on failure
+        // Rollback optimistic user message and assistant placeholder on failure
         setSessions((prev) =>
           prev.map((s) => {
             if (s.id === activeSession.id) {
               return {
                 ...s,
-                messages: s.messages.filter((m) => m.id !== tempId),
+                messages: s.messages.filter(
+                  (m) => m.id !== tempId && m.id !== streamAssistantId
+                ),
               };
             }
             return s;
@@ -532,7 +532,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       }
 
       // 2. Call local service reset
-      await assistantService.resetSessionMessages(oldSessionId).catch(() => {});
+      await resetSessionAction(oldSessionId).catch(() => {});
 
       // 3. Generate a fresh new unique session ID
       const newSessionId = `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -864,9 +864,13 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                             renderFormattedContent(msg.content)
                           )
                         ) : (
-                          <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
-                            <Spinner size="sm" />
-                            <span>Sedang mensintesis rujukan polis OJK...</span>
+                          <div className="flex items-center gap-2.5 py-1 px-1">
+                            <div className="flex items-center gap-1.5" aria-label="Sedang mengetik...">
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-medium">Sedang memproses...</span>
                           </div>
                         )}
 
@@ -993,35 +997,46 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   e.preventDefault();
                   handleSendMessage();
                 }}
-                className="flex items-center gap-2"
+                className="flex items-end gap-2"
               >
                 <div className="flex-1 relative">
-                  <Input
+                  <textarea
+                    ref={textareaRef}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!isSending && inputText.trim()) {
+                          handleSendMessage();
+                        }
+                      }
+                    }}
                     placeholder="Ketik pertanyaan seputar produk, pendaftaran asuransi, simulasi premi, atau polis..."
-                    className="text-xs sm:text-sm h-11 pr-10 border-slate-300 rounded-xl"
+                    className="w-full text-xs sm:text-sm py-2.5 px-3.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none min-h-[44px] max-h-[140px] leading-relaxed text-slate-800 placeholder:text-slate-400 bg-white"
+                    rows={1}
                     disabled={isSending}
                   />
-                  <span className="absolute right-3 top-3 text-slate-400 text-sm">
-                    📎
-                  </span>
                 </div>
                 <Button
                   type="submit"
                   variant="primary"
                   size="md"
                   disabled={isSending || !inputText.trim()}
-                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shrink-0"
                 >
                   {isSending ? <Spinner size="sm" /> : 'Kirim ➔'}
                 </Button>
               </form>
 
-              <p className="text-[11px] text-slate-400 text-center">
-                🔒 Percakapan ini dienkripsi secara aman. Jawaban disintesis langsung dari basis data polis
-                resmi Bayu Insurance yang diawasi OJK.
-              </p>
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>
+                  Tekan <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px]">Enter ↵</kbd> kirim, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px]">Shift + Enter</kbd> baris baru.
+                </span>
+                <span className="hidden sm:inline">
+                  🔒 Basis Data Polis OJK
+                </span>
+              </div>
             </div>
           </Card>
         </section>

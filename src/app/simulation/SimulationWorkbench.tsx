@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { InsuranceProduct, ProductQuestionDTO } from '@/server/repositories/product.repository.interface';
 import { SimulationResult } from '@/types/simulation.types';
-import { simulationService, productRepository } from '@/server/di';
+import { calculatePureSimulation } from '@/lib/simulation-calc';
+import { calculateSimulationAction, getQuestionnaireAction } from './actions';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
@@ -19,8 +20,12 @@ export interface SimulationWorkbenchProps {
 
 export function getDefaultQuestionsForProduct(product?: InsuranceProduct): ProductQuestionDTO[] {
   const prodId = product?.id ?? 'default';
+  const isVehicle =
+    product?.categoryKey === 'vehicle' ||
+    product?.category?.toLowerCase() === 'kendaraan' ||
+    product?.category?.toLowerCase() === 'vehicle';
 
-  if (product?.categoryKey === 'vehicle') {
+  if (isVehicle) {
     return [
       {
         id: `q_${prodId}_vehicle_usage`,
@@ -191,16 +196,27 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     );
   });
 
-  const minTerm = currentProduct?.minTermYears || 5;
-  const maxTerm = currentProduct?.maxTermYears || 30;
-  const productMinAge = currentProduct?.minAge || 18;
-  const productMaxAge = currentProduct?.maxAge || 60;
+  const isVehicle =
+    currentProduct?.categoryKey === 'vehicle' ||
+    currentProduct?.category?.toLowerCase() === 'kendaraan' ||
+    currentProduct?.category?.toLowerCase() === 'vehicle';
+
+  const minTerm = currentProduct?.minTermYears || (isVehicle ? 1 : 5);
+  const maxTerm = currentProduct?.maxTermYears || (isVehicle ? 10 : 30);
+  const productMinAge = isVehicle
+    ? (currentProduct?.minAge !== undefined && currentProduct.minAge <= 5 ? currentProduct.minAge : 0)
+    : (currentProduct?.minAge || 18);
+  const productMaxAge = isVehicle
+    ? (currentProduct?.maxAge !== undefined && currentProduct.maxAge <= 25 ? currentProduct.maxAge : 15)
+    : (currentProduct?.maxAge || 60);
 
   const [termYears, setTermYears] = useState<number>(() => {
     return Math.max(minTerm, Math.min(10, maxTerm));
   });
   const [applicantAge, setApplicantAge] = useState<number>(() => {
-    return Math.max(productMinAge, Math.min(32, productMaxAge));
+    return isVehicle
+      ? Math.max(productMinAge, Math.min(3, productMaxAge))
+      : Math.max(productMinAge, Math.min(32, productMaxAge));
   });
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [isSmoker, setIsSmoker] = useState<boolean>(false);
@@ -241,11 +257,14 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     if (!currentProduct) return;
     let isMounted = true;
     const currentSlug = currentProduct.slug || currentProduct.id;
-    const isVehicle = currentProduct.categoryKey === 'vehicle';
+    const isVehicle =
+      currentProduct.categoryKey === 'vehicle' ||
+      currentProduct.category?.toLowerCase() === 'kendaraan' ||
+      currentProduct.category?.toLowerCase() === 'vehicle';
 
     const fetchQuestionnaire = async () => {
       try {
-        const questionnaire = await productRepository.getQuestionnaire(currentSlug);
+        const questionnaire = await getQuestionnaireAction(currentSlug);
         if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
           let pricingQuestions = questionnaire.questions.filter(
             (q) =>
@@ -254,9 +273,18 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               ['has_critical_illness', 'has_hospitalization_2y'].includes(q.code)
           );
           if (isVehicle) {
-            // For vehicle insurance, exclude human life factors (gender, smoker)
+            // For vehicle insurance, exclude human life & health factors (gender, smoker, illnesses, hospitalization)
             pricingQuestions = pricingQuestions.filter(
-              (q) => !['gender', 'is_smoker', 'smoker'].includes(q.code)
+              (q) =>
+                ![
+                  'gender',
+                  'is_smoker',
+                  'smoker',
+                  'has_critical_illness',
+                  'has_hospitalization_2y',
+                  'critical_illness',
+                  'hospitalization',
+                ].includes(q.code)
             );
             // Ensure vehicle usage options match pricing rules
             pricingQuestions = pricingQuestions.map((q) => {
@@ -331,9 +359,22 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         const newMaxTerm = newProduct.maxTermYears || 30;
         setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
       }
-      setApplicantAge((prev) =>
-        Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
-      );
+      const isNewVeh =
+        newProduct.categoryKey === 'vehicle' ||
+        newProduct.category?.toLowerCase() === 'kendaraan' ||
+        newProduct.category?.toLowerCase() === 'vehicle';
+      const newMinAge = isNewVeh
+        ? (newProduct.minAge !== undefined && newProduct.minAge <= 5 ? newProduct.minAge : 0)
+        : (newProduct.minAge || 18);
+      const newMaxAge = isNewVeh
+        ? (newProduct.maxAge !== undefined && newProduct.maxAge <= 25 ? newProduct.maxAge : 15)
+        : (newProduct.maxAge || 60);
+
+      setApplicantAge((prev) => {
+        if (isNewVeh && prev > 15) return 3;
+        if (!isNewVeh && prev < 18) return 32;
+        return Math.max(newMinAge, Math.min(prev, newMaxAge));
+      });
       // Retain only riders available on the new product
       if (newProduct.riders) {
         const availableRiderIds = newProduct.riders.map((r) => r.id);
@@ -371,9 +412,22 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
           const newMaxTerm = newProduct.maxTermYears || 30;
           setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
         }
-        setApplicantAge((prev) =>
-          Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
-        );
+        const isNewVeh =
+          newProduct.categoryKey === 'vehicle' ||
+          newProduct.category?.toLowerCase() === 'kendaraan' ||
+          newProduct.category?.toLowerCase() === 'vehicle';
+        const newMinAge = isNewVeh
+          ? (newProduct.minAge !== undefined && newProduct.minAge <= 5 ? newProduct.minAge : 0)
+          : (newProduct.minAge || 18);
+        const newMaxAge = isNewVeh
+          ? (newProduct.maxAge !== undefined && newProduct.maxAge <= 25 ? newProduct.maxAge : 15)
+          : (newProduct.maxAge || 60);
+
+        setApplicantAge((prev) => {
+          if (isNewVeh && prev > 15) return 3;
+          if (!isNewVeh && prev < 18) return 32;
+          return Math.max(newMinAge, Math.min(prev, newMaxAge));
+        });
         if (newProduct.riders) {
           const availableRiderIds = newProduct.riders.map((r) => r.id);
           setSelectedRiderIds((prev) => prev.filter((id) => availableRiderIds.includes(id)));
@@ -406,7 +460,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   // Initial Sync Calculation Result for instant preview
   const syncSimulationResult = useMemo(() => {
     if (!currentProduct) return null;
-    return simulationService.calculate(
+    return calculatePureSimulation(
       {
         productId: currentProduct.id,
         sumAssured,
@@ -451,7 +505,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       setCalculationError(null);
       try {
 
-        const res = await simulationService.calculateAsync(
+        const res = await calculateSimulationAction(
           {
             productId: currentProduct.id,
             sumAssured,
@@ -499,8 +553,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     dynamicMultipliers,
   ]);
 
-
-  const simulationResult = asyncSimulationResult || syncSimulationResult;
+  const simulationResult = calculationError
+    ? null
+    : (asyncSimulationResult || syncSimulationResult);
 
   // Navigate to application page with pre-filled actuarial quote
   const handleContinueApply = () => {
@@ -634,7 +689,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     return Math.round(((monthlyLoading - annualLoading) / monthlyLoading) * 100);
   }, [currentProduct]);
 
-  if (!currentProduct || !simulationResult) {
+  if (!currentProduct) {
     return (
       <div className="py-20 text-center text-slate-500">
         Memuat data kalkulator simulasi premi...
@@ -813,34 +868,42 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Form Panel (Y: 370 - 1520) */}
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-8 text-left">
-          {/* Sub-section 1: Profil Risiko Tertanggung */}
+          {/* Sub-section 1: Profil Risiko Tertanggung / Objek Kendaraan */}
           <section aria-labelledby="heading-risk-profile" className="space-y-5">
             <div className="space-y-1">
               <h2 id="heading-risk-profile" className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
-                1. Profil Risiko Tertanggung
+                {isVehicle ? '1. Profil Objek Kendaraan' : '1. Profil Risiko Tertanggung'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500">
-                Parameter ini memengaruhi faktor risiko underwriting otomatis pada Core API.
+                {isVehicle
+                  ? 'Parameter usia dan operasional kendaraan memengaruhi faktor risiko underwriting otomatis pada Core API.'
+                  : 'Parameter ini memengaruhi faktor risiko underwriting otomatis pada Core API.'}
               </p>
             </div>
 
             {/* Usia Input & Visual Box */}
             <div className="space-y-2">
               <label htmlFor="input-age" className="block text-xs sm:text-sm font-semibold text-slate-700">
-                Usia Tertanggung:
+                {isVehicle ? 'Usia Kendaraan:' : 'Usia Tertanggung:'}
               </label>
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-extrabold text-[#0f172a]">{applicantAge} Tahun</span>
                 </div>
                 <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
-                  Faktor Risiko Usia: {simulationResult.breakdown.ageFactor}x (Rentang {ageRangeLabel})
+                  {isVehicle ? 'Faktor Risiko Usia Kendaraan:' : 'Faktor Risiko Usia:'}{' '}
+                  {simulationResult?.breakdown?.ageFactor ? `${simulationResult.breakdown.ageFactor}x` : '-'}{' '}
+                  (Rentang {ageRangeLabel})
                 </span>
               </div>
 
               <div className="pt-2">
                 <Slider
-                  label={`Geser untuk mengatur usia nasabah (${productMinAge} - ${productMaxAge} tahun):`}
+                  label={
+                    isVehicle
+                      ? `Geser untuk mengatur usia kendaraan (${productMinAge} - ${productMaxAge} tahun):`
+                      : `Geser untuk mengatur usia nasabah (${productMinAge} - ${productMaxAge} tahun):`
+                  }
                   min={productMinAge}
                   max={productMaxAge}
                   step={1}
@@ -855,7 +918,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <div className="pt-1 w-40">
                 <Input
                   id="input-age"
-                  label="Input Manual Usia:"
+                  label={isVehicle ? 'Input Manual Usia Kendaraan:' : 'Input Manual Usia:'}
                   type="number"
                   min={productMinAge}
                   max={productMaxAge}
@@ -1027,29 +1090,31 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <span className="block text-xs sm:text-sm font-semibold text-slate-700">
                 Frekuensi Pembayaran Premi:
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1 rounded-2xl bg-slate-100 border border-slate-200/80">
                 <button
                   type="button"
                   onClick={() => setFrequency('annually')}
                   aria-pressed={frequency === 'annually'}
-                  className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                  className={`p-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                     frequency === 'annually'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                      ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
+                  <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'annually' ? 'bg-emerald-400' : 'bg-transparent'}`} />
                   Tahunan (Hemat {annualDiscountPercent}% - Diskon API)
                 </button>
                 <button
                   type="button"
                   onClick={() => setFrequency('monthly')}
                   aria-pressed={frequency === 'monthly'}
-                  className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
+                  className={`p-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 text-center flex items-center justify-center gap-1.5 ${
                     frequency === 'monthly'
-                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                      ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/10 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
+                  <span className={`inline-block w-2 h-2 rounded-full transition-colors ${frequency === 'monthly' ? 'bg-sky-400' : 'bg-transparent'}`} />
                   Bulanan (Pembayaran Rutin)
                 </button>
               </div>
@@ -1142,8 +1207,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             </div>
 
             {calculationError && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
-                <span className="font-semibold">Info:</span> {calculationError}
+              <div className="p-3.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs space-y-1">
+                <span className="font-bold text-rose-300 block">Koneksi / Perhitungan Gagal:</span>
+                <p>{calculationError}</p>
               </div>
             )}
 
@@ -1157,23 +1223,62 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             </div>
 
             {/* Price Box */}
-            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
-              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight text-white">
-                  {formatRupiah(simulationResult.activePremium)}
-                </span>
-                <span className="text-xs text-slate-400">
-                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5 transition-all duration-300 shadow-inner">
+              <div key={`badge-${frequency}`} className="animate-badge-fade">
+                <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                  PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                {frequency === 'monthly'
-                  ? `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} per tahun`
-                  : `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} per bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`}
-              </p>
+              <div className="flex items-baseline gap-2">
+                <div
+                  key={`val-${frequency}-${simulationResult?.activePremium ?? 'loading'}`}
+                  className="flex items-baseline gap-2 animate-price-fade"
+                >
+                  <span
+                    className={`text-3xl font-extrabold tracking-tight text-white transition-opacity duration-200 ${
+                      isCalculating && simulationResult ? 'opacity-85' : 'opacity-100'
+                    }`}
+                  >
+                    {isCalculating && !simulationResult
+                      ? 'Menghitung...'
+                      : simulationResult
+                      ? formatRupiah(simulationResult.activePremium)
+                      : 'Rp -'}
+                  </span>
+                  {simulationResult && (
+                    <span className="text-xs text-slate-400">
+                      / {frequency === 'annually' ? 'tahun' : 'bulan'}
+                    </span>
+                  )}
+                </div>
+                {isCalculating && simulationResult && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-500/20 text-sky-300 animate-pulse ml-1"
+                    title="Menyinkronkan tarif..."
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                    Sync
+                  </span>
+                )}
+              </div>
+              <div
+                key={`desc-${frequency}-${simulationResult?.monthlyPremium}-${simulationResult?.annualPremium}`}
+                className="animate-desc-fade min-h-[1.25rem]"
+              >
+                {simulationResult ? (
+                  <p className="text-xs text-slate-400">
+                    {frequency === 'monthly'
+                      ? `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} per tahun`
+                      : `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} per bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    {calculationError
+                      ? 'Gagal memuat tarif aktuaria dari API'
+                      : 'Sedang menghitung estimasi premi aktuaria...'}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Policy Parameters */}
@@ -1191,7 +1296,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center text-slate-300">
                 <span>Frekuensi Pembayaran</span>
-                <span className="font-semibold text-white capitalize">
+                <span
+                  key={`param-freq-${frequency}`}
+                  className="font-semibold text-white capitalize animate-smooth-fade"
+                >
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
@@ -1222,9 +1330,11 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-400">Usia Pemohon ({applicantAge} Thn)</span>
+                <span className="text-slate-400">
+                  {isVehicle ? `Usia Kendaraan (${applicantAge} Thn)` : `Usia Pemohon (${applicantAge} Thn)`}
+                </span>
                 <span className="font-semibold text-white">
-                  {simulationResult?.breakdown?.ageFactor ? `${simulationResult.breakdown.ageFactor}x` : '1.0x'}
+                  {simulationResult?.breakdown?.ageFactor ? `${simulationResult.breakdown.ageFactor}x` : '-'}
                 </span>
               </div>
               {currentProduct.categoryKey !== 'vehicle' && (
@@ -1232,13 +1342,13 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
                     <span className="font-semibold text-white">
-                      {simulationResult?.breakdown?.genderFactor ? `${simulationResult.breakdown.genderFactor}x` : '1.0x'}
+                      {simulationResult?.breakdown?.genderFactor ? `${simulationResult.breakdown.genderFactor}x` : '-'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
                     <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      {simulationResult?.breakdown?.smokerFactor ? `${simulationResult.breakdown.smokerFactor}x` : '1.0x'}
+                      {simulationResult?.breakdown?.smokerFactor ? `${simulationResult.breakdown.smokerFactor}x` : '-'}
                     </span>
                   </div>
                 </>
@@ -1247,7 +1357,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Risiko Profesi ({occupationRisk})</span>
                   <span className="font-semibold text-white">
-                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '-'}
                   </span>
                 </div>
               ) : (
@@ -1256,7 +1366,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                     Penggunaan Kendaraan ({occupationRisk === 'low' ? 'Pribadi / Santai' : occupationRisk === 'high' ? 'Komersial / Logistik' : 'Harian Kota'})
                   </span>
                   <span className="font-semibold text-white">
-                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '-'}
                   </span>
                 </div>
               )}
@@ -1274,7 +1384,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
               <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
                 <span className="text-slate-400">Skema Pembayaran</span>
-                <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                <span
+                  key={`schema-freq-${frequency}`}
+                  className={`animate-smooth-fade ${frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}`}
+                >
                   {frequency === 'annually' ? `Tahunan (Hemat ${annualDiscountPercent}%)` : 'Bulanan Rutin'}
                 </span>
               </div>
@@ -1290,8 +1403,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               <Button
                 size="lg"
                 variant="primary"
-                className="w-full font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3.5 shadow-md transition-all text-sm sm:text-base"
+                className="w-full font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3.5 shadow-md transition-all text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleContinueApply}
+                disabled={Boolean(calculationError || !simulationResult)}
               >
                 Lanjut ke Form Pendaftaran Polis (Step 1) →
               </Button>
@@ -1418,7 +1532,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             <div className="space-y-4 text-xs text-slate-600">
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px] space-y-1">
                 <p className="text-blue-700 font-semibold">
-                  Premi Tahunan = (UP × BaseRate × FaktorUsia × FaktorGender × FaktorRokok × FaktorPekerjaan) + BiayaRiders
+                  {isVehicle
+                    ? 'Premi Tahunan = (UP × BaseRate × FaktorUsiaKendaraan × FaktorPenggunaan) + BiayaRiders'
+                    : 'Premi Tahunan = (UP × BaseRate × FaktorUsia × FaktorGender × FaktorRokok × FaktorPekerjaan) + BiayaRiders'}
                 </p>
               </div>
 
@@ -1434,38 +1550,40 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Faktor Usia (Usia {simulationResult.applicantAge} Th):</span>
+                  <span>{isVehicle ? `Faktor Usia Kendaraan (${simulationResult?.applicantAge ?? applicantAge} Th):` : `Faktor Usia (Usia ${simulationResult?.applicantAge ?? applicantAge} Th):`}</span>
                   <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.ageFactor}x ({currentProduct.categoryKey === 'life' ? 'TMI-IV baseline 20 th' : 'Rentang ' + ageRangeLabel})
+                    {simulationResult?.breakdown?.ageFactor ? `${simulationResult.breakdown.ageFactor}x` : '1.0x'} ({isVehicle ? 'Rentang ' + ageRangeLabel : currentProduct.categoryKey === 'life' ? 'TMI-IV baseline 20 th' : 'Rentang ' + ageRangeLabel})
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Faktor Gender:</span>
-                  <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.genderFactor}x ({gender === 'male' ? 'Pria' : 'Wanita'})
-                  </span>
-                </div>
-                {currentProduct.categoryKey !== 'vehicle' && (
+                {!isVehicle && (
+                  <div className="flex justify-between">
+                    <span>Faktor Gender:</span>
+                    <span className="font-semibold text-slate-900">
+                      {simulationResult?.breakdown?.genderFactor ? `${simulationResult.breakdown.genderFactor}x` : '1.0x'} ({gender === 'male' ? 'Pria' : 'Wanita'})
+                    </span>
+                  </div>
+                )}
+                {!isVehicle && (
                   <div className="flex justify-between">
                     <span>Faktor Risiko Merokok:</span>
                     <span className="font-semibold text-slate-900">
-                      {simulationResult.breakdown.smokerFactor}x ({isSmoker ? 'Perokok Aktif' : 'Bukan Perokok'})
+                      {simulationResult?.breakdown?.smokerFactor ? `${simulationResult.breakdown.smokerFactor}x` : '1.0x'} ({isSmoker ? 'Perokok Aktif' : 'Bukan Perokok'})
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Faktor Risiko Pekerjaan:</span>
+                  <span>{isVehicle ? 'Faktor Penggunaan Kendaraan:' : 'Faktor Risiko Pekerjaan:'}</span>
                   <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.occupationFactor}x ({occupationRisk})
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'} ({occupationRisk})
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Faktor Tenor Perlindungan:</span>
                   <span className="font-semibold text-slate-900">
-                    {simulationResult.breakdown.termFactor ?? 1.0}x ({termYears} Tahun)
+                    {simulationResult?.breakdown?.termFactor ?? 1.0}x ({termYears} Tahun)
                   </span>
                 </div>
-                {simulationResult.breakdown.dynamicFactors
+                {simulationResult?.breakdown?.dynamicFactors
                   ?.filter(
                     (df) =>
                       !['gender', 'smoker', 'is_smoker', 'occupation', 'occupation_class'].includes(
@@ -1480,28 +1598,27 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   ))}
 
                 <div className="flex justify-between border-t border-slate-100 pt-2">
-
                   <span>Premi Dasar Tahunan:</span>
                   <span className="font-bold text-slate-900">
-                    {formatRupiah(simulationResult.breakdown.baseAnnualPremium)}
+                    {simulationResult ? formatRupiah(simulationResult.breakdown.baseAnnualPremium) : 'Rp -'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Total Biaya Riders ({simulationResult.selectedRiders.length}):</span>
+                  <span>Total Biaya Riders ({simulationResult?.selectedRiders?.length ?? 0}):</span>
                   <span className="font-bold text-blue-600">
-                    {formatRupiah(simulationResult.breakdown.ridersAnnualTotal)}
+                    {simulationResult ? formatRupiah(simulationResult.breakdown.ridersAnnualTotal) : 'Rp 0'}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-slate-100 pt-2 text-sm">
                   <span className="font-bold text-slate-900">Total Premi Tahunan:</span>
                   <span className="font-extrabold text-blue-700">
-                    {formatRupiah(simulationResult.annualPremium)}
+                    {simulationResult ? formatRupiah(simulationResult.annualPremium) : 'Rp -'}
                   </span>
                 </div>
               </div>
 
               <p className="text-[11px] text-slate-400 leading-relaxed italic border-t border-slate-100 pt-3">
-                Referensi Regulasi: {simulationResult.ojkTableReference}.
+                Referensi Regulasi: {simulationResult?.ojkTableReference || 'Surat Edaran OJK (SEOJK) Standar Aktuaria'}.
               </p>
             </div>
 

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 function resolveCoreApiBaseUrl(): string {
-  return (
-    process.env.CORE_API_INTERNAL_URL?.trim() ||
-    process.env.CORE_API_URL?.trim() ||
-    process.env.NEXT_PUBLIC_CORE_API_URL?.trim() ||
-    ''
-  );
+  return process.env.CORE_API_URL?.trim() || '';
 }
 
 export async function GET(

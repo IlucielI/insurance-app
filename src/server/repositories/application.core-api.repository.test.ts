@@ -105,14 +105,11 @@ describe('CoreApiApplicationRepository', () => {
     );
   });
 
-  it('falls back gracefully if Core API create call throws network error', async () => {
+  it('throws error if Core API create call encounters network failure', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network connection error'));
 
     const repo = new CoreApiApplicationRepository(mockBaseUrl);
-    const result = await repo.create(sampleApplication);
-
-    expect(result.id).toBe('APP-2026-1234');
-    expect(result.productName).toBe('Secure Life Plus');
+    await expect(repo.create(sampleApplication)).rejects.toThrow(/Network connection error/i);
   });
 
   it('finds application by ID via GET endpoint', async () => {
@@ -228,7 +225,7 @@ describe('CoreApiApplicationRepository', () => {
     expect(updated?.rfiDocuments?.[0].documentName).toBe('resume_medis.pdf');
   });
 
-  it('handles Core API HTTP error with structured error message gracefully', async () => {
+  it('throws structured error message when Core API returns 400', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
@@ -236,12 +233,12 @@ describe('CoreApiApplicationRepository', () => {
     } as Response);
 
     const repo = new CoreApiApplicationRepository(mockBaseUrl);
-    const result = await repo.create(sampleApplication);
-
-    expect(result.id).toBe('APP-2026-1234');
+    await expect(repo.create(sampleApplication)).rejects.toThrow(
+      /Core API application creation failed \(400\): NIK tidak valid atau sudah terdaftar/i
+    );
   });
 
-  it('handles Core API HTTP error with null JSON body without throwing TypeError', async () => {
+  it('handles Core API HTTP error with null JSON body and throws structured error without TypeError', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -250,8 +247,8 @@ describe('CoreApiApplicationRepository', () => {
     } as Response);
 
     const repo = new CoreApiApplicationRepository(mockBaseUrl);
-    const result = await repo.create(sampleApplication);
-
-    expect(result.id).toBe('APP-2026-1234');
+    await expect(repo.create(sampleApplication)).rejects.toThrow(
+      /Core API application creation failed \(500\): Internal Server Error/i
+    );
   });
 });

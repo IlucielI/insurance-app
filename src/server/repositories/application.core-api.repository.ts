@@ -46,23 +46,15 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
   }
 
   private resolveBaseUrl(): string {
-    if (typeof window !== 'undefined') {
-      return (
-        process.env.NEXT_PUBLIC_CORE_API_URL?.trim() ||
-        process.env.CORE_API_URL?.trim() ||
-        ''
-      );
-    }
-    return (
-      process.env.CORE_API_INTERNAL_URL?.trim() ||
-      process.env.CORE_API_URL?.trim() ||
-      process.env.NEXT_PUBLIC_CORE_API_URL?.trim() ||
-      ''
-    );
+    return process.env.CORE_API_URL?.trim() || '';
   }
 
   public async create(application: PolicyApplication): Promise<PolicyApplication> {
     const applicantAge = this.calculateAge(application.identity.birthDate);
+
+    const occupationClass =
+      (application.answers?.find((a) => a.code === 'occupation_class')?.value as string) ||
+      'standard';
 
     // Build dynamic answers array if available, or fallback to field mapping
     const answers = application.answers && application.answers.length > 0
@@ -80,19 +72,22 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
           { question_id: 'q_id_email', code: 'email', value: application.identity.email },
           { question_id: 'q_fin_occupation', code: 'occupation', value: application.financial.occupation },
           { question_id: 'q_fin_monthly_income', code: 'monthly_income', value: application.financial.monthlyIncome },
+          { question_id: 'q_fin_occupation_class', code: 'occupation_class', value: occupationClass },
+          { question_id: 'q_fin_monthly_expenses', code: 'monthly_expenses', value: application.financial.monthlyExpenses || Math.round(application.financial.monthlyIncome * 0.4) },
+          { question_id: 'q_fin_existing_debts', code: 'existing_debts_monthly', value: application.financial.existingDebtsMonthly || Math.round(application.financial.monthlyIncome * 0.1) },
           { question_id: 'q_med_weight', code: 'weight_kg', value: application.medical.weightKg },
           { question_id: 'q_med_height', code: 'height_cm', value: application.medical.heightCm },
           { question_id: 'q_med_smoker', code: 'is_smoker', value: application.medical.isSmoker ? 'yes' : 'no' },
           { question_id: 'q_med_critical_illness', code: 'has_critical_illness', value: application.medical.hasCriticalIllnessHistory ? 'yes' : 'no' },
           { question_id: 'q_med_hospitalization', code: 'has_hospitalization_2y', value: application.medical.hasHospitalizationLast2Years ? 'yes' : 'no' },
+          { question_id: 'q_med_family_history', code: 'has_family_history', value: application.medical.hasFamilyHistory ? 'yes' : 'no' },
           { question_id: 'q_ben_name', code: 'beneficiary_name', value: application.beneficiary.fullName },
           { question_id: 'q_ben_relationship', code: 'beneficiary_relationship', value: application.beneficiary.relationship },
           { question_id: 'q_ben_nik', code: 'beneficiary_nik', value: application.beneficiary.nik },
+          { question_id: 'q_ben_share', code: 'beneficiary_share', value: application.beneficiary.sharePercentage || 100 },
+          { question_id: 'q_legal_truth', code: 'agree_truth_declaration', value: true },
+          { question_id: 'q_legal_terms', code: 'agree_policy_terms', value: true },
         ];
-
-    const occupationClass =
-      (application.answers?.find((a) => a.code === 'occupation_class')?.value as string) ||
-      'standard';
 
     const payload = {
       product_id: application.productId,
@@ -144,16 +139,11 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
 
       return this.mapCoreApiApplication(created, application);
     } catch (err) {
-      // If Core API is unreachable or responds with error, log warning and fallback to returning application with generated ID
-      console.warn('[CoreApiApplicationRepository] Create failed, falling back to local simulation:', err);
-      const fallbackId = application.id.startsWith('APP-')
-        ? application.id
-        : `APP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      return {
-        ...application,
-        id: fallbackId,
-      };
+      console.error('[CoreApiApplicationRepository] Create failed:', err);
+      if (err instanceof Error) {
+        throw err;
+      }
+      throw new Error(`Gagal menghubungkan ke Core API: ${String(err)}`);
     }
   }
 
