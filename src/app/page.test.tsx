@@ -85,28 +85,4 @@ describe('HomePage & HomeWorkbench', () => {
     fireEvent.click(secondFaq);
     expect(screen.queryByText(/45 detik hingga 5 menit/i)).toBeNull();
   });
-
-  it('opens and closes the AI Assistant Drawer via the floating trigger', async () => {
-    const featured = await productService.getFeaturedProducts();
-    render(<HomeWorkbench initialFeaturedProducts={featured} />);
-
-    // FAB button
-    const fabButton = screen.getByRole('button', { name: /Tanya AI InsuRisk/i });
-    expect(fabButton).toBeDefined();
-
-    fireEvent.click(fabButton);
-
-    // Drawer header should appear
-    await waitFor(() => {
-      expect(screen.getByText('AI Insurance Assistant')).toBeDefined();
-    });
-
-    // Close button on drawer
-    const closeBtn = screen.getByRole('button', { name: 'Tutup Asisten' });
-    fireEvent.click(closeBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText('AI Insurance Assistant')).toBeNull();
-    });
-  });
 });

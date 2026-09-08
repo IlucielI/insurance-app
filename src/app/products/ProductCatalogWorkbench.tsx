@@ -9,7 +9,6 @@ import {
 } from '@/server/repositories/product.repository.interface';
 import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
-import { AIAssistantDrawer } from '@/components/organisms/AIAssistantDrawer';
 
 export interface ProductCatalogWorkbenchProps {
   initialProducts: InsuranceProduct[];
@@ -246,7 +245,6 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<CanonicalProductItem | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [showComparisonTable, setShowComparisonTable] = useState<boolean>(false);
 
   // Combine Penpot canonical products with any server-provided initial products
@@ -626,13 +624,12 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
         </div>
 
         <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 w-full lg:w-auto shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsDrawerOpen(true)}
+          <Link
+            href="/assistant"
             className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-blue-600/20 text-center cursor-pointer whitespace-nowrap"
           >
             Buka Chat AI Asisten →
-          </button>
+          </Link>
           <span className="text-[11px] text-slate-400 font-medium text-center sm:text-left lg:text-right">
             ⚡ Siaga 24/7 • Respons &lt; 1 Detik
           </span>
@@ -897,12 +894,6 @@ export const ProductCatalogWorkbench: React.FC<ProductCatalogWorkbenchProps> = (
           </div>
         </div>
       )}
-
-      {/* Floating AI Assistant Drawer */}
-      <AIAssistantDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-      />
     </div>
   );
 };

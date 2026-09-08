@@ -7,7 +7,6 @@ import { InsuranceProduct } from '@/server/repositories/product.repository.inter
 import { ProductCard } from '@/components/molecules/ProductCard';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { AIAssistantDrawer } from '@/components/organisms/AIAssistantDrawer';
 
 export interface HomeWorkbenchProps {
   initialFeaturedProducts: InsuranceProduct[];
@@ -18,7 +17,6 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
 }) => {
   const router = useRouter();
   const [products] = useState<InsuranceProduct[]>(initialFeaturedProducts);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -441,24 +439,6 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
           </Link>
         </div>
       </section>
-
-      {/* 9. FLOATING AI ASSISTANT FAB BUTTON */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen(true)}
-          className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-blue-600 text-white font-bold text-xs shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/20 cursor-pointer"
-        >
-          <span className="text-base">🤖</span>
-          <span>Tanya AI InsuRisk</span>
-        </button>
-      </div>
-
-      {/* AI Assistant Drawer Modal */}
-      <AIAssistantDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-      />
     </div>
   );
 };
