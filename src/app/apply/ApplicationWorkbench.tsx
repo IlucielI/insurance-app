@@ -885,10 +885,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     type="button"
                     onClick={() => setGender('male')}
                     aria-pressed={gender === 'male'}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                       gender === 'male'
-                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     {gender === 'male' ? '✓ ' : ''}Pria (Laki-laki)
@@ -897,10 +897,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     type="button"
                     onClick={() => setGender('female')}
                     aria-pressed={gender === 'female'}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                       gender === 'female'
-                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     {gender === 'female' ? '✓ ' : ''}Wanita (Perempuan)
@@ -1220,22 +1220,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {[
-                        { id: 'low', label: 'Pribadi / Santai (0.95x)', mult: '0.95x' },
-                        { id: 'standard', label: 'Harian Kota (1.0x)', mult: '1.0x' },
-                        { id: 'high', label: 'Komersial / Logistik (1.15x)', mult: '1.15x' },
+                        { id: 'low', label: 'Pribadi / Santai', mult: '0.95x' },
+                        { id: 'standard', label: 'Harian Kota', mult: '1.0x' },
+                        { id: 'high', label: 'Komersial / Logistik', mult: '1.15x' },
                       ].map((opt) => (
                         <button
                           key={opt.id}
                           type="button"
                           onClick={() => setVehicleUsage(opt.id)}
+                          aria-pressed={vehicleUsage === opt.id}
                           className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
                             vehicleUsage === opt.id
-                              ? 'bg-blue-50 border-blue-600 text-blue-900 ring-1 ring-blue-600'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              ? 'bg-[#0f172a] border-[#0f172a] text-white shadow-xs'
+                              : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
-                          <span className="block font-bold">{opt.label}</span>
-                          <span className="text-[10px] text-slate-500">Faktor Aktuaria: {opt.mult}</span>
+                          <span className="block font-bold">
+                            {vehicleUsage === opt.id ? '✓ ' : ''}
+                            {opt.label}
+                          </span>
+                          <span className={`text-[10px] ${vehicleUsage === opt.id ? 'text-slate-300' : 'text-slate-500'}`}>
+                            Faktor Aktuaria: {opt.mult}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1294,28 +1300,30 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         Termasuk rokok konvensional maupun elektrik (vape) dalam 12 bulan terakhir.
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => setIsSmoker(false)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        aria-pressed={!isSmoker}
+                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                           !isSmoker
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-white text-slate-600 border-slate-200'
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        Bukan Perokok
+                        {!isSmoker ? '✓ ' : ''}Bukan Perokok
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsSmoker(true)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        aria-pressed={isSmoker}
+                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                           isSmoker
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-white text-slate-600 border-slate-200'
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        Perokok Aktif
+                        {isSmoker ? '✓ ' : ''}Perokok Aktif
                       </button>
                     </div>
                   </div>
@@ -1335,24 +1343,26 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         <button
                           type="button"
                           onClick={() => setHasCriticalIllness(false)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={!hasCriticalIllness}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             !hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a]'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Tidak Pernah
+                          {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
                         </button>
                         <button
                           type="button"
                           onClick={() => setHasCriticalIllness(true)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={hasCriticalIllness}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             hasCriticalIllness
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Pernah
+                          {hasCriticalIllness ? '✓ ' : ''}Pernah
                         </button>
                       </div>
                     </div>
@@ -1387,24 +1397,26 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         <button
                           type="button"
                           onClick={() => setHasHospitalization(false)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={!hasHospitalization}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             !hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a]'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Tidak Pernah
+                          {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
                         </button>
                         <button
                           type="button"
                           onClick={() => setHasHospitalization(true)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={hasHospitalization}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             hasHospitalization
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Pernah
+                          {hasHospitalization ? '✓ ' : ''}Pernah
                         </button>
                       </div>
                     </div>

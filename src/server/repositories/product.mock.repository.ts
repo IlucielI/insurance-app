@@ -764,6 +764,8 @@ export class ProductMockRepository implements IProductRepository {
               help_text: 'Pernahkah didiagnosis kanker, jantung, stroke, ginjal, atau diabetes?',
               input_type: 'radio',
               order_index: 4,
+              pricing_rule_id: 'pr_life_critical_illness',
+              affects_pricing_field: 'critical_illness',
               validation_rules: { required: true },
               is_active: true,
               options: [
@@ -797,6 +799,8 @@ export class ProductMockRepository implements IProductRepository {
               help_text: 'Apakah pernah menjalani rawat inap di rumah sakit dalam 24 bulan terakhir?',
               input_type: 'radio',
               order_index: 6,
+              pricing_rule_id: 'pr_life_hospitalization',
+              affects_pricing_field: 'hospitalization',
               validation_rules: { required: true },
               is_active: true,
               options: [
