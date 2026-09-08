@@ -615,4 +615,34 @@ describe('AssistantPage & AssistantWorkbench', () => {
     const input = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i) as HTMLInputElement;
     expect(input.value).toBe('Simulasi produk jiwa murni');
   });
+
+  it('allows Shift+Enter for newlines and Enter without Shift to submit message', async () => {
+    const sessions = await assistantService.getChatSessions();
+    const topics = await assistantService.getPopularTopics();
+    const status = await assistantService.getEngineStatus();
+
+    render(
+      <AssistantWorkbench
+        initialSessions={sessions}
+        initialPopularTopics={topics}
+        initialEngineStatus={status}
+      />
+    );
+
+    const textarea = screen.getByPlaceholderText(/Ketik pertanyaan seputar produk/i) as HTMLTextAreaElement;
+
+    // 1. Shift+Enter should NOT send message (textarea value stays intact)
+    fireEvent.change(textarea, { target: { value: 'Pertanyaan baris 1\nBaris 2 dengan rincian' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+
+    expect(textarea.value).toBe('Pertanyaan baris 1\nBaris 2 dengan rincian');
+
+    // 2. Enter alone sends message (clearing textarea and rendering user message)
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+
+    expect(textarea.value).toBe('');
+    await waitFor(() => {
+      expect(screen.getByText(/Pertanyaan baris 1/i)).toBeDefined();
+    });
+  });
 });

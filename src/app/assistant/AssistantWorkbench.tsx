@@ -12,7 +12,6 @@ import {
 } from '@/types/assistant.types';
 import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
-import { Input } from '@/components/atoms/Input';
 import { Spinner } from '@/components/atoms/Spinner';
 import {
   startNewSessionAction,
@@ -74,6 +73,16 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const messageCounterRef = useRef(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea to fit multiline input up to max-h
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+    }
+  }, [inputText]);
 
   // 1. Hydrate sessions from localStorage on client mount
   useEffect(() => {
@@ -988,35 +997,46 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                   e.preventDefault();
                   handleSendMessage();
                 }}
-                className="flex items-center gap-2"
+                className="flex items-end gap-2"
               >
                 <div className="flex-1 relative">
-                  <Input
+                  <textarea
+                    ref={textareaRef}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!isSending && inputText.trim()) {
+                          handleSendMessage();
+                        }
+                      }
+                    }}
                     placeholder="Ketik pertanyaan seputar produk, pendaftaran asuransi, simulasi premi, atau polis..."
-                    className="text-xs sm:text-sm h-11 pr-10 border-slate-300 rounded-xl"
+                    className="w-full text-xs sm:text-sm py-2.5 px-3.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none min-h-[44px] max-h-[140px] leading-relaxed text-slate-800 placeholder:text-slate-400 bg-white"
+                    rows={1}
                     disabled={isSending}
                   />
-                  <span className="absolute right-3 top-3 text-slate-400 text-sm">
-                    📎
-                  </span>
                 </div>
                 <Button
                   type="submit"
                   variant="primary"
                   size="md"
                   disabled={isSending || !inputText.trim()}
-                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-11 px-5 shadow-md shadow-blue-500/20 font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shrink-0"
                 >
                   {isSending ? <Spinner size="sm" /> : 'Kirim ➔'}
                 </Button>
               </form>
 
-              <p className="text-[11px] text-slate-400 text-center">
-                🔒 Percakapan ini dienkripsi secara aman. Jawaban disintesis langsung dari basis data polis
-                resmi Bayu Insurance yang diawasi OJK.
-              </p>
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>
+                  Tekan <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px]">Enter ↵</kbd> kirim, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px]">Shift + Enter</kbd> baris baru.
+                </span>
+                <span className="hidden sm:inline">
+                  🔒 Basis Data Polis OJK
+                </span>
+              </div>
             </div>
           </Card>
         </section>
