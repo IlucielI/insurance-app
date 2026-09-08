@@ -1112,20 +1112,20 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
             {/* Big Price Box */}
             <div className="p-4 sm:p-5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2">
               <span className="block text-[11px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                ESTIMASI PREMI {frequency === 'monthly' ? 'BULANAN' : 'TAHUNAN'}
+                ESTIMASI PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
                   {formatRupiah(simulationResult.activePremium)}
                 </span>
                 <span className="text-xs sm:text-sm text-slate-400 font-medium">
-                  / {frequency === 'monthly' ? 'bulan' : 'tahun'}
+                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
                 </span>
               </div>
               <p className="text-xs font-medium text-emerald-300">
-                {frequency === 'monthly'
-                  ? `atau ${formatRupiah(simulationResult.annualPremium)} / tahun (Hemat ${formatRupiah(simulationResult.annualSavings)})`
-                  : `atau setara ${formatRupiah(simulationResult.monthlyPremium)} / bulan`}
+                {frequency === 'annually'
+                  ? `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} / bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`
+                  : `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} / tahun`}
               </p>
             </div>
 
