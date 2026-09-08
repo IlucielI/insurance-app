@@ -131,6 +131,14 @@ Silakan pilih produk untuk memulai simulasi.`;
     expect(simLink.getAttribute('href')).toBe('/simulation?product=jiwa-berjangka-plus');
   });
 
+  it('renders user messages with crisp white text styling when isUser is true', () => {
+    render(<ChatMessageContent content="dino@example.com" isUser={true} />);
+
+    const userText = screen.getByText('dino@example.com');
+    expect(userText).toBeDefined();
+    expect(userText.className).toContain('text-white');
+  });
+
   it('returns null safely for empty or null content', () => {
     const { container } = render(<ChatMessageContent content="" />);
     expect(container.firstChild).toBeNull();

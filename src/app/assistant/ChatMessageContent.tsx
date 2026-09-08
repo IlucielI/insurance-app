@@ -15,6 +15,7 @@ export interface ProductItem {
 export interface ChatMessageContentProps {
   content: string;
   className?: string;
+  isUser?: boolean;
 }
 
 /**
@@ -195,8 +196,18 @@ function parseTable(lines: string[]): { headers: string[]; rows: string[][] } | 
   return { headers, rows };
 }
 
-export const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, className = '' }) => {
+export const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, className = '', isUser = false }) => {
   if (!content) return null;
+
+  if (isUser) {
+    return (
+      <div className={`space-y-1 text-left leading-relaxed text-white ${className}`}>
+        <p className="text-white text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap break-words font-medium">
+          {content}
+        </p>
+      </div>
+    );
+  }
 
   // 1. Check if there is an embedded JSON array of products (either full text or inside markdown block)
   const jsonMatch = content.match(/\[\s*\{[\s\S]*?"name"[\s\S]*?\}\s*\]/);

@@ -856,7 +856,13 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                         )}
 
                         {msg.content ? (
-                          renderFormattedContent(msg.content)
+                          isUser ? (
+                            <p className="text-white text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap break-words font-medium">
+                              {msg.content}
+                            </p>
+                          ) : (
+                            renderFormattedContent(msg.content)
+                          )
                         ) : (
                           <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
                             <Spinner size="sm" />
