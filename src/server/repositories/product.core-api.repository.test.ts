@@ -50,13 +50,13 @@ describe('CoreApiProductRepository', () => {
     it('throws descriptive error if Core API URL is missing', async () => {
       const repo = new CoreApiProductRepository('');
       await expect(repo.getProducts()).rejects.toThrow(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
       await expect(repo.getFeaturedProducts()).rejects.toThrow(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
       await expect(repo.getProductBySlug('test')).rejects.toThrow(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     });
 
@@ -264,7 +264,7 @@ describe('CoreApiProductRepository', () => {
       await expect(
         repo.calculateQuote('secure-life-plus', sampleRequest)
       ).rejects.toThrow(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     });
 

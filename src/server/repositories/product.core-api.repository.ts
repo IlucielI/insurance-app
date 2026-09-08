@@ -46,17 +46,9 @@ export class CoreApiProductRepository implements IProductRepository {
   }
 
   private resolveBaseUrl(): string {
-    if (typeof window !== 'undefined') {
-      return (
-        process.env.NEXT_PUBLIC_CORE_API_URL?.trim() ||
-        process.env.CORE_API_URL?.trim() ||
-        ''
-      );
-    }
     return (
-      process.env.CORE_API_INTERNAL_URL?.trim() ||
       process.env.CORE_API_URL?.trim() ||
-      process.env.NEXT_PUBLIC_CORE_API_URL?.trim() ||
+      process.env.CORE_API_INTERNAL_URL?.trim() ||
       ''
     );
   }
@@ -141,7 +133,7 @@ export class CoreApiProductRepository implements IProductRepository {
   ): Promise<InsuranceProduct[]> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
@@ -173,7 +165,7 @@ export class CoreApiProductRepository implements IProductRepository {
   async getFeaturedProducts(): Promise<InsuranceProduct[]> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
@@ -198,7 +190,7 @@ export class CoreApiProductRepository implements IProductRepository {
   async getProductBySlug(slug: string): Promise<InsuranceProduct | null> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
@@ -241,7 +233,7 @@ export class CoreApiProductRepository implements IProductRepository {
   ): Promise<QuoteCalculationResult> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
@@ -281,7 +273,7 @@ export class CoreApiProductRepository implements IProductRepository {
   async getPricingRules(slug: string): Promise<ProductPricingRuleDTO[]> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
@@ -317,7 +309,7 @@ export class CoreApiProductRepository implements IProductRepository {
   async getQuestionnaire(slug: string): Promise<ProductQuestionnaireDTO | null> {
     if (!this.baseUrl) {
       throw new Error(
-        'Core API URL is not configured. Please set CORE_API_URL or NEXT_PUBLIC_CORE_API_URL, or enable MOCK_CORE_API=true.'
+        'Core API URL is not configured. Please set CORE_API_URL, or enable MOCK_CORE_API=true.'
       );
     }
 
