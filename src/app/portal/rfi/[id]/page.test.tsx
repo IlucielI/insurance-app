@@ -207,8 +207,11 @@ describe('RFIPortalPage & RFIPortalWorkbench (Flow RFI Tahap 2 & 3)', () => {
       screen.getByRole('button', { name: /Kembali ke Beranda Aplikasi Nasabah/i })
     ).toBeDefined();
     expect(
-      screen.getByRole('button', { name: /Pantau di Portal Lacak Aplikasi/i })
-    ).toBeDefined();
+      screen.queryByRole('button', { name: /Pantau di Portal Lacak Aplikasi/i })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Unggah Dokumen Lain/i })
+    ).toBeNull();
   });
 
   it('handles submission error gracefully', async () => {
