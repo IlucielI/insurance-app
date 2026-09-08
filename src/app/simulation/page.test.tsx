@@ -31,8 +31,8 @@ describe('SimulationPage & SimulationWorkbench', () => {
       screen.getByRole('heading', { level: 1, name: /Kalkulator & Simulasi Premi Asuransi/i })
     ).toBeDefined();
 
-    // Live quote engine badge
-    expect(screen.getByText(/LIVE CORE API QUOTE ENGINE/i)).toBeDefined();
+    // Live policy summary badge
+    expect(screen.getByText(/RINGKASAN POLIS TERPILIH/i)).toBeDefined();
 
     // Inclusions & Exclusions clauses
     expect(screen.getByText(/MANFAAT YANG DICAKUP \(COVERED BENEFITS\)/i)).toBeDefined();
@@ -97,7 +97,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(femaleBtn);
 
     expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Gender \(Wanita\)/i)).toBeDefined();
+    expect(screen.getByText(/Jenis Kelamin \(Wanita\)/i)).toBeDefined();
     expect(screen.getAllByText('1x').length).toBeGreaterThan(0);
   });
 
@@ -109,7 +109,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(highOccBtn);
 
     expect(highOccBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Pekerjaan Tinggi/i)).toBeDefined();
+    expect(screen.getByText(/Risiko Profesi \(high\)/i)).toBeDefined();
     expect(screen.getByText('1.4x')).toBeDefined();
   });
 
@@ -124,7 +124,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(smokerBtn);
 
     expect(smokerBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Perokok Aktif/i)).toBeDefined();
+    expect(screen.getByText(/Status Merokok \(Perokok\)/i)).toBeDefined();
     expect(screen.getByText('1.35x')).toBeDefined();
   });
 
@@ -136,7 +136,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(monthlyBtn);
 
     expect(monthlyBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/ESTIMASI PREMI BULANAN/i)).toBeDefined();
+    expect(screen.getByText(/PREMI BULANAN/i)).toBeDefined();
   });
 
   it('toggles optional riders and updates premium', async () => {

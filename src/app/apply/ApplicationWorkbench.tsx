@@ -1817,10 +1817,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Metode Verifikasi</span>
-                <span className="font-semibold text-emerald-400">Automated Underwriting</span>
-              </div>
             </div>
 
             {/* Rincian Faktor Perhitungan Premi Berdasarkan Input Tiap Field */}
