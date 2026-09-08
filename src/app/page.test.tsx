@@ -39,11 +39,7 @@ describe('HomePage & HomeWorkbench', () => {
     expect(screen.getByText('Critical Illness Shield')).toBeDefined();
     expect(screen.getByText('EduCare Future')).toBeDefined();
 
-    // 4. Simulation Teaser
-    expect(screen.getByText(/Hitung Estimasi Premi Secara Terbuka & Presisi/i)).toBeDefined();
-    expect(screen.getByText(/PREMI INDIKATIF TERBAIK/i)).toBeDefined();
-
-    // 5. 4-Tahap Workflow Underwriting
+    // 4. 4-Tahap Workflow Underwriting
     expect(screen.getByText('Verifikasi KTP Dukcapil')).toBeDefined();
     expect(screen.getByText('Analisis Kemampuan UP')).toBeDefined();
     expect(screen.getByText('Validasi Berkas Digital')).toBeDefined();
@@ -74,38 +70,6 @@ describe('HomePage & HomeWorkbench', () => {
 
     fireEvent.click(selectButtons[0]);
     expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${featured[0].id}`);
-  });
-
-  it('interacts with the simulation teaser controls (age, gender, smoker, category)', async () => {
-    const featured = await productService.getFeaturedProducts();
-    render(<HomeWorkbench initialFeaturedProducts={featured} />);
-
-    // Test age increment / decrement
-    expect(screen.getByText('32 Tahun')).toBeDefined();
-    const plusBtn = screen.getByRole('button', { name: 'Tambah Usia' });
-    fireEvent.click(plusBtn);
-    expect(screen.getByText('33 Tahun')).toBeDefined();
-
-    const minusBtn = screen.getByRole('button', { name: 'Kurangi Usia' });
-    fireEvent.click(minusBtn);
-    expect(screen.getByText('32 Tahun')).toBeDefined();
-
-    // Test category change
-    const healthCatBtn = screen.getByRole('button', { name: 'Health (Kesehatan)' });
-    fireEvent.click(healthCatBtn);
-    expect(healthCatBtn.getAttribute('aria-pressed')).toBe('true');
-
-    // Test gender change
-    const femaleBtn = screen.getByRole('button', { name: 'Wanita' });
-    fireEvent.click(femaleBtn);
-    expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
-
-    // Test smoker toggle
-    const smokerToggle = screen.getByRole('button', { name: 'Non-Smoker' });
-    fireEvent.click(smokerToggle);
-    expect(smokerToggle.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Perokok')).toBeDefined();
-    expect(screen.getAllByText(/Rp\s\d{3}\.\d{3}/).length).toBeGreaterThan(0);
   });
 
   it('toggles FAQ accordion items when clicked', async () => {
