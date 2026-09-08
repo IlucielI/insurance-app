@@ -9,9 +9,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Insurance Portal | Layanan Pengajuan Asuransi Modern',
+  title: 'Bayu Insurance | Layanan Pengajuan Asuransi Digital Resmi OJK',
   description:
     'Portal nasabah digital untuk simulasi premi, pengajuan aplikasi asuransi jiwa, dan pemantauan polis secara transparan dan berstandar OJK.',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
