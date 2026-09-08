@@ -1834,7 +1834,9 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
               </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Nilai Santunan (UP)</span>
+                  <span className="text-slate-400">
+                    {isVehicleCategory ? 'Pertanggungan Kendaraan' : 'Nilai Santunan (UP)'}
+                  </span>
                   <span className="font-semibold text-white">
                     Rp {sumAssured >= 1_000_000_000 ? `${(sumAssured / 1_000_000_000).toFixed(0)} Miliar` : `${(sumAssured / 1_000_000).toFixed(0)} Juta`}
                   </span>
@@ -1851,30 +1853,43 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     {quoteResult?.breakdown?.ageFactor ? `${quoteResult.breakdown.ageFactor}x` : '1.0x'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
-                  <span className="font-semibold text-white">
-                    {quoteResult?.breakdown?.genderFactor ? `${quoteResult.breakdown.genderFactor}x` : '1.0x'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
-                  <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {quoteResult?.breakdown?.smokerFactor ? `${quoteResult.breakdown.smokerFactor}x` : '1.0x'}
-                  </span>
-                </div>
+                {!isVehicleCategory && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
+                      <span className="font-semibold text-white">
+                        {quoteResult?.breakdown?.genderFactor ? `${quoteResult.breakdown.genderFactor}x` : '1.0x'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
+                      <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {quoteResult?.breakdown?.smokerFactor ? `${quoteResult.breakdown.smokerFactor}x` : '1.0x'}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
                   <span className="font-semibold text-white">
                     {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
-                  <span className="font-semibold text-emerald-400">
-                    {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
-                  </span>
-                </div>
+                {!isVehicleCategory ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                    <span className="font-semibold text-emerald-400">
+                      {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Penggunaan Kendaraan</span>
+                    <span className="font-semibold text-white">
+                      {vehicleUsage === 'standard' ? 'Pribadi / Standar' : 'Komersial / Operasional'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
                   <span className="font-semibold text-emerald-400">{calculatedDsr}% (Aman &lt; 35%)</span>
@@ -1893,55 +1908,85 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 Evaluasi Real-time Underwriting Engine:
               </span>
               <div className="space-y-1.5 text-slate-300">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> Pilar Identitas & KTP
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-400">VERIFIED DUKCAPIL</span>
-                </div>
+                {/* Pilar 1: Identitas & KTP (Terverifikasi setelah Step 1 selesai) */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
                   <span className="flex items-center gap-1.5">
                     <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
                       {currentStep >= 2 ? '✓' : '○'}
                     </span>{' '}
-                    Pilar Profil Finansial
+                    Pilar Identitas & KTP
                   </span>
                   <span
                     className={`text-[10px] font-bold ${
                       currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
-                    {currentStep >= 2 ? `RATIO ${calculatedDsr}% (SAFE)` : 'PENDING'}
+                    {currentStep >= 2 ? 'VERIFIED DUKCAPIL' : 'PENDING'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
-                  <span className="flex items-center gap-1.5">
-                    <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
-                      {currentStep >= 2 ? '✓' : '○'}
-                    </span>{' '}
-                    Pilar Kelengkapan Berkas
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold ${
-                      currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
-                    }`}
-                  >
-                    {currentStep >= 2 ? 'COMPLETE & VALID' : 'PENDING'}
-                  </span>
-                </div>
+
+                {/* Pilar 2: Profil Finansial (Terverifikasi setelah Step 2 selesai) */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
                   <span className="flex items-center gap-1.5">
                     <span className={currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'}>
                       {currentStep >= 3 ? '✓' : '○'}
                     </span>{' '}
-                    {isVehicleCategory ? 'Pilar Objek Kendaraan' : 'Pilar Skrining Medis'}
+                    Pilar Profil Finansial
                   </span>
                   <span
                     className={`text-[10px] font-bold ${
                       currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
-                    {currentStep >= 3 ? 'LOW RISK LEVEL' : 'PENDING'}
+                    {currentStep >= 3 ? `RATIO ${calculatedDsr}% (SAFE)` : 'PENDING'}
+                  </span>
+                </div>
+
+                {/* Pilar 3: Skrining Medis / Objek Kendaraan (Terverifikasi setelah Step 3 selesai) */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className={currentStep >= 4 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {currentStep >= 4 ? '✓' : '○'}
+                    </span>{' '}
+                    {isVehicleCategory ? 'Pilar Objek Kendaraan' : 'Pilar Skrining Medis'}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep >= 4 ? 'text-emerald-400' : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep >= 4
+                      ? isVehicleCategory
+                        ? 'KENDARAAN VALID'
+                        : 'LOW RISK LEVEL'
+                      : 'PENDING'}
+                  </span>
+                </div>
+
+                {/* Pilar 4: Dokumen & Legalitas E-Sign (Terverifikasi saat Step 4 disetujui) */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={
+                        currentStep === 4 && agreeTerms && agreeTruth
+                          ? 'text-emerald-400'
+                          : 'text-slate-500'
+                      }
+                    >
+                      {currentStep === 4 && agreeTerms && agreeTruth ? '✓' : '○'}
+                    </span>{' '}
+                    Pilar Dokumen & E-Sign
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep === 4 && agreeTerms && agreeTruth
+                        ? 'text-emerald-400'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep === 4 && agreeTerms && agreeTruth
+                      ? 'COMPLETE & VALID'
+                      : 'PENDING'}
                   </span>
                 </div>
               </div>
@@ -1950,12 +1995,12 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             {/* Decision Status Box */}
             <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1 text-xs">
               <span className="text-[#38bdf8] font-bold block">
-                {currentStep === 4
+                {currentStep === 4 && agreeTerms && agreeTruth
                   ? '⚡ Estimasi Keputusan: INSTANT APPROVAL'
                   : '⚡ Estimasi Keputusan Sistem: IN PROGRESS'}
               </span>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                {currentStep === 4
+                {currentStep === 4 && agreeTerms && agreeTruth
                   ? 'Seluruh 4 pilar checks terpenuhi! Polis elektronik (E-Polis) siap diterbitkan secara instan setelah pengajuan dikirim.'
                   : 'Sistem memvalidasi data Anda secara real-time. Lanjutkan ke langkah berikutnya untuk melengkapi underwriting.'}
               </p>
