@@ -898,9 +898,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 <span className="text-xl sm:text-2xl font-extrabold text-[#0f172a]">
                   {formatRupiah(sumAssured)}
                 </span>
-                <span className="text-xs sm:text-sm font-medium text-slate-500">
-                  ({numberToRupiahWords(sumAssured)})
-                </span>
               </div>
 
               <div className="pt-2">
@@ -918,7 +915,7 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
 
               {/* 4 UP Preset Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
                 {sumAssuredPresets.map((preset) => {
                   const isPresetActive = sumAssured === preset.value;
                   return (
@@ -927,10 +924,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                       type="button"
                       onClick={() => setSumAssured(preset.value)}
                       aria-pressed={isPresetActive}
-                      className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all text-center ${
+                      className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center ${
                         isPresetActive
                           ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
-                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
                       {isPresetActive ? '✓ ' : ''}{preset.label}
