@@ -643,24 +643,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-            <Button
-              size="lg"
-              variant="primary"
-              className="w-full sm:w-auto font-bold bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl shadow-md"
-              onClick={() =>
-                router.push(
-                  `/tracking?query=${encodeURIComponent(
-                    submissionResult.applicationId || 'APP-2026-8819'
-                  )}`
-                )
-              }
-            >
-              🔍 Lacak Status di Tracking Portal
-            </Button>
+          <div className="flex items-center justify-center pt-4">
             <Link
               href="/"
-              className="w-full sm:w-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-6 py-3.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-center"
+              className="w-full sm:w-auto font-bold bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl shadow-md text-center text-sm"
             >
               Kembali ke Beranda
             </Link>

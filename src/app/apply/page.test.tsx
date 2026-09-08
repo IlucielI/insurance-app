@@ -133,12 +133,10 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     expect(screen.getByText(/Nomor Referensi Aplikasi/i)).toBeDefined();
     expect(screen.getByText(/APPROVED & ACTIVE/i)).toBeDefined();
 
-    // Click tracking button
-    const trackingBtn = screen.getByRole('button', { name: /Lacak Status di Tracking Portal/i });
-    fireEvent.click(trackingBtn);
-
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls[0][0]).toContain('/tracking?query=');
+    // Check Kembali ke Beranda button/link
+    const homeLink = screen.getByRole('link', { name: /Kembali ke Beranda/i });
+    expect(homeLink).toBeDefined();
+    expect(homeLink.getAttribute('href')).toBe('/');
   });
 
   it('allows user to navigate back to previous steps using the back button', async () => {
