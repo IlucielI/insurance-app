@@ -59,7 +59,7 @@ export interface Beneficiary {
 }
 
 export interface PaymentSelection {
-  method: 'va_bca' | 'va_mandiri' | 'va_bri' | 'credit_card';
+  method: 'va_bca' | 'va_mandiri' | 'va_bri' | 'credit_card' | 'qris';
   autoDebet: boolean;
 }
 

@@ -103,6 +103,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const initialAge = initialQuote.applicantAge || 32;
   const initialSmoker = Boolean(initialQuote.isSmoker);
   const initialGender = initialQuote.gender || 'male';
+  const [gender, setGender] = useState<'male' | 'female'>(initialGender);
   const initialOccupationRisk = initialQuote.occupationRisk || 'low';
   const selectedRiders = useMemo(
     () => initialQuote.selectedRiders || [],
@@ -183,7 +184,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         termYears,
         applicantAge: applicantAgeYears,
         isSmoker: isSmoker,
-        gender: initialGender,
+        gender,
         occupationRisk: initialOccupationRisk,
         frequency,
         selectedRiderIds: selectedRiders,
@@ -196,7 +197,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     termYears,
     applicantAgeYears,
     isSmoker,
-    initialGender,
+    gender,
     initialOccupationRisk,
     frequency,
     selectedRiders,
@@ -353,7 +354,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         { questionId: 'q_id_nik', code: 'nik', value: nik.trim() },
         { questionId: 'q_id_full_name', code: 'full_name', value: fullName.trim() },
         { questionId: 'q_id_birth_date', code: 'birth_date', value: birthDate },
-        { questionId: 'q_id_gender', code: 'gender', value: initialGender },
+        { questionId: 'q_id_gender', code: 'gender', value: gender },
         { questionId: 'q_id_phone', code: 'phone', value: phoneNumber.trim() },
         { questionId: 'q_id_email', code: 'email', value: email.trim() },
         { questionId: 'q_fin_occupation', code: 'occupation', value: occupation.trim() },
@@ -424,7 +425,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
           nik: nik.trim(),
           fullName: fullName.trim(),
           birthDate,
-          gender: initialGender,
+          gender,
           phoneNumber: phoneNumber.trim(),
           email: email.trim(),
           ktpImageName: ktpFileName || 'KTP_Bayu_Pratama.jpg',
@@ -799,6 +800,39 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       {applicantAgeYears} Tahun
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Field: Jenis Kelamin */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Jenis Kelamin:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setGender('male')}
+                    aria-pressed={gender === 'male'}
+                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                      gender === 'male'
+                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {gender === 'male' ? '✓ ' : ''}Pria (Laki-laki)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGender('female')}
+                    aria-pressed={gender === 'female'}
+                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                      gender === 'female'
+                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {gender === 'female' ? '✓ ' : ''}Wanita (Perempuan)
+                  </button>
                 </div>
               </div>
 
@@ -1577,8 +1611,11 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 />
               </div>
 
-              {/* Legal Statements */}
+              {/* 3. Pernyataan Hukum & Persetujuan Klausul Polis */}
               <div className="space-y-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                <span className="text-xs font-bold text-slate-900 block mb-1">
+                  3. Pernyataan Hukum & Persetujuan Klausul Polis:
+                </span>
                 <Checkbox
                   label="Pernyataan Kebenaran Data Underwriting"
                   description="Saya menyatakan seluruh data identitas, profil finansial, dan deklarasi kesehatan di atas adalah benar dan sesuai kenyataan sesungguhnya. Data akan divalidasi langsung oleh sistem underwriting resmi."
@@ -1699,6 +1736,60 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               <div className="flex justify-between items-center text-slate-300">
                 <span>Metode Verifikasi</span>
                 <span className="font-semibold text-emerald-400">Automated Underwriting</span>
+              </div>
+            </div>
+
+            {/* Rincian Faktor Perhitungan Premi Berdasarkan Input Tiap Field */}
+            <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
+                <span className="text-[11px] font-bold text-slate-200 block">
+                  Rincian Faktor Perhitungan Premi:
+                </span>
+                <span className="text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">
+                  Dynamic Core API
+                </span>
+              </div>
+              <div className="space-y-1.5 text-slate-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Usia Pemohon ({applicantAgeYears} Thn)</span>
+                  <span className="font-semibold text-white">
+                    {quoteResult?.breakdown?.ageFactor ? `${quoteResult.breakdown.ageFactor}x` : '1.0x'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
+                  <span className="font-semibold text-white">
+                    {quoteResult?.breakdown?.genderFactor ? `${quoteResult.breakdown.genderFactor}x` : '1.0x'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
+                  <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {quoteResult?.breakdown?.smokerFactor ? `${quoteResult.breakdown.smokerFactor}x` : '1.0x'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
+                  <span className="font-semibold text-white">
+                    {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                  <span className="font-semibold text-emerald-400">
+                    {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
+                  <span className="font-semibold text-emerald-400">{calculatedDsr}% (Aman &lt; 35%)</span>
+                </div>
+                {frequency === 'annually' && (
+                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 text-sky-400 font-semibold">
+                    <span>Diskon Pembayaran Tahunan</span>
+                    <span>Hemat {quoteResult?.breakdown?.annualDiscountPercent ?? 6}%</span>
+                  </div>
+                )}
               </div>
             </div>
 
