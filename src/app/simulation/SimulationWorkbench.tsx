@@ -271,12 +271,24 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     const newProduct = initialProducts.find((p) => p.id === newProductId);
     if (newProduct) {
       setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
-      setSumAssured((prev) =>
-        Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
-      );
-      const newMinTerm = newProduct.minTermYears || 5;
-      const newMaxTerm = newProduct.maxTermYears || 30;
-      setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+      if (newProduct.sumAssuredPresets && newProduct.sumAssuredPresets.length > 0) {
+        setSumAssured((prev) =>
+          newProduct.sumAssuredPresets!.includes(prev) ? prev : newProduct.sumAssuredPresets![0]
+        );
+      } else {
+        setSumAssured((prev) =>
+          Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+        );
+      }
+      if (newProduct.termPresets && newProduct.termPresets.length > 0) {
+        setTermYears((prev) =>
+          newProduct.termPresets!.includes(prev) ? prev : newProduct.termPresets![0]
+        );
+      } else {
+        const newMinTerm = newProduct.minTermYears || 1;
+        const newMaxTerm = newProduct.maxTermYears || 30;
+        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+      }
       setApplicantAge((prev) =>
         Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
       );
@@ -299,12 +311,24 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       const newProduct = initialProducts.find((p) => p.id === initialProductId);
       if (newProduct) {
         setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
-        setSumAssured((prev) =>
-          Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
-        );
-        const newMinTerm = newProduct.minTermYears || 5;
-        const newMaxTerm = newProduct.maxTermYears || 30;
-        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+        if (newProduct.sumAssuredPresets && newProduct.sumAssuredPresets.length > 0) {
+          setSumAssured((prev) =>
+            newProduct.sumAssuredPresets!.includes(prev) ? prev : newProduct.sumAssuredPresets![0]
+          );
+        } else {
+          setSumAssured((prev) =>
+            Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+          );
+        }
+        if (newProduct.termPresets && newProduct.termPresets.length > 0) {
+          setTermYears((prev) =>
+            newProduct.termPresets!.includes(prev) ? prev : newProduct.termPresets![0]
+          );
+        } else {
+          const newMinTerm = newProduct.minTermYears || 1;
+          const newMaxTerm = newProduct.maxTermYears || 30;
+          setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+        }
         setApplicantAge((prev) =>
           Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
         );

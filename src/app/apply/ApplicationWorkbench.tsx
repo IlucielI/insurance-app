@@ -65,14 +65,14 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return initialProducts[0] || null;
   }, [initialProducts, initialQuote.productId]);
 
-  const [sumAssured, setSumAssured] = useState<number>(
-    initialQuote.sumAssured || 500_000_000
-  );
-  const [termYears, setTermYears] = useState<number>(
-    initialQuote.termYears || 10
-  );
-  const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
-    initialQuote.frequency || 'annually'
+  const isVehicleCategory = Boolean(
+    selectedProduct?.categoryKey === 'vehicle' ||
+    selectedProduct?.category?.toLowerCase().includes('kendaraan') ||
+    selectedProduct?.category?.toLowerCase().includes('vehicle') ||
+    selectedProduct?.slug?.toLowerCase().includes('auto') ||
+    selectedProduct?.slug?.toLowerCase().includes('vehicle') ||
+    selectedProduct?.id?.toLowerCase().includes('auto') ||
+    selectedProduct?.id?.toLowerCase().includes('vehicle')
   );
 
   const sumAssuredPresets = useMemo(() => {
@@ -99,6 +99,41 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     }
     return [5, 10, 15, 20];
   }, [selectedProduct]);
+
+  const [sumAssured, setSumAssured] = useState<number>(() => {
+    const validPresets =
+      selectedProduct?.sumAssuredPresets && selectedProduct.sumAssuredPresets.length > 0
+        ? selectedProduct.sumAssuredPresets
+        : [100_000_000, 250_000_000, 500_000_000, 1_000_000_000];
+    if (initialQuote.sumAssured && validPresets.includes(initialQuote.sumAssured)) {
+      return initialQuote.sumAssured;
+    }
+    if (validPresets.includes(500_000_000)) {
+      return 500_000_000;
+    }
+    if (validPresets.includes(300_000_000)) {
+      return 300_000_000;
+    }
+    return validPresets[0] ?? 100_000_000;
+  });
+
+  const [termYears, setTermYears] = useState<number>(() => {
+    const validPresets =
+      selectedProduct?.termPresets && selectedProduct.termPresets.length > 0
+        ? selectedProduct.termPresets
+        : [5, 10, 15, 20];
+    if (initialQuote.termYears && validPresets.includes(initialQuote.termYears)) {
+      return initialQuote.termYears;
+    }
+    if (validPresets.includes(10)) {
+      return 10;
+    }
+    return validPresets[0] ?? 1;
+  });
+
+  const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
+    initialQuote.frequency || 'annually'
+  );
 
   const initialAge = initialQuote.applicantAge || 32;
   const initialSmoker = Boolean(initialQuote.isSmoker);
@@ -230,9 +265,11 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         sumAssured,
         termYears,
         applicantAge: applicantAgeYears,
-        isSmoker: isSmoker,
-        gender,
-        occupationRisk: initialOccupationRisk,
+        isSmoker: isVehicleCategory ? false : isSmoker,
+        gender: isVehicleCategory ? 'male' : gender,
+        occupationRisk: isVehicleCategory
+          ? (vehicleUsage as 'low' | 'standard' | 'high')
+          : initialOccupationRisk,
         frequency,
         selectedRiderIds: selectedRiders,
       },
@@ -245,6 +282,8 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     applicantAgeYears,
     isSmoker,
     gender,
+    isVehicleCategory,
+    vehicleUsage,
     initialOccupationRisk,
     frequency,
     selectedRiders,
@@ -254,7 +293,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
   const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
   const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
-  const savingsPercent = monthlyPremium > 0 ? Math.round((annualSavings / (monthlyPremium * 12)) * 100) : 9;
+  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
 
   // Dynamic Calculated Metrics
   const calculatedDsr = useMemo(() => {
@@ -268,8 +307,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   }, [weightKg, heightCm]);
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
-
-  const isVehicleCategory = selectedProduct?.categoryKey === 'vehicle';
 
   // Dynamic Questionnaire State (kept for optional schema fallback)
   const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
