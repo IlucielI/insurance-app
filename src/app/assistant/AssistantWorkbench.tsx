@@ -181,7 +181,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
     messageCounterRef.current += 1;
     const tempId = `temp-${messageCounterRef.current}`;
-    // Optimistically append user message to UI
+    // Optimistically append user message and initial assistant placeholder to UI immediately
     const tempUserMsg: ChatMessage = {
       id: tempId,
       sender: 'user',
@@ -189,20 +189,28 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       timestamp: 'Baru saja',
     };
 
+    messageCounterRef.current += 1;
+    const streamAssistantId = `ai-stream-${messageCounterRef.current}`;
+
+    const initialAiMsg: ChatMessage = {
+      id: streamAssistantId,
+      sender: 'assistant',
+      content: '',
+      timestamp: 'Sedang mengetik...',
+    };
+
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSession.id) {
           return {
             ...s,
-            messages: [...s.messages, tempUserMsg],
+            messages: [...s.messages, tempUserMsg, initialAiMsg],
           };
         }
         return s;
       })
     );
 
-    messageCounterRef.current += 1;
-    const streamAssistantId = `ai-stream-${messageCounterRef.current}`;
     let streamSuccess = false;
 
     // 1. Attempt SSE Real-Time Streaming via /api/assistant/chat/stream
@@ -224,25 +232,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
       });
 
       if (res.ok && res.body) {
-        // Append initial empty assistant message for streaming
-        const initialAiMsg: ChatMessage = {
-          id: streamAssistantId,
-          sender: 'assistant',
-          content: '',
-          timestamp: 'Sedang mengetik...',
-        };
-
-        setSessions((prev) =>
-          prev.map((s) => {
-            if (s.id === activeSession.id) {
-              return {
-                ...s,
-                messages: [...s.messages, initialAiMsg],
-              };
-            }
-            return s;
-          })
-        );
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -481,13 +470,16 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
           console.error('Failed to refresh session, applying fallback', refreshErr);
         }
 
-        // Fallback: append response directly if refresh unavailable
+        // Fallback: update placeholder response with answer
         setSessions((prev) =>
           prev.map((s) => {
             if (s.id === activeSession.id) {
+              const hasPlaceholder = s.messages.some((m) => m.id === streamAssistantId);
               return {
                 ...s,
-                messages: [...s.messages, aiResponse],
+                messages: hasPlaceholder
+                  ? s.messages.map((m) => (m.id === streamAssistantId ? aiResponse : m))
+                  : [...s.messages, aiResponse],
               };
             }
             return s;
@@ -495,13 +487,15 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         );
       } catch (error) {
         console.error('Failed to send message', error);
-        // Rollback optimistic user message to prevent UI inconsistency on failure
+        // Rollback optimistic user message and assistant placeholder on failure
         setSessions((prev) =>
           prev.map((s) => {
             if (s.id === activeSession.id) {
               return {
                 ...s,
-                messages: s.messages.filter((m) => m.id !== tempId),
+                messages: s.messages.filter(
+                  (m) => m.id !== tempId && m.id !== streamAssistantId
+                ),
               };
             }
             return s;
@@ -864,9 +858,13 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                             renderFormattedContent(msg.content)
                           )
                         ) : (
-                          <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
-                            <Spinner size="sm" />
-                            <span>Sedang mensintesis rujukan polis OJK...</span>
+                          <div className="flex items-center gap-2.5 py-1 px-1">
+                            <div className="flex items-center gap-1.5" aria-label="Sedang mengetik...">
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-medium">Sedang memproses...</span>
                           </div>
                         )}
 
