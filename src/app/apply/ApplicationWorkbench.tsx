@@ -1876,24 +1876,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     </div>
                   </>
                 )}
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
-                  <span className="font-semibold text-white">
-                    {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
-                  </span>
-                </div>
                 {!isVehicleCategory ? (
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
-                    <span className="font-semibold text-emerald-400">
-                      {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                    <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
+                    <span className="font-semibold text-white">
+                      {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
                     </span>
                   </div>
                 ) : (
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Penggunaan Kendaraan</span>
+                    <span className="text-slate-400">
+                      Penggunaan Kendaraan ({vehicleUsage === 'low' ? 'Pribadi / Santai' : vehicleUsage === 'high' ? 'Komersial / Logistik' : 'Harian Kota'})
+                    </span>
                     <span className="font-semibold text-white">
-                      {vehicleUsage === 'standard' ? 'Pribadi / Standar' : 'Komersial / Operasional'}
+                      {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
+                    </span>
+                  </div>
+                )}
+                {!isVehicleCategory && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                    <span className="font-semibold text-emerald-400">
+                      {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
                     </span>
                   </div>
                 )}

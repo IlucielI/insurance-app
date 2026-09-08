@@ -35,9 +35,9 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
         affects_pricing_field: 'occupation_class',
         is_active: true,
         options: [
-          { value: 'low', label: 'Pribadi / Komuter', multiplier: 0.95 },
-          { value: 'standard', label: 'Harian Operasional', multiplier: 1.0 },
-          { value: 'high', label: 'Komersial / Ekspedisi', multiplier: 1.15 },
+          { value: 'low', label: 'Pribadi / Santai', multiplier: product.occupationFactors?.low ?? 0.95 },
+          { value: 'standard', label: 'Harian Kota', multiplier: product.occupationFactors?.standard ?? 1.0 },
+          { value: 'high', label: 'Komersial / Logistik', multiplier: product.occupationFactors?.high ?? 1.15 },
         ],
       },
     ];
@@ -202,13 +202,37 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     if (!currentProduct) return;
     let isMounted = true;
     const currentSlug = currentProduct.slug || currentProduct.id;
+    const isVehicle = currentProduct.categoryKey === 'vehicle';
+
     const fetchQuestionnaire = async () => {
       try {
         const questionnaire = await productRepository.getQuestionnaire(currentSlug);
         if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
-          const pricingQuestions = questionnaire.questions.filter(
+          let pricingQuestions = questionnaire.questions.filter(
             (q) => q.pricing_rule_id || q.affects_pricing_field
           );
+          if (isVehicle) {
+            // For vehicle insurance, exclude human life factors (gender, smoker)
+            pricingQuestions = pricingQuestions.filter(
+              (q) => !['gender', 'is_smoker', 'smoker'].includes(q.code)
+            );
+            // Ensure vehicle usage options match pricing rules
+            pricingQuestions = pricingQuestions.map((q) => {
+              if (q.code === 'occupation_class') {
+                return {
+                  ...q,
+                  label: 'Penggunaan Utama Kendaraan',
+                  help_text: 'Tentukan intensitas dan keperluan operasional kendaraan',
+                  options: [
+                    { value: 'low', label: 'Pribadi / Santai', multiplier: currentProduct.occupationFactors?.low ?? 0.95 },
+                    { value: 'standard', label: 'Harian Kota', multiplier: currentProduct.occupationFactors?.standard ?? 1.0 },
+                    { value: 'high', label: 'Komersial / Logistik', multiplier: currentProduct.occupationFactors?.high ?? 1.15 },
+                  ],
+                };
+              }
+              return q;
+            });
+          }
           if (pricingQuestions.length > 0) {
             setDynamicQuestions(pricingQuestions);
             setAnswers((prev) => {
@@ -223,10 +247,14 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               }
               return updated;
             });
+            return;
           }
         }
       } catch {
         // Fallback already in place
+      }
+      if (isMounted) {
+        setDynamicQuestions(getDefaultQuestionsForProduct(currentProduct));
       }
     };
 
@@ -1149,24 +1177,28 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   </div>
                 </>
               )}
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Risiko Profesi ({occupationRisk})</span>
-                <span className="font-semibold text-white">
-                  {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
-                </span>
-              </div>
               {currentProduct.categoryKey !== 'vehicle' ? (
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
-                  <span className="font-semibold text-emerald-400">
-                    22.2 (Ideal 🟢)
+                  <span className="text-slate-400">Risiko Profesi ({occupationRisk})</span>
+                  <span className="font-semibold text-white">
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
                   </span>
                 </div>
               ) : (
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Penggunaan Kendaraan</span>
+                  <span className="text-slate-400">
+                    Penggunaan Kendaraan ({occupationRisk === 'low' ? 'Pribadi / Santai' : occupationRisk === 'high' ? 'Komersial / Logistik' : 'Harian Kota'})
+                  </span>
                   <span className="font-semibold text-white">
-                    Pribadi / Standar
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
+                  </span>
+                </div>
+              )}
+              {currentProduct.categoryKey !== 'vehicle' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                  <span className="font-semibold text-emerald-400">
+                    22.2 (Ideal 🟢)
                   </span>
                 </div>
               )}
