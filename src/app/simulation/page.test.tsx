@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import SimulationPage from './page';
-import { SimulationWorkbench, numberToRupiahWords } from './SimulationWorkbench';
+import { SimulationWorkbench, numberToRupiahWords, getDefaultQuestionsForProduct } from './SimulationWorkbench';
+import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 import { productService } from '@/server/di';
 
 const mockPush = vi.fn();
@@ -271,3 +272,54 @@ describe('numberToRupiahWords', () => {
     expect(numberToRupiahWords(-500)).toBe('Nol Rupiah');
   });
 });
+
+describe('getDefaultQuestionsForProduct', () => {
+  it('returns custom multiplier 0.9 when occupationFactors.low is 0.9 (Happy Path)', () => {
+    const mockProduct = {
+      id: 'prod-vehicle-test',
+      categoryKey: 'vehicle',
+      title: 'Asuransi Mobil Prima',
+      occupationFactors: {
+        low: 0.9,
+        standard: 1.0,
+        high: 1.2,
+      },
+    } as unknown as InsuranceProduct;
+
+    const questions = getDefaultQuestionsForProduct(mockProduct);
+    const vehicleUsageQuestion = questions.find((q) => q.code === 'occupation_class');
+    expect(vehicleUsageQuestion).toBeDefined();
+
+    const lowOption = vehicleUsageQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption).toBeDefined();
+    expect(lowOption?.multiplier).toBe(0.9);
+  });
+
+  it('safely handles undefined product argument and returns default fallback multiplier 0.95 without runtime error (Edge Case)', () => {
+    expect(() => getDefaultQuestionsForProduct()).not.toThrow();
+
+    const questions = getDefaultQuestionsForProduct();
+    expect(questions.length).toBeGreaterThan(0);
+
+    const occupationQuestion = questions.find((q) => q.code === 'occupation_class');
+    expect(occupationQuestion).toBeDefined();
+
+    const lowOption = occupationQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption).toBeDefined();
+    expect(lowOption?.multiplier).toBe(0.95);
+  });
+
+  it('safely handles vehicle product with missing occupationFactors and falls back to 0.95', () => {
+    const mockVehicleProductWithoutFactors = {
+      id: 'prod-vehicle-no-factors',
+      categoryKey: 'vehicle',
+      title: 'Asuransi Kendaraan Standar',
+    } as unknown as InsuranceProduct;
+
+    const questions = getDefaultQuestionsForProduct(mockVehicleProductWithoutFactors);
+    const vehicleUsageQuestion = questions.find((q) => q.code === 'occupation_class');
+    const lowOption = vehicleUsageQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption?.multiplier).toBe(0.95);
+  });
+});
+
