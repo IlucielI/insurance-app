@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 function resolveCoreApiBaseUrl(): string {
-  return (
-    process.env.CORE_API_URL?.trim() ||
-    process.env.CORE_API_INTERNAL_URL?.trim() ||
-    'http://localhost:8080'
-  );
+  return process.env.CORE_API_URL?.trim() || '';
 }
 
 export async function GET(

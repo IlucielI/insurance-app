@@ -20,16 +20,14 @@ describe('CoreApiAssistantRepository', () => {
       expect(repo.getBaseUrl()).toBe('http://api.insurance.internal');
     });
 
-    it('resolves from CORE_API_INTERNAL_URL when available', () => {
-      process.env.CORE_API_INTERNAL_URL = 'http://backend-service:8080';
+    it('resolves from CORE_API_URL when available', () => {
+      process.env.CORE_API_URL = 'http://backend-service:8080';
       const repo = new CoreApiAssistantRepository();
       expect(repo.getBaseUrl()).toBe('http://backend-service:8080');
     });
 
     it('falls back to empty string when no env var is configured', () => {
-      delete process.env.CORE_API_INTERNAL_URL;
       delete process.env.CORE_API_URL;
-      delete process.env.NEXT_PUBLIC_CORE_API_URL;
       const repo = new CoreApiAssistantRepository();
       expect(repo.getBaseUrl()).toBe('');
     });

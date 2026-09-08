@@ -46,11 +46,7 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
   }
 
   private resolveBaseUrl(): string {
-    return (
-      process.env.CORE_API_URL?.trim() ||
-      process.env.CORE_API_INTERNAL_URL?.trim() ||
-      ''
-    );
+    return process.env.CORE_API_URL?.trim() || '';
   }
 
   public async create(application: PolicyApplication): Promise<PolicyApplication> {

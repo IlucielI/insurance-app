@@ -50,11 +50,7 @@ export class CoreApiAssistantRepository implements IAssistantRepository {
   }
 
   private resolveBaseUrl(): string {
-    return (
-      process.env.CORE_API_URL?.trim() ||
-      process.env.CORE_API_INTERNAL_URL?.trim() ||
-      ''
-    );
+    return process.env.CORE_API_URL?.trim() || '';
   }
 
   public async getSessions(): Promise<ChatSession[]> {
