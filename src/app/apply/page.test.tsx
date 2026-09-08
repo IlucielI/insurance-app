@@ -97,7 +97,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // STEP 3: MEDIS & GAYA HIDUP
     expect(screen.getByText(/Pilar 3: Skrining Medis & Deklarasi Kesehatan Mandiri/i)).toBeDefined();
-    expect(screen.getByText(/Indeks Massa Tubuh \(BMI\)/i)).toBeDefined();
+    expect(screen.getAllByText(/Indeks Massa Tubuh \(BMI\)/i).length).toBeGreaterThanOrEqual(1);
 
     // Advance to Step 4
     fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
@@ -413,5 +413,67 @@ describe('ApplyPage & ApplicationWorkbench', () => {
         screen.getByText(/Koneksi ke sistem Core API underwriting gagal terhubung/i)
       ).toBeDefined();
     });
+  });
+
+  it('renders Step 1 gender toggle and Step 4 preview cards with policy configuration, beneficiary, and payment method preferences matching Penpot', async () => {
+    const products = await productService.getProducts();
+    render(<ApplicationWorkbench initialProducts={products} />);
+
+    // Step 1: Check gender buttons
+    const maleBtn = screen.getByRole('button', { name: /Pria \(Laki-laki\)/i });
+    const femaleBtn = screen.getByRole('button', { name: /Wanita \(Perempuan\)/i });
+    expect(maleBtn).toBeDefined();
+    expect(femaleBtn).toBeDefined();
+    fireEvent.click(femaleBtn);
+    expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // Proceed through steps to Step 4
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
+
+    // Verify 3 Top Preview/Snapshot cards
+    expect(screen.getByText(/Identitas Pemohon/i)).toBeDefined();
+    expect(screen.getByText(/Kapasitas Finansial/i)).toBeDefined();
+    expect(screen.getAllByText(/Skrining Medis/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Dukcapil OCR Lolos 99.8%/i)).toBeDefined();
+    expect(screen.getByText(/Rasio DSR:/i)).toBeDefined();
+
+    // Verify Section 1: Pilihan Paket & Konfigurasi Perlindungan
+    expect(screen.getByText(/1. Pilihan Paket & Konfigurasi Perlindungan:/i)).toBeDefined();
+    expect(screen.getByText(/Uang Pertanggungan \(Nilai Santunan\):/i)).toBeDefined();
+    expect(screen.getByText(/Masa Pembayaran Premi \(Tenor\):/i)).toBeDefined();
+    expect(screen.getByText(/Frekuensi Pembayaran Premi:/i)).toBeDefined();
+
+    // Verify Section 2: Penerima Manfaat Utama (Ahli Waris Polis)
+    expect(screen.getByText(/2. Penerima Manfaat Utama \(Ahli Waris Polis\):/i)).toBeDefined();
+    expect(screen.getByLabelText(/Nama Lengkap Ahli Waris:/i)).toBeDefined();
+    expect(screen.getByLabelText(/NIK Ahli Waris \(16 Digit\):/i)).toBeDefined();
+
+    // Verify Section 3: Pernyataan Hukum & Persetujuan Klausul Polis
+    expect(screen.getByText(/3. Pernyataan Hukum & Persetujuan Klausul Polis:/i)).toBeDefined();
+
+    // Ensure payment method options are NOT implemented
+    expect(screen.queryByText(/Metode Pembayaran Premi Pertama/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Virtual Account BCA/i })).toBeNull();
+
+    // Verify Real-time Calculation Breakdown for each field in right-hand column
+    expect(screen.getByText(/Rincian Faktor Perhitungan Premi:/i)).toBeDefined();
+    expect(screen.getByText(/Nilai Santunan \(UP\)/i)).toBeDefined();
+    expect(screen.getAllByText(/Masa Pertanggungan \(Tenor\)/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Usia Pemohon/i)).toBeDefined();
+    expect(screen.getByText(/Status Merokok/i)).toBeDefined();
+    expect(screen.getByText(/Indeks Massa Tubuh \(BMI\)/i)).toBeDefined();
+    expect(screen.getByText(/Rasio Beban Cicilan \(DSR\)/i)).toBeDefined();
+    expect(screen.getByText(/Skema Pembayaran/i)).toBeDefined();
+
+    // Verify changing tenor updates the breakdown
+    const tenor5Btn = screen.getByRole('button', { name: /^5 Tahun$/i });
+    fireEvent.click(tenor5Btn);
+    expect(screen.getByText(/5 Thn \(1x\)/i)).toBeDefined();
+
+    const tenor20Btn = screen.getByRole('button', { name: /^20 Tahun$/i });
+    fireEvent.click(tenor20Btn);
+    expect(screen.getByText(/20 Thn \(1.15x\)/i)).toBeDefined();
   });
 });

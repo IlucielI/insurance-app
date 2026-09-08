@@ -42,7 +42,7 @@ describe('SimulationService', () => {
       {
         productId: sampleProduct.id,
         sumAssured: 500_000_000,
-        termYears: 10,
+        termYears: 5,
         applicantAge: 20,
         isSmoker: false,
         frequency: 'monthly',
@@ -54,11 +54,54 @@ describe('SimulationService', () => {
     expect(result.product.id).toBe('prod-term-life');
     expect(result.breakdown.ageFactor).toBe(1.0);
     expect(result.breakdown.smokerFactor).toBe(1.0);
+    expect(result.breakdown.termFactor).toBe(1.0);
     expect(result.breakdown.baseAnnualPremium).toBe(500_000_000 * 0.0035);
     expect(result.annualPremium).toBe(1_750_000);
     expect(result.monthlyPremium).toBeGreaterThan(0);
     expect(result.activePremium).toBe(result.monthlyPremium);
     expect(result.breakdown.underwritingTier).toBe('guaranteed_issue');
+  });
+
+  it('calculates termFactor correctly for different payment terms', () => {
+    const term5 = service.calculate(
+      {
+        productId: sampleProduct.id,
+        sumAssured: 500_000_000,
+        termYears: 5,
+        applicantAge: 20,
+        frequency: 'annually',
+        selectedRiderIds: [],
+      },
+      sampleProduct
+    );
+    const term10 = service.calculate(
+      {
+        productId: sampleProduct.id,
+        sumAssured: 500_000_000,
+        termYears: 10,
+        applicantAge: 20,
+        frequency: 'annually',
+        selectedRiderIds: [],
+      },
+      sampleProduct
+    );
+    const term20 = service.calculate(
+      {
+        productId: sampleProduct.id,
+        sumAssured: 500_000_000,
+        termYears: 20,
+        applicantAge: 20,
+        frequency: 'annually',
+        selectedRiderIds: [],
+      },
+      sampleProduct
+    );
+
+    expect(term5.breakdown.termFactor).toBe(1.0);
+    expect(term10.breakdown.termFactor).toBe(1.05);
+    expect(term20.breakdown.termFactor).toBe(1.15);
+    expect(term20.annualPremium).toBeGreaterThan(term10.annualPremium);
+    expect(term10.annualPremium).toBeGreaterThan(term5.annualPremium);
   });
 
   it('applies age factor and smoker multiplier correctly', () => {
@@ -439,7 +482,7 @@ describe('SimulationService', () => {
         {
           productId: sampleProduct.id,
           sumAssured: 500_000_000,
-          termYears: 10,
+          termYears: 5,
           applicantAge: 20,
           frequency: 'annually',
           selectedRiderIds: [],

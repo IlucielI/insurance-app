@@ -40,6 +40,7 @@ export interface ActuarialBreakdown {
   smokerFactor: number;
   genderFactor: number;
   occupationFactor: number;
+  termFactor?: number;
   annualDiscountPercent: number;
   baseAnnualPremium: number;
   ridersAnnualTotal: number;

@@ -74,6 +74,11 @@ export class SimulationService implements ISimulationService {
         : product.occupationFactors?.standard ?? 1.0;
 
 
+    // 5. Term Factor (Tenor Pembayaran) based on Core API actuarial formula
+    const minPaymentTerm = product.minTermYears || 5;
+    const termDelta = Math.max(0, termYears - minPaymentTerm);
+    const termFactor = Number((1 + termDelta * 0.01).toFixed(3));
+
     // Dynamic Extra Multipliers if provided
     let dynamicExtraMultiplier = 1.0;
     const dynamicFactorsList: { ruleCode: string; ruleName: string; factor: number }[] = [];
@@ -88,7 +93,7 @@ export class SimulationService implements ISimulationService {
       }
     }
 
-    // 5. Base Annual Premium calculation
+    // 6. Base Annual Premium calculation
     const rawAnnualBase =
       sumAssured *
       product.baseRate *
@@ -96,10 +101,11 @@ export class SimulationService implements ISimulationService {
       smokerFactor *
       genderFactor *
       occupationFactor *
+      termFactor *
       dynamicExtraMultiplier;
     const baseAnnualPremium = Math.round(rawAnnualBase / 10_000) * 10_000;
 
-    // 6. Riders Calculation
+    // 7. Riders Calculation
     const selectedRiders: RiderCostItem[] = [];
     let ridersAnnualTotal = 0;
 
@@ -172,6 +178,7 @@ export class SimulationService implements ISimulationService {
       smokerFactor,
       genderFactor,
       occupationFactor,
+      termFactor,
       annualDiscountPercent,
       baseAnnualPremium,
       ridersAnnualTotal,
@@ -342,6 +349,7 @@ export class SimulationService implements ISimulationService {
         smokerFactor: quoteResult.breakdown.smoker_factor,
         genderFactor: quoteResult.breakdown.gender_factor,
         occupationFactor: quoteResult.breakdown.occupation_factor,
+        termFactor: quoteResult.breakdown.term_factor ?? 1.0,
         annualDiscountPercent,
         baseAnnualPremium,
         ridersAnnualTotal,
