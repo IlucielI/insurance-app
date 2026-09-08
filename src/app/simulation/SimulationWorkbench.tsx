@@ -1160,6 +1160,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   </span>
                   <span className="font-semibold text-white">{simulationResult.breakdown.occupationFactor}x</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span>Faktor Tenor ({termYears} Tahun)</span>
+                  <span className="font-semibold text-white">{simulationResult.breakdown.termFactor ?? 1.0}x</span>
+                </div>
                 {simulationResult.breakdown.dynamicFactors
                   ?.filter(
                     (df) =>
@@ -1448,6 +1452,12 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                   <span>Faktor Risiko Pekerjaan:</span>
                   <span className="font-semibold text-slate-900">
                     {simulationResult.breakdown.occupationFactor}x ({occupationRisk})
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Faktor Tenor Perlindungan:</span>
+                  <span className="font-semibold text-slate-900">
+                    {simulationResult.breakdown.termFactor ?? 1.0}x ({termYears} Tahun)
                   </span>
                 </div>
                 {simulationResult.breakdown.dynamicFactors

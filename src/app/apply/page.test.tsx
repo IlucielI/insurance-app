@@ -459,9 +459,21 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // Verify Real-time Calculation Breakdown for each field in right-hand column
     expect(screen.getByText(/Rincian Faktor Perhitungan Premi:/i)).toBeDefined();
+    expect(screen.getByText(/Nilai Santunan \(UP\)/i)).toBeDefined();
+    expect(screen.getAllByText(/Masa Pertanggungan \(Tenor\)/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Usia Pemohon/i)).toBeDefined();
     expect(screen.getByText(/Status Merokok/i)).toBeDefined();
     expect(screen.getByText(/Indeks Massa Tubuh \(BMI\)/i)).toBeDefined();
     expect(screen.getByText(/Rasio Beban Cicilan \(DSR\)/i)).toBeDefined();
+    expect(screen.getByText(/Skema Pembayaran/i)).toBeDefined();
+
+    // Verify changing tenor updates the breakdown
+    const tenor5Btn = screen.getByRole('button', { name: /^5 Tahun$/i });
+    fireEvent.click(tenor5Btn);
+    expect(screen.getByText(/5 Thn \(1x\)/i)).toBeDefined();
+
+    const tenor20Btn = screen.getByRole('button', { name: /^20 Tahun$/i });
+    fireEvent.click(tenor20Btn);
+    expect(screen.getByText(/20 Thn \(1.15x\)/i)).toBeDefined();
   });
 });

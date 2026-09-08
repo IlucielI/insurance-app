@@ -1749,7 +1749,18 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   Dynamic Core API
                 </span>
               </div>
-              <div className="space-y-1.5 text-slate-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Nilai Santunan (UP)</span>
+                  <span className="font-semibold text-white">
+                    Rp {sumAssured >= 1_000_000_000 ? `${(sumAssured / 1_000_000_000).toFixed(0)} Miliar` : `${(sumAssured / 1_000_000).toFixed(0)} Juta`}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Masa Pertanggungan (Tenor)</span>
+                  <span className="font-semibold text-white">
+                    {termYears} Thn ({quoteResult?.breakdown?.termFactor ? `${quoteResult.breakdown.termFactor}x` : '1.0x'})
+                  </span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Usia Pemohon ({applicantAgeYears} Thn)</span>
                   <span className="font-semibold text-white">
@@ -1784,13 +1795,12 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
                   <span className="font-semibold text-emerald-400">{calculatedDsr}% (Aman &lt; 35%)</span>
                 </div>
-                {frequency === 'annually' && (
-                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 text-sky-400 font-semibold">
-                    <span>Diskon Pembayaran Tahunan</span>
-                    <span>Hemat {quoteResult?.breakdown?.annualDiscountPercent ?? 6}%</span>
-                  </div>
-                )}
-              </div>
+                <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
+                  <span className="text-slate-400">Skema Pembayaran</span>
+                  <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                    {frequency === 'annually' ? `Tahunan (Hemat ${quoteResult?.breakdown?.annualDiscountPercent ?? 6}%)` : 'Bulanan Rutin'}
+                  </span>
+                </div>
             </div>
 
             {/* Evaluasi Real-time Underwriting Engine */}
