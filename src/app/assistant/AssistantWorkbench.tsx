@@ -68,15 +68,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  };
-
-  // Only scroll when user switches conversation session, NOT when AI is replying/streaming
-  useEffect(() => {
-    scrollToBottom('auto');
-  }, [activeSessionId]);
-
   const messageCounterRef = useRef(0);
 
   // 1. Hydrate sessions from localStorage on client mount
@@ -211,9 +202,6 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
         return s;
       })
     );
-
-    // Scroll once to reveal user message and initial typing indicator
-    scrollToBottom('smooth');
 
     let streamSuccess = false;
 
