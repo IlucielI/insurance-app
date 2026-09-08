@@ -1925,7 +1925,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       Memproses Evaluasi Polis...
                     </span>
                   ) : (
-                    `Kirim Pengajuan & Terbitkan Polis Instan (${formatRupiah(activePremium)})`
+                    'Kirim Pengajuan'
                   )}
                 </Button>
               </div>

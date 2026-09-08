@@ -121,7 +121,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // Submit form
     const submitBtn = screen.getByRole('button', {
-      name: /Kirim Pengajuan & Terbitkan Polis Instan/i,
+      name: /^Kirim Pengajuan$/i,
     });
     fireEvent.click(submitBtn);
 
@@ -218,7 +218,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
       target: { value: '' },
     });
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
     expect(screen.getByText(/Nama lengkap ahli waris wajib diisi/i)).toBeDefined();
     expect(screen.getByText(/Pernyataan kebenaran data wajib disetujui/i)).toBeDefined();
@@ -332,7 +332,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // Submit
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
 
     await waitFor(() => {
@@ -404,7 +404,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     fireEvent.click(screen.getByLabelText(/Persetujuan Klausul Polis & Izin Autodebet/i));
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
 
     await waitFor(() => {
