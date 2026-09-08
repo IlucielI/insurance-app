@@ -13,7 +13,6 @@ export interface HeaderNavProps {
 export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initialProducts }) => {
   const [isApplyMenuOpen, setIsApplyMenuOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<InsuranceProduct[]>(initialProducts || []);
-  const [isLoading, setIsLoading] = useState<boolean>(!initialProducts || initialProducts.length === 0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Dynamic API Fetching: continuous retry and spinner until connected to Core API
@@ -40,8 +39,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
                 timeoutId = setTimeout(fetchProducts, 3000);
               }
             })
-            .catch((err) => {
-              console.error('Failed to connect to Core API in HeaderNav, retrying...', err);
+            .catch(() => {
               if (isMounted) {
                 timeoutId = setTimeout(fetchProducts, 3000);
               }
@@ -157,7 +155,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
       )}
 
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur border-b border-slate-200/80 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
@@ -198,7 +196,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
             })}
 
             {/* Pendaftaran ▾ Dropdown Trigger */}
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative">
               <button
                 type="button"
                 id="pendaftaran-menu-button"
@@ -218,23 +216,36 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
                   ▼
                 </span>
               </button>
+            </div>
+          </nav>
 
-              {/* Floating Mega Dropdown Card */}
-              {isApplyMenuOpen && (
-                <div
-                  role="menu"
-                  aria-labelledby="pendaftaran-menu-button"
-                  className="absolute right-0 top-full mt-2.5 w-[520px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-5 sm:p-6 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+          {/* Floating Mega Dropdown Card (Supports both Desktop and Mobile viewports) */}
+          {isApplyMenuOpen && (
+            <div
+              role="menu"
+              ref={dropdownRef}
+              aria-labelledby="pendaftaran-menu-button"
+              className="fixed sm:absolute top-20 sm:top-full left-4 right-4 sm:left-auto sm:right-6 lg:right-8 mt-2 sm:mt-2.5 w-auto sm:w-[520px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-5 sm:p-6 z-50 animate-in fade-in slide-in-from-top-2 duration-150 max-h-[85vh] overflow-y-auto"
+            >
+              {/* Dropdown Header */}
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    PILIH PRODUK ASURANSI UNTUK DAFTAR
+                  </span>
+                  <h3 className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
+                    Pilih produk yang ingin Anda ajukan polisnya secara online:
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsApplyMenuOpen(false)}
+                  className="sm:hidden text-slate-400 hover:text-slate-600 p-1 text-base font-bold"
+                  aria-label="Tutup menu"
                 >
-                  {/* Dropdown Header */}
-                  <div className="mb-4">
-                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      PILIH PRODUK ASURANSI UNTUK DAFTAR
-                    </span>
-                    <h3 className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
-                      Pilih produk yang ingin Anda ajukan polisnya secara online:
-                    </h3>
-                  </div>
+                  ✕
+                </button>
+              </div>
 
                   {/* Dynamic Product Cards fetched from API */}
                   <div className="space-y-3">
@@ -303,8 +314,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
                   </div>
                 </div>
               )}
-            </div>
-          </nav>
 
           {/* CTA / Quick Actions */}
           <div className="flex items-center gap-3">
