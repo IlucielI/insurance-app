@@ -7,8 +7,7 @@ import { InsuranceProduct } from '@/server/repositories/product.repository.inter
 import { ProductCard } from '@/components/molecules/ProductCard';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { Card } from '@/components/atoms/Card';
-import { AIAssistantDrawer } from '@/components/organisms/AIAssistantDrawer';
+import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
 
 export interface HomeWorkbenchProps {
   initialFeaturedProducts: InsuranceProduct[];
@@ -19,16 +18,9 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
 }) => {
   const router = useRouter();
   const [products] = useState<InsuranceProduct[]>(initialFeaturedProducts);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-
-  // Simulation Teaser State
-  const [simCategory, setSimCategory] = useState<'life' | 'health' | 'vehicle'>('life');
-  const [simAge, setSimAge] = useState<number>(32);
-  const [simGender, setSimGender] = useState<'pria' | 'wanita'>('pria');
-  const [simSmoker, setSimSmoker] = useState<boolean>(false);
 
   const handleSelectProduct = (productId: string) => {
     router.push(`/simulation?productId=${encodeURIComponent(productId)}`);
@@ -272,210 +264,7 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
         </div>
       </section>
 
-      {/* 4. SIMULASI PREMI INTERAKTIF TEASER */}
-      <section className="space-y-6 text-left">
-        <div>
-          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
-            SIMULASI PREMI INTERAKTIF
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-1">
-            Hitung Estimasi Premi Secara Terbuka &amp; Presisi
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Pricing rules dihitung secara realtime dari parameter usia, uang pertanggungan, status perokok, dan tenor polis.
-          </p>
-        </div>
-
-        <Card className="p-6 sm:p-8 bg-white border border-slate-200 shadow-md">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Col: Parameter Input Display */}
-            <div className="lg:col-span-7 space-y-6">
-              <div>
-                <span className="text-xs font-bold text-slate-700 block mb-2">
-                  Pilihan Kategori Produk:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={simCategory === 'life'}
-                    onClick={() => setSimCategory('life')}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                      simCategory === 'life'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Life (Jiwa)
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={simCategory === 'health'}
-                    onClick={() => setSimCategory('health')}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                      simCategory === 'health'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Health (Kesehatan)
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={simCategory === 'vehicle'}
-                    onClick={() => setSimCategory('vehicle')}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                      simCategory === 'vehicle'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Vehicle (Kendaraan)
-                  </button>
-                </div>
-              </div>
-
-              {/* Parameter Controls Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <span className="text-[11px] text-slate-500 block">Usia Tertanggung</span>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm font-bold text-slate-900">{simAge} Tahun</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        aria-label="Kurangi Usia"
-                        onClick={() => setSimAge((a) => Math.max(18, a - 1))}
-                        className="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 flex items-center justify-center text-xs"
-                      >
-                        -
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Tambah Usia"
-                        onClick={() => setSimAge((a) => Math.min(65, a + 1))}
-                        className="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 flex items-center justify-center text-xs"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <span className="text-[11px] text-slate-500 block">Jenis Kelamin</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <button
-                      type="button"
-                      aria-pressed={simGender === 'pria'}
-                      onClick={() => setSimGender('pria')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-                        simGender === 'pria'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 border border-slate-200'
-                      }`}
-                    >
-                      Pria
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={simGender === 'wanita'}
-                      onClick={() => setSimGender('wanita')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-                        simGender === 'wanita'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 border border-slate-200'
-                      }`}
-                    >
-                      Wanita
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <span className="text-[11px] text-slate-500 block">Uang Pertanggungan (UP)</span>
-                  <span className="text-sm font-bold text-slate-900 block mt-1">
-                    Rp 500.000.000 (500 Jt)
-                  </span>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <span className="text-[11px] text-slate-500 block">Masa Perlindungan &amp; Rokok</span>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs font-bold text-slate-800">10 Thn • Non-Smoker</span>
-                    <button
-                      type="button"
-                      aria-pressed={simSmoker}
-                      onClick={() => setSimSmoker((s) => !s)}
-                      className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                        simSmoker ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}
-                    >
-                      {simSmoker ? 'Perokok' : 'Non-Smoker'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <Link href="/simulation">
-                  <Button size="md" variant="outline" className="font-semibold text-xs">
-                    Hitung Ulang Estimasi Premi 🧮
-                  </Button>
-                </Link>
-                <span className="text-[11px] text-slate-400">
-                  *Perhitungan menggunakan pricing rules backend: POST /api/v1/products/:slug/quotes
-                </span>
-              </div>
-            </div>
-
-            {/* Right Col: Indicative Quote Card */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-linear-to-br from-slate-900 to-blue-950 text-white shadow-lg space-y-4 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider bg-blue-500/20 px-2.5 py-0.5 rounded-md border border-blue-400/20">
-                  PREMI INDIKATIF TERBAIK
-                </span>
-                <span className="text-[11px] text-emerald-400 font-bold">Hemat 6% Tahunan</span>
-              </div>
-
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-black text-white">
-                    {simSmoker ? 'Rp 310.000' : 'Rp 245.000'}
-                  </span>
-                  <span className="text-xs text-slate-400">/ bulan</span>
-                </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Estimasi premi final untuk Secure Life Plus UP Rp 500 Jt
-                </p>
-              </div>
-
-              <div className="border-t border-white/10 pt-3 space-y-2 text-xs text-slate-300">
-                <span className="font-bold text-white text-[11px] block">
-                  Rincian Faktor Pricing Engine:
-                </span>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-300">
-                  <span>• Faktor Usia {simAge}: 1.25x</span>
-                  <span>• Faktor Gender {simGender === 'pria' ? 'Pria' : 'Wanita'}: 1.05x</span>
-                  <span>• Status {simSmoker ? 'Smoker: 1.35x' : 'Non-Smoker: 1.00x'}</span>
-                  <span>• Frekuensi Tahunan: Diskon 6%</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] text-slate-300 leading-normal">
-                ✓ Transparan 100% tanpa markup agen. Premi mengikat setelah verifikasi underwriting.
-              </div>
-
-              <Link href="/apply" className="block pt-1">
-                <Button size="md" variant="primary" className="w-full justify-center font-bold text-xs shadow-md shadow-blue-500/30">
-                  Lanjut Ajukan Aplikasi Polis →
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      {/* 5. 4-TAHAP WORKFLOW UNDERWRITING CEPAT */}
+      {/* 4. 4-TAHAP WORKFLOW UNDERWRITING CEPAT */}
       <section className="space-y-6 text-left">
         <div>
           <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
@@ -573,112 +362,7 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
         </div>
       </section>
 
-      {/* 6. RAG AI ASSISTANT EMBEDDINGS SECTION */}
-      <section className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-6 text-left">
-        <div className="max-w-3xl space-y-2">
-          <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block">
-            🤖 RAG AI ASSISTANT EMBEDDINGS
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Bingung Memilih Polis atau Cara Klaim? Tanya AI Kami Kapan Saja.
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300">
-            Dilatih langsung dengan seluruh klausul polis, aturan underwriting, dan panduan klaim resmi berstandar OJK.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Quick Prompt Suggestions */}
-          <div className="lg:col-span-5 space-y-2.5">
-            <span className="text-xs font-bold text-slate-400 block uppercase tracking-wider">
-              Contoh Pertanyaan Populer:
-            </span>
-            <div className="space-y-2">
-              <Link
-                href="/assistant"
-                className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-blue-400 hover:bg-slate-800 text-xs text-slate-200 block transition-all"
-              >
-                💬 &quot;Apa saja syarat pengajuan klaim meninggal dunia?&quot;
-              </Link>
-              <Link
-                href="/assistant"
-                className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-blue-400 hover:bg-slate-800 text-xs text-slate-200 block transition-all"
-              >
-                💬 &quot;Berapa UP ideal untuk usia 30 tahun?&quot;
-              </Link>
-              <Link
-                href="/assistant"
-                className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-blue-400 hover:bg-slate-800 text-xs text-slate-200 block transition-all"
-              >
-                💬 &quot;Apakah penyakit kritis langsung ter-cover?&quot;
-              </Link>
-            </div>
-            <div className="pt-2">
-              <Link href="/assistant">
-                <Button size="sm" variant="primary" className="font-bold text-xs">
-                  Buka Halaman Konsultasi AI Penuh ➔
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Interactive Chat Bubble Mockup */}
-          <div className="lg:col-span-7 p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs">
-              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                <span>🤖 Bayu AI Assistant</span>
-                <span className="text-[10px] text-slate-500">• Terdaftar OJK</span>
-              </span>
-              <span className="text-[11px] text-slate-500">Respon SLA: 420ms</span>
-            </div>
-
-            {/* User Message */}
-            <div className="flex gap-2.5 max-w-md ml-auto flex-row-reverse text-right">
-              <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shrink-0">
-                👤
-              </div>
-              <div className="p-3 rounded-2xl bg-blue-600 text-white text-xs leading-relaxed rounded-tr-xs">
-                &quot;Apakah ada masa tunggu untuk klaim penyakit kritis?&quot;
-              </div>
-            </div>
-
-            {/* AI Response Message */}
-            <div className="flex gap-2.5 max-w-lg mr-auto text-left">
-              <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs shrink-0">
-                ✨
-              </div>
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-200 text-xs leading-relaxed rounded-tl-xs space-y-2">
-                <p>
-                  Untuk produk Secure Life Plus, masa tunggu rawat inap 30 hari kalender, dan perlindungan kecelakaan aktif seketika (0 hari masa tunggu).
-                </p>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">
-                    📚 Polis Baku Bab IV &amp; SEOJK.05/2022
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Simulated Input Bar */}
-            <div className="pt-2 flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                onClick={() => router.push('/assistant')}
-                placeholder="Tanyakan seputar produk, syarat klaim, atau simulasi..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-400 cursor-pointer"
-              />
-              <Link href="/assistant">
-                <Button size="sm" variant="primary" className="font-bold text-xs">
-                  Kirim
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. PERTANYAAN UMUM (FAQ ACCORDION) */}
+      {/* 5. PERTANYAAN UMUM (FAQ ACCORDION) */}
       <section className="space-y-6 text-left">
         <div>
           <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
@@ -720,60 +404,8 @@ export const HomeWorkbench: React.FC<HomeWorkbenchProps> = ({
         </div>
       </section>
 
-      {/* 8. PRE-FOOTER AI CONSULTATION BANNER */}
-      <section className="p-6 sm:p-8 rounded-3xl bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white border border-blue-800 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 text-left">
-        <div className="space-y-2 max-w-xl">
-          <span className="text-[11px] font-bold text-blue-300 uppercase tracking-wider block">
-            AI ASSISTANT
-          </span>
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            Butuh Rekomendasi Polis yang Tepat?
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            Konsultasikan kebutuhan proteksi keluarga Anda dengan AI Assistant kami yang siap 24/7.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex flex-wrap gap-2 text-[11px]">
-            <Link
-              href="/assistant"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-semibold transition-all"
-            >
-              Rekomendasi usia 30
-            </Link>
-            <Link
-              href="/assistant"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-semibold transition-all"
-            >
-              Cara klaim kesehatan
-            </Link>
-          </div>
-          <Link href="/assistant">
-            <Button size="md" variant="primary" className="h-10 px-5 font-bold text-xs shadow-md shadow-blue-500/30 whitespace-nowrap">
-              Tanya AI Sekarang ➔
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      {/* 9. FLOATING AI ASSISTANT FAB BUTTON */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen(true)}
-          className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-blue-600 text-white font-bold text-xs shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/20 cursor-pointer"
-        >
-          <span className="text-base">🤖</span>
-          <span>Tanya AI InsuRisk</span>
-        </button>
-      </div>
-
-      {/* AI Assistant Drawer Modal */}
-      <AIAssistantDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-      />
+      {/* 6. PRE-FOOTER AI CONSULTATION BANNER */}
+      <AIAssistantBanner />
     </div>
   );
 };

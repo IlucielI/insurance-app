@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import SimulationPage from './page';
-import { SimulationWorkbench, numberToRupiahWords } from './SimulationWorkbench';
+import { SimulationWorkbench, numberToRupiahWords, getDefaultQuestionsForProduct } from './SimulationWorkbench';
+import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 import { productService } from '@/server/di';
 
 const mockPush = vi.fn();
@@ -31,15 +32,12 @@ describe('SimulationPage & SimulationWorkbench', () => {
       screen.getByRole('heading', { level: 1, name: /Kalkulator & Simulasi Premi Asuransi/i })
     ).toBeDefined();
 
-    // Live quote engine badge
-    expect(screen.getByText(/LIVE CORE API QUOTE ENGINE/i)).toBeDefined();
+    // Live policy summary badge
+    expect(screen.getByText(/RINGKASAN POLIS TERPILIH/i)).toBeDefined();
 
     // Inclusions & Exclusions clauses
     expect(screen.getByText(/MANFAAT YANG DICAKUP \(COVERED BENEFITS\)/i)).toBeDefined();
     expect(screen.getByText(/PENGECUALIAN RESMI \(EXCLUSIONS\)/i)).toBeDefined();
-
-    // Pre-footer AI Assistant card
-    expect(screen.getByText(/Butuh Rekomendasi Simulasi yang Tepat\?/i)).toBeDefined();
   });
 
   it('pre-selects product specified in searchParams', async () => {
@@ -67,17 +65,6 @@ describe('SimulationPage & SimulationWorkbench', () => {
     if (cardButtons.length > 0) {
       fireEvent.click(cardButtons[0]);
       expect(cardButtons[0].getAttribute('aria-pressed')).toBe('true');
-    }
-  });
-
-  it('switches product via fallback dropdown selector if more than 3 products exist', async () => {
-    const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} />);
-
-    const select = screen.queryByLabelText(/Katalog Produk Pilihan/i);
-    if (select) {
-      fireEvent.change(select, { target: { value: products[2].id } });
-      expect(screen.getAllByText(products[2].title).length).toBeGreaterThan(0);
     }
   });
 
@@ -111,7 +98,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(femaleBtn);
 
     expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Gender \(Wanita\)/i)).toBeDefined();
+    expect(screen.getByText(/Jenis Kelamin \(Wanita\)/i)).toBeDefined();
     expect(screen.getAllByText('1x').length).toBeGreaterThan(0);
   });
 
@@ -123,7 +110,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(highOccBtn);
 
     expect(highOccBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Pekerjaan Tinggi/i)).toBeDefined();
+    expect(screen.getByText(/Risiko Profesi \(high\)/i)).toBeDefined();
     expect(screen.getByText('1.4x')).toBeDefined();
   });
 
@@ -138,7 +125,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(smokerBtn);
 
     expect(smokerBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/Faktor Perokok Aktif/i)).toBeDefined();
+    expect(screen.getByText(/Status Merokok \(Perokok\)/i)).toBeDefined();
     expect(screen.getByText('1.35x')).toBeDefined();
   });
 
@@ -150,7 +137,7 @@ describe('SimulationPage & SimulationWorkbench', () => {
     fireEvent.click(monthlyBtn);
 
     expect(monthlyBtn.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText(/ESTIMASI PREMI BULANAN/i)).toBeDefined();
+    expect(screen.getByText(/PREMI BULANAN/i)).toBeDefined();
   });
 
   it('toggles optional riders and updates premium', async () => {
@@ -221,26 +208,6 @@ describe('SimulationPage & SimulationWorkbench', () => {
     vi.useRealTimers();
   });
 
-  it('submits AI assistant prompt chip and input query', async () => {
-    const products = await productService.getProducts();
-    render(<SimulationWorkbench initialProducts={products} initialProductId={products[0].id} />);
-
-    const chipBtn = screen.getByRole('button', { name: 'Berapa UP ideal untuk gaji 15jt?' });
-    fireEvent.click(chipBtn);
-
-    expect(mockPush).toHaveBeenCalledWith('/assistant?q=Berapa%20UP%20ideal%20untuk%20gaji%2015jt%3F');
-
-    const input = screen.getByPlaceholderText(/Tanyakan seputar simulasi atau premi polis.../i);
-    fireEvent.change(input, { target: { value: 'Bandingkan tenor 10 vs 20 tahun' } });
-
-    const submitBtn = screen.getByRole('button', { name: 'Tanya AI' });
-    fireEvent.click(submitBtn);
-
-    expect(mockPush).toHaveBeenCalledWith(
-      '/assistant?q=Bandingkan%20tenor%2010%20vs%2020%20tahun'
-    );
-  });
-
   it('clamps age input on blur to product age range', async () => {
     const products = await productService.getProducts();
     const product = products[0];
@@ -305,3 +272,54 @@ describe('numberToRupiahWords', () => {
     expect(numberToRupiahWords(-500)).toBe('Nol Rupiah');
   });
 });
+
+describe('getDefaultQuestionsForProduct', () => {
+  it('returns custom multiplier 0.9 when occupationFactors.low is 0.9 (Happy Path)', () => {
+    const mockProduct = {
+      id: 'prod-vehicle-test',
+      categoryKey: 'vehicle',
+      title: 'Asuransi Mobil Prima',
+      occupationFactors: {
+        low: 0.9,
+        standard: 1.0,
+        high: 1.2,
+      },
+    } as unknown as InsuranceProduct;
+
+    const questions = getDefaultQuestionsForProduct(mockProduct);
+    const vehicleUsageQuestion = questions.find((q) => q.code === 'occupation_class');
+    expect(vehicleUsageQuestion).toBeDefined();
+
+    const lowOption = vehicleUsageQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption).toBeDefined();
+    expect(lowOption?.multiplier).toBe(0.9);
+  });
+
+  it('safely handles undefined product argument and returns default fallback multiplier 0.95 without runtime error (Edge Case)', () => {
+    expect(() => getDefaultQuestionsForProduct()).not.toThrow();
+
+    const questions = getDefaultQuestionsForProduct();
+    expect(questions.length).toBeGreaterThan(0);
+
+    const occupationQuestion = questions.find((q) => q.code === 'occupation_class');
+    expect(occupationQuestion).toBeDefined();
+
+    const lowOption = occupationQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption).toBeDefined();
+    expect(lowOption?.multiplier).toBe(0.95);
+  });
+
+  it('safely handles vehicle product with missing occupationFactors and falls back to 0.95', () => {
+    const mockVehicleProductWithoutFactors = {
+      id: 'prod-vehicle-no-factors',
+      categoryKey: 'vehicle',
+      title: 'Asuransi Kendaraan Standar',
+    } as unknown as InsuranceProduct;
+
+    const questions = getDefaultQuestionsForProduct(mockVehicleProductWithoutFactors);
+    const vehicleUsageQuestion = questions.find((q) => q.code === 'occupation_class');
+    const lowOption = vehicleUsageQuestion?.options?.find((opt) => opt.value === 'low');
+    expect(lowOption?.multiplier).toBe(0.95);
+  });
+});
+

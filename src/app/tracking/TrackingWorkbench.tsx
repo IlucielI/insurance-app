@@ -12,8 +12,6 @@ import { FileUpload } from '@/components/atoms/FileUpload';
 import { Spinner } from '@/components/atoms/Spinner';
 import { applicationService } from '@/server/di';
 
-import { ClaimSubmissionForm, ClaimFormData } from '@/components/organisms/ClaimSubmissionForm';
-
 export interface TrackingWorkbenchProps {
   initialApplication?: PolicyApplication | null;
   initialQuery?: string;
@@ -102,7 +100,6 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
   initialApplication = null,
   initialQuery = '',
 }) => {
-  const [activeTab, setActiveTab] = useState<'tracking' | 'claim'>('tracking');
   const [query, setQuery] = useState<string>(initialQuery);
   const [currentApp, setCurrentApp] = useState<PolicyApplication | null>(initialApplication);
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -121,9 +118,6 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
   // Mock e-policy download state
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
-
-  // Claim Submission state
-  const [claimSuccess, setClaimSuccess] = useState<ClaimFormData | null>(null);
 
   const handleSearch = async (targetQuery?: string) => {
     const q = (targetQuery ?? query).trim();
@@ -213,60 +207,27 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
           <span>/</span>
           <span>Portal Nasabah</span>
           <span>/</span>
-          <span className="text-slate-800 font-semibold">Pelacakan & Klaim</span>
+          <span className="text-slate-800 font-semibold">Pelacakan</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
-          Portal Status Aplikasi & Klaim Online
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Pelacakan Status Polis & Dokumen Underwriting
           <span className="sr-only"> - Cek Status Polis & Dokumen RFI</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
-          Pantau evaluasi underwriting aplikasi polis secara realtime dan ajukan klaim asuransi
-          digital tanpa antre.
+          Pantau evaluasi underwriting aplikasi polis Anda secara realtime dan lengkapi dokumen tambahan (RFI) dengan mudah.
         </p>
       </div>
 
-      {/* 2-Tab Navigation Bar */}
-      <div role="tablist" aria-label="Portal Mode" className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-xl max-w-md">
-        <button
-          role="tab"
-          aria-selected={activeTab === 'tracking'}
-          type="button"
-          onClick={() => setActiveTab('tracking')}
-          className={`flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
-            activeTab === 'tracking'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          🔍 Lacak Status Aplikasi
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === 'claim'}
-          type="button"
-          onClick={() => setActiveTab('claim')}
-          className={`flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
-            activeTab === 'claim'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          ⚡ Pengajuan Klaim Baru
-        </button>
-      </div>
-
-      {/* TAB 1: TRACKING & RFI PORTAL */}
-      {activeTab === 'tracking' && (
-        <div className="space-y-8">
-          {/* Search Filter Box */}
-          <Card className="p-6 sm:p-8 bg-white shadow-sm border border-slate-200 rounded-xl text-left">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSearch();
-              }}
-              className="space-y-4"
-            >
+      <div className="space-y-8">
+        {/* Search Filter Box */}
+        <Card className="p-6 sm:p-8 bg-white shadow-sm border border-slate-200 rounded-xl text-left">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
+            }}
+            className="space-y-4"
+          >
               <label htmlFor="search-input" className="block text-sm font-bold text-slate-800">
                 Nomor Aplikasi Polis atau NIK e-KTP
               </label>
@@ -477,13 +438,6 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
                   <span className="sr-only">Unduh Sertifikat E-Polis</span>
                 </Button>
               )}
-              <button
-                type="button"
-                onClick={() => setActiveTab('claim')}
-                className="h-10 px-5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-semibold text-xs sm:text-sm shadow-2xs transition-colors"
-              >
-                ⚡ Ajukan Klaim Baru
-              </button>
               <Link href="/assistant">
                 <button
                   type="button"
@@ -708,76 +662,6 @@ export const TrackingWorkbench: React.FC<TrackingWorkbenchProps> = ({
         </div>
       )}
     </div>
-  )}
-
-  {/* TAB 2: KLAIM DIGITAL INSTAN */}
-  {activeTab === 'claim' && (
-    <div className="space-y-8 animate-fadeIn text-left">
-      <div className="p-6 sm:p-8 bg-slate-900 border border-slate-800 rounded-xl text-white shadow-xl space-y-2">
-        <span className="text-[10px] font-bold text-indigo-400 tracking-wider uppercase block">
-          KLAIM DIGITAL INSTAN
-        </span>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-          Pengajuan Klaim Asuransi 100% Online
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-          Unggah kuitansi dan dokumen medis dari rumah sakit untuk verifikasi klaim cepat dalam 1x24 jam kerja.
-        </p>
-      </div>
-
-      {claimSuccess ? (
-        <Card className="p-8 bg-white border border-emerald-300 rounded-xl shadow-sm text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-bold">
-            ✓
-          </div>
-          <h3 className="text-lg font-bold text-slate-900">
-            Pengajuan Klaim Berhasil Dikirim ke Tim Underwriter Medis
-          </h3>
-          <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-            Nomor registrasi klaim Anda adalah <span className="font-bold text-blue-600 font-mono">{claimSuccess.claimId || 'CLM-2026-9042'}</span>. Status evaluasi dan pencairan santunan dapat dipantau langsung melalui portal ini.
-          </p>
-
-          <div className="max-w-md mx-auto p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-left space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Nomor Polis:</span>
-              <span className="font-semibold text-slate-900">{claimSuccess.policyNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Kategori:</span>
-              <span className="font-semibold text-slate-900">{claimSuccess.claimType}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Fasilitas Kesehatan:</span>
-              <span className="font-semibold text-slate-900">{claimSuccess.hospitalName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Nominal Diajukan:</span>
-              <span className="font-bold text-emerald-600">{formatRupiah(claimSuccess.claimedAmount)}</span>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-center gap-3">
-            <Button
-              onClick={() => {
-                setClaimSuccess(null);
-                setActiveTab('tracking');
-              }}
-              variant="primary"
-              size="md"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs"
-            >
-              Kembali ke Status Polis
-            </Button>
-          </div>
-        </Card>
-      ) : (
-        <ClaimSubmissionForm
-          initialPolicyNumber={currentApp?.id || 'POL-SLP-20260906-0042'}
-          onSubmitSuccess={(data) => setClaimSuccess(data)}
-        />
-      )}
-    </div>
-  )}
 
   {/* Help & Support Footer Card */}
   <Card className="p-6 bg-slate-100 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-left">

@@ -8,9 +8,9 @@ import { SimulationResult } from '@/types/simulation.types';
 import { simulationService, productRepository } from '@/server/di';
 import { Slider } from '@/components/atoms/Slider';
 import { Input } from '@/components/atoms/Input';
-import { Select } from '@/components/atoms/Select';
 import { Button } from '@/components/atoms/Button';
 import { Callout } from '@/components/molecules/Callout';
+import { AIAssistantBanner } from '@/components/molecules/AIAssistantBanner';
 
 export interface SimulationWorkbenchProps {
   initialProducts: InsuranceProduct[];
@@ -18,12 +18,13 @@ export interface SimulationWorkbenchProps {
 }
 
 export function getDefaultQuestionsForProduct(product?: InsuranceProduct): ProductQuestionDTO[] {
-  if (!product) return [];
-  if (product.categoryKey === 'vehicle') {
+  const prodId = product?.id ?? 'default';
+
+  if (product?.categoryKey === 'vehicle') {
     return [
       {
-        id: `q_${product.id}_vehicle_usage`,
-        questionnaire_id: `quest_${product.id}`,
+        id: `q_${prodId}_vehicle_usage`,
+        questionnaire_id: `quest_${prodId}`,
         step_number: 1,
         pillar_type: 'risk_assessment',
         code: 'occupation_class',
@@ -35,9 +36,9 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
         affects_pricing_field: 'occupation_class',
         is_active: true,
         options: [
-          { value: 'low', label: 'Pribadi / Komuter', multiplier: 0.95 },
-          { value: 'standard', label: 'Harian Operasional', multiplier: 1.0 },
-          { value: 'high', label: 'Komersial / Ekspedisi', multiplier: 1.15 },
+          { value: 'low', label: 'Pribadi / Santai', multiplier: product?.occupationFactors?.low ?? 0.95 },
+          { value: 'standard', label: 'Harian Kota', multiplier: product?.occupationFactors?.standard ?? 1.0 },
+          { value: 'high', label: 'Komersial / Logistik', multiplier: product?.occupationFactors?.high ?? 1.15 },
         ],
       },
     ];
@@ -45,8 +46,8 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
 
   return [
     {
-      id: `q_${product.id}_gender`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_gender`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'identity_verified',
       code: 'gender',
@@ -57,13 +58,13 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'gender',
       is_active: true,
       options: [
-        { value: 'male', label: 'Pria', multiplier: product.genderFactors?.male ?? 1.05 },
-        { value: 'female', label: 'Wanita', multiplier: product.genderFactors?.female ?? 1.0 },
+        { value: 'male', label: 'Pria', multiplier: product?.genderFactors?.male ?? 1.05 },
+        { value: 'female', label: 'Wanita', multiplier: product?.genderFactors?.female ?? 1.0 },
       ],
     },
     {
-      id: `q_${product.id}_is_smoker`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_is_smoker`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'medical_history',
       code: 'is_smoker',
@@ -75,13 +76,13 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'smoker',
       is_active: true,
       options: [
-        { value: 'no', label: 'Bukan Perokok', multiplier: product.smokerFactors?.no ?? 1.0 },
-        { value: 'yes', label: 'Perokok Aktif', multiplier: product.smokerFactors?.yes ?? 1.35 },
+        { value: 'no', label: 'Bukan Perokok', multiplier: product?.smokerFactors?.no ?? 1.0 },
+        { value: 'yes', label: 'Perokok Aktif', multiplier: product?.smokerFactors?.yes ?? 1.35 },
       ],
     },
     {
-      id: `q_${product.id}_occupation_class`,
-      questionnaire_id: `quest_${product.id}`,
+      id: `q_${prodId}_occupation_class`,
+      questionnaire_id: `quest_${prodId}`,
       step_number: 1,
       pillar_type: 'financial_capacity',
       code: 'occupation_class',
@@ -92,9 +93,9 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
       affects_pricing_field: 'occupation_class',
       is_active: true,
       options: [
-        { value: 'low', label: 'Rendah', multiplier: product.occupationFactors?.low ?? 0.95 },
-        { value: 'standard', label: 'Standar', multiplier: product.occupationFactors?.standard ?? 1.0 },
-        { value: 'high', label: 'Tinggi', multiplier: product.occupationFactors?.high ?? 1.4 },
+        { value: 'low', label: 'Rendah', multiplier: product?.occupationFactors?.low ?? 0.95 },
+        { value: 'standard', label: 'Standar', multiplier: product?.occupationFactors?.standard ?? 1.0 },
+        { value: 'high', label: 'Tinggi', multiplier: product?.occupationFactors?.high ?? 1.4 },
       ],
     },
   ];
@@ -171,7 +172,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
   const [frequency, setFrequency] = useState<'monthly' | 'annually'>('annually');
   const [selectedRiderIds, setSelectedRiderIds] = useState<string[]>([]);
   const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState<boolean>(false);
-  const [aiAssistantQuery, setAiAssistantQuery] = useState<string>('');
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
 
   const [dynamicQuestions, setDynamicQuestions] = useState<ProductQuestionDTO[]>(() =>
@@ -203,13 +203,37 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     if (!currentProduct) return;
     let isMounted = true;
     const currentSlug = currentProduct.slug || currentProduct.id;
+    const isVehicle = currentProduct.categoryKey === 'vehicle';
+
     const fetchQuestionnaire = async () => {
       try {
         const questionnaire = await productRepository.getQuestionnaire(currentSlug);
         if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
-          const pricingQuestions = questionnaire.questions.filter(
+          let pricingQuestions = questionnaire.questions.filter(
             (q) => q.pricing_rule_id || q.affects_pricing_field
           );
+          if (isVehicle) {
+            // For vehicle insurance, exclude human life factors (gender, smoker)
+            pricingQuestions = pricingQuestions.filter(
+              (q) => !['gender', 'is_smoker', 'smoker'].includes(q.code)
+            );
+            // Ensure vehicle usage options match pricing rules
+            pricingQuestions = pricingQuestions.map((q) => {
+              if (q.code === 'occupation_class') {
+                return {
+                  ...q,
+                  label: 'Penggunaan Utama Kendaraan',
+                  help_text: 'Tentukan intensitas dan keperluan operasional kendaraan',
+                  options: [
+                    { value: 'low', label: 'Pribadi / Santai', multiplier: currentProduct?.occupationFactors?.low ?? 0.95 },
+                    { value: 'standard', label: 'Harian Kota', multiplier: currentProduct?.occupationFactors?.standard ?? 1.0 },
+                    { value: 'high', label: 'Komersial / Logistik', multiplier: currentProduct?.occupationFactors?.high ?? 1.15 },
+                  ],
+                };
+              }
+              return q;
+            });
+          }
           if (pricingQuestions.length > 0) {
             setDynamicQuestions(pricingQuestions);
             setAnswers((prev) => {
@@ -224,10 +248,14 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               }
               return updated;
             });
+            return;
           }
         }
       } catch {
         // Fallback already in place
+      }
+      if (isMounted) {
+        setDynamicQuestions(getDefaultQuestionsForProduct(currentProduct));
       }
     };
 
@@ -244,12 +272,24 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     const newProduct = initialProducts.find((p) => p.id === newProductId);
     if (newProduct) {
       setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
-      setSumAssured((prev) =>
-        Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
-      );
-      const newMinTerm = newProduct.minTermYears || 5;
-      const newMaxTerm = newProduct.maxTermYears || 30;
-      setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+      if (newProduct.sumAssuredPresets && newProduct.sumAssuredPresets.length > 0) {
+        setSumAssured((prev) =>
+          newProduct.sumAssuredPresets!.includes(prev) ? prev : newProduct.sumAssuredPresets![0]
+        );
+      } else {
+        setSumAssured((prev) =>
+          Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+        );
+      }
+      if (newProduct.termPresets && newProduct.termPresets.length > 0) {
+        setTermYears((prev) =>
+          newProduct.termPresets!.includes(prev) ? prev : newProduct.termPresets![0]
+        );
+      } else {
+        const newMinTerm = newProduct.minTermYears || 1;
+        const newMaxTerm = newProduct.maxTermYears || 30;
+        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+      }
       setApplicantAge((prev) =>
         Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
       );
@@ -272,12 +312,24 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
       const newProduct = initialProducts.find((p) => p.id === initialProductId);
       if (newProduct) {
         setDynamicQuestions(getDefaultQuestionsForProduct(newProduct));
-        setSumAssured((prev) =>
-          Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
-        );
-        const newMinTerm = newProduct.minTermYears || 5;
-        const newMaxTerm = newProduct.maxTermYears || 30;
-        setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+        if (newProduct.sumAssuredPresets && newProduct.sumAssuredPresets.length > 0) {
+          setSumAssured((prev) =>
+            newProduct.sumAssuredPresets!.includes(prev) ? prev : newProduct.sumAssuredPresets![0]
+          );
+        } else {
+          setSumAssured((prev) =>
+            Math.max(newProduct.minSumAssured, Math.min(prev, newProduct.maxSumAssured))
+          );
+        }
+        if (newProduct.termPresets && newProduct.termPresets.length > 0) {
+          setTermYears((prev) =>
+            newProduct.termPresets!.includes(prev) ? prev : newProduct.termPresets![0]
+          );
+        } else {
+          const newMinTerm = newProduct.minTermYears || 1;
+          const newMaxTerm = newProduct.maxTermYears || 30;
+          setTermYears((prev) => Math.max(newMinTerm, Math.min(prev, newMaxTerm)));
+        }
         setApplicantAge((prev) =>
           Math.max(newProduct.minAge || 18, Math.min(prev, newProduct.maxAge || 60))
         );
@@ -435,13 +487,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     }, 600);
   };
 
-  // Submit AI Assistant prompt
-  const handleAskAI = (promptText?: string) => {
-    const query = promptText || aiAssistantQuery;
-    if (!query.trim()) return;
-    router.push(`/assistant?q=${encodeURIComponent(query.trim())}`);
-  };
-
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
 
   const productSliderRef = React.useRef<HTMLDivElement>(null);
@@ -477,13 +522,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
 
     return list;
   }, [initialProducts, currentProduct]);
-
-  const productOptions = useMemo(() => {
-    return initialProducts.map((p) => ({
-      value: p.id,
-      label: `${p.title} (${p.category}) - Mulai ${p.monthlyPremiumStarting || p.startingPrice || 'Rp 100rb/bln'}`,
-    }));
-  }, [initialProducts]);
 
   // Preset buttons dynamically configured via Core API product pricing rules
   const sumAssuredPresets = useMemo(() => {
@@ -676,11 +714,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 ›
               </button>
             </div>
-
-            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-0.5">
-              <span>‹ Menampilkan 3.5 kartu produk — geser ke samping untuk melihat produk lainnya ›</span>
-              <span className="hidden sm:inline text-slate-400">Total {initialProducts.length} produk aktif</span>
-            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
@@ -729,22 +762,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 </button>
               );
             })}
-          </div>
-        )}
-
-        {/* Catalog Fallback Dropdown if more than 3 products */}
-        {initialProducts.length > 3 && (
-          <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
-            <span className="font-medium">Opsi Produk Lainnya di Database:</span>
-            <div className="w-full sm:w-80">
-              <Select
-                label=""
-                aria-label="Katalog Produk Pilihan"
-                value={selectedProductId}
-                options={productOptions}
-                onChange={(e) => handleProductChange(e.target.value)}
-              />
-            </div>
           </div>
         )}
       </section>
@@ -1073,23 +1090,14 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
 
         {/* Right Column: Sticky Result Panel (Y: 370 - 1520) */}
         <div className="lg:col-span-5 sticky top-24 space-y-4">
-          <div className="bg-[#0f172a] text-white rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 text-left">
-            {/* Live Tag & Status */}
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e293b] text-[#38bdf8] text-[10px] font-bold tracking-wider uppercase">
-                <span className={`w-1.5 h-1.5 rounded-full bg-[#38bdf8] ${isCalculating ? 'animate-ping' : ''}`} />
-                LIVE CORE API QUOTE ENGINE
-                {isCalculating && (
-                  <span className="text-[9px] text-slate-400 font-normal lowercase">
-                    (menghitung...)
-                  </span>
-                )}
+          <div className="bg-[#0f172a] rounded-3xl p-6 sm:p-7 text-left space-y-6 shadow-xl border border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                RINGKASAN POLIS TERPILIH
               </span>
-              {simulationResult?.ojkTableReference && (
-                <span className="text-[10px] text-slate-400 truncate max-w-[180px]" title={simulationResult.ojkTableReference}>
-                  {simulationResult.ojkTableReference}
-                </span>
-              )}
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                • VERIFIKASI DIGITAL
+              </span>
             </div>
 
             {calculationError && (
@@ -1098,121 +1106,137 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
               </div>
             )}
 
-            {/* Header */}
             <div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-                Ringkasan Estimasi Premi
+                {currentProduct.title}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                {currentProduct.title} • UP {formatRupiah(sumAssured)}
+              <p className="text-xs text-slate-400 mt-0.5">
+                {currentProduct.tagline || currentProduct.description}
               </p>
             </div>
 
-            {/* Big Price Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2">
-              <span className="block text-[11px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                ESTIMASI PREMI {frequency === 'monthly' ? 'BULANAN' : 'TAHUNAN'}
+            {/* Price Box */}
+            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
+              <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
+                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${annualDiscountPercent}%)` : 'BULANAN'}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                <span className="text-3xl font-extrabold tracking-tight text-white">
                   {formatRupiah(simulationResult.activePremium)}
                 </span>
-                <span className="text-xs sm:text-sm text-slate-400 font-medium">
-                  / {frequency === 'monthly' ? 'bulan' : 'tahun'}
+                <span className="text-xs text-slate-400">
+                  / {frequency === 'annually' ? 'tahun' : 'bulan'}
                 </span>
               </div>
-              <p className="text-xs font-medium text-emerald-300">
+              <p className="text-xs text-slate-400">
                 {frequency === 'monthly'
-                  ? `atau ${formatRupiah(simulationResult.annualPremium)} / tahun (Hemat ${formatRupiah(simulationResult.annualSavings)})`
-                  : `atau setara ${formatRupiah(simulationResult.monthlyPremium)} / bulan`}
+                  ? `Setara dengan ${formatRupiah(simulationResult.monthlyPremium * 12)} per tahun`
+                  : `Setara dengan ${formatRupiah(Math.round(simulationResult.annualPremium / 12))} per bulan${simulationResult.annualSavings > 0 ? ` (Hemat ${formatRupiah(simulationResult.annualSavings)})` : ''}`}
               </p>
             </div>
 
-            {/* Pricing Rules Factor Breakdown Box */}
-            <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2.5 text-xs">
-              <h3 className="text-xs font-bold text-slate-200 pb-1 border-b border-slate-700/60">
-                Rincian Perhitungan Pricing Rules:
-              </h3>
-
-              <div className="space-y-2 text-slate-400">
-                <div className="flex justify-between items-center">
-                  <span>Base Rate Produk ({currentProduct.category})</span>
-                  <span className="font-semibold text-white">{currentProduct.baseRate}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faktor Usia ({applicantAge} Tahun)</span>
-                  <span className="font-semibold text-white">{simulationResult.breakdown.ageFactor}x</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faktor Gender ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
-                  <span className="font-semibold text-white">{simulationResult.breakdown.genderFactor}x</span>
-                </div>
-                {currentProduct.categoryKey !== 'vehicle' && (
-                  <div className="flex justify-between items-center">
-                    <span>Faktor {isSmoker ? 'Perokok Aktif' : 'Non-Smoker'}</span>
-                    <span className="font-semibold text-white">{simulationResult.breakdown.smokerFactor}x</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span>
-                    Faktor Pekerjaan{' '}
-                    {occupationRisk === 'low' ? 'Rendah' : occupationRisk === 'high' ? 'Tinggi' : 'Standar'}
-                  </span>
-                  <span className="font-semibold text-white">{simulationResult.breakdown.occupationFactor}x</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faktor Tenor ({termYears} Tahun)</span>
-                  <span className="font-semibold text-white">{simulationResult.breakdown.termFactor ?? 1.0}x</span>
-                </div>
-                {simulationResult.breakdown.dynamicFactors
-                  ?.filter(
-                    (df) =>
-                      !['gender', 'smoker', 'is_smoker', 'occupation', 'occupation_class'].includes(
-                        df.ruleCode
-                      )
-                  )
-                  .map((df) => (
-                    <div key={df.ruleCode} className="flex justify-between items-center text-sky-300">
-                      <span>{df.ruleName}</span>
-                      <span className="font-semibold text-white">{df.factor}x</span>
-                    </div>
-                  ))}
-
-                <div className="flex justify-between items-center text-emerald-300 font-medium">
-
-                  <span>Diskon Bayar Tahunan</span>
-                  <span className="font-bold">-{simulationResult.breakdown.annualDiscountPercent.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between items-center text-[#38bdf8] font-medium pt-1 border-t border-slate-700/60">
-                  <span>Status Underwriting Otomatis</span>
-                  <span className="font-bold">ELIGIBLE</span>
-                </div>
+            {/* Policy Parameters */}
+            <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2 text-xs">
+              <span className="text-[11px] font-bold text-slate-200 block border-b border-slate-700/60 pb-1">
+                Ringkasan Pertanggungan Polis:
+              </span>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>{currentProduct.categoryKey === 'vehicle' ? 'Pertanggungan Kendaraan' : 'Uang Pertanggungan (UP)'}</span>
+                <span className="font-bold text-white">{formatRupiah(sumAssured)}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Masa Pertanggungan (Tenor)</span>
+                <span className="font-semibold text-white">{termYears} Tahun</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Frekuensi Pembayaran</span>
+                <span className="font-semibold text-white capitalize">
+                  {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
+                </span>
               </div>
             </div>
 
-            {/* Benefits Checklist */}
-            <div className="space-y-2 text-xs">
-              <h4 className="font-bold text-slate-200">Manfaat yang Langsung Aktif:</h4>
-              <ul className="space-y-1.5 text-slate-300">
-                {(currentProduct.features && currentProduct.features.length > 0
-                  ? currentProduct.features
-                  : [
-                      `Santunan Proteksi UP (${formatRupiah(sumAssured)})`,
-                      'Persetujuan underwriting otomatis dalam 5 menit',
-                    ]
-                ).map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Trust Note */}
-            <div className="p-3 rounded-xl bg-[#1e293b] border border-slate-700/60 text-xs font-medium text-emerald-300 flex items-center gap-2">
-              <span>🔒</span>
-              <span>Premi transparan tanpa biaya tersembunyi & tanpa perantara.</span>
+            {/* Rincian Faktor Perhitungan Premi Berdasarkan Input Tiap Field */}
+            <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
+                <span className="text-[11px] font-bold text-slate-200 block">
+                  Rincian Faktor Perhitungan Premi:
+                </span>
+                <span className="text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">
+                  Dynamic Core API
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">
+                  {currentProduct.categoryKey === 'vehicle' ? 'Pertanggungan Kendaraan' : 'Nilai Santunan (UP)'}
+                </span>
+                <span className="font-semibold text-white">
+                  Rp {sumAssured >= 1_000_000_000 ? `${(sumAssured / 1_000_000_000).toFixed(0)} Miliar` : `${(sumAssured / 1_000_000).toFixed(0)} Juta`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Masa Pertanggungan (Tenor)</span>
+                <span className="font-semibold text-white">
+                  {termYears} Thn ({simulationResult?.breakdown?.termFactor ? `${simulationResult.breakdown.termFactor}x` : '1.0x'})
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Usia Pemohon ({applicantAge} Thn)</span>
+                <span className="font-semibold text-white">
+                  {simulationResult?.breakdown?.ageFactor ? `${simulationResult.breakdown.ageFactor}x` : '1.0x'}
+                </span>
+              </div>
+              {currentProduct.categoryKey !== 'vehicle' && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
+                    <span className="font-semibold text-white">
+                      {simulationResult?.breakdown?.genderFactor ? `${simulationResult.breakdown.genderFactor}x` : '1.0x'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
+                    <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {simulationResult?.breakdown?.smokerFactor ? `${simulationResult.breakdown.smokerFactor}x` : '1.0x'}
+                    </span>
+                  </div>
+                </>
+              )}
+              {currentProduct.categoryKey !== 'vehicle' ? (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Risiko Profesi ({occupationRisk})</span>
+                  <span className="font-semibold text-white">
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">
+                    Penggunaan Kendaraan ({occupationRisk === 'low' ? 'Pribadi / Santai' : occupationRisk === 'high' ? 'Komersial / Logistik' : 'Harian Kota'})
+                  </span>
+                  <span className="font-semibold text-white">
+                    {simulationResult?.breakdown?.occupationFactor ? `${simulationResult.breakdown.occupationFactor}x` : '1.0x'}
+                  </span>
+                </div>
+              )}
+              {currentProduct.categoryKey !== 'vehicle' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                  <span className="font-semibold text-emerald-400">
+                    22.2 (Ideal 🟢)
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
+                <span className="font-semibold text-emerald-400">2.2% (Aman &lt; 35%)</span>
+              </div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/60 font-semibold">
+                <span className="text-slate-400">Skema Pembayaran</span>
+                <span className={frequency === 'annually' ? 'text-sky-400' : 'text-slate-200'}>
+                  {frequency === 'annually' ? `Tahunan (Hemat ${annualDiscountPercent}%)` : 'Bulanan Rutin'}
+                </span>
+              </div>
             </div>
 
             {/* Notice Feedback */}
@@ -1317,66 +1341,6 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
                 </li>
               )}
             </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------- */}
-      {/* SECTION 5: PRE-FOOTER AI ASSISTANT CARD (Y: 1990 - 2150)      */}
-      {/* ------------------------------------------------------------- */}
-      <section aria-labelledby="heading-ai-card" className="pt-4">
-        <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6 text-left">
-          <div className="space-y-1.5 max-w-xl">
-            <span className="bg-indigo-100 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md inline-block uppercase">
-              AI ASSISTANT
-            </span>
-            <h2 id="heading-ai-card" className="text-lg sm:text-xl font-extrabold text-[#0f172a]">
-              Butuh Rekomendasi Simulasi yang Tepat?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Tanyakan langsung perbandingan tenor, frekuensi bayar, atau simulasi khusus ke AI kami.
-            </p>
-          </div>
-
-          <div className="space-y-3 w-full lg:w-auto shrink-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleAskAI('Berapa UP ideal untuk gaji 15jt?')}
-                className="py-1.5 px-3.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-medium transition-colors"
-              >
-                Berapa UP ideal untuk gaji 15jt?
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAskAI('Beda bayar tahunan vs bulanan')}
-                className="py-1.5 px-3.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-medium transition-colors"
-              >
-                Beda bayar tahunan vs bulanan
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAskAI();
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={aiAssistantQuery}
-                onChange={(e) => setAiAssistantQuery(e.target.value)}
-                placeholder="Tanyakan seputar simulasi atau premi polis..."
-                className="py-2.5 px-4 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f172a] flex-1 min-w-[240px] sm:min-w-[320px]"
-              />
-              <button
-                type="submit"
-                className="py-2.5 px-5 rounded-xl bg-[#0f172a] hover:bg-slate-800 text-white font-semibold text-xs transition-all shrink-0"
-              >
-                Tanya AI
-              </button>
-            </form>
           </div>
         </div>
       </section>
@@ -1513,6 +1477,9 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
           </div>
         </div>
       )}
+
+      {/* Pre-footer AI Assistant Banner */}
+      <AIAssistantBanner className="mt-8" />
     </div>
   );
 };

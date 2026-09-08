@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ChatSession,
   ChatMessage,
+  ChatMessageCitation,
   PopularTopic,
   KnowledgeEngineStatus,
   ChatAction,
@@ -55,6 +56,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
   const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const [isClearingChat, setIsClearingChat] = useState<boolean>(false);
   const [clearNotice, setClearNotice] = useState<string | null>(null);
+  const [selectedCitation, setSelectedCitation] = useState<ChatMessageCitation | null>(null);
 
   const activeSession =
     sessions.find((s) => s.id === activeSessionId) || sessions[0];
@@ -911,12 +913,17 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                         {msg.citations && msg.citations.length > 0 && (
                           <div className="mt-3 pt-2.5 border-t border-slate-200 flex flex-wrap gap-1.5">
                             {msg.citations.map((cit) => (
-                              <span
+                              <button
                                 key={cit.id}
-                                className="inline-flex items-center gap-1 text-[11px] text-blue-700 font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md"
+                                type="button"
+                                onClick={() => setSelectedCitation(cit)}
+                                className="inline-flex items-center gap-1.5 text-[11px] text-blue-700 hover:text-blue-900 font-semibold bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 px-2.5 py-1 rounded-md transition-all cursor-pointer text-left shadow-2xs hover:shadow-xs group"
+                                title="Klik untuk membaca rincian cuplikan dokumen resmi"
                               >
-                                📚 {cit.source}
-                              </span>
+                                <span>📚</span>
+                                <span>{cit.source.startsWith('Rujukan Resmi:') ? cit.source : `Rujukan Resmi: ${cit.source}`}</span>
+                                <span className="text-[9px] bg-blue-100 group-hover:bg-blue-200 text-blue-800 px-1 py-0.2 rounded font-mono">Buka ↗</span>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -1051,6 +1058,74 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
               >
                 {isClearingChat ? <Spinner size="sm" /> : 'Ya, Bersihkan Chat 🔄'}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Rincian Rujukan Resmi */}
+      {selectedCitation && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSelectedCitation(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-left"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📚</span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Rincian Rujukan Resmi OJK & SOP
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCitation(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg cursor-pointer"
+                aria-label="Tutup rincian rujukan"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-blue-50/80 rounded-xl border border-blue-100 space-y-1.5">
+              <h4 className="text-sm font-bold text-blue-950">
+                {selectedCitation.source}
+              </h4>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedCitation.sourceType && (
+                  <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded uppercase tracking-wider">
+                    Kategori: {selectedCitation.sourceType}
+                  </span>
+                )}
+                {typeof selectedCitation.score === 'number' && (
+                  <span className="text-[11px] text-blue-600 font-medium">
+                    Skor Relevansi: {(selectedCitation.score * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 block">
+                Kutipan / Cuplikan Resmi Dokumen:
+              </span>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
+                {selectedCitation.excerpt || 'Dokumen rujukan ini diverifikasi oleh sistem RAG underwriting berlisensi OJK.'}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedCitation(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

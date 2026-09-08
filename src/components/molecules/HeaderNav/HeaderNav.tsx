@@ -323,13 +323,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ currentPath = '/', initial
                 API Online
               </span>
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsApplyMenuOpen((prev) => !prev)}
+            <Link
+              href="/assistant"
               className="inline-flex items-center justify-center font-bold text-xs py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all active:scale-95"
             >
-              Ajukan Polis Sekarang 🚀
-            </button>
+              Tanya AI Sekarang 🚀
+            </Link>
           </div>
         </div>
       </header>

@@ -39,21 +39,14 @@ describe('HomePage & HomeWorkbench', () => {
     expect(screen.getByText('Critical Illness Shield')).toBeDefined();
     expect(screen.getByText('EduCare Future')).toBeDefined();
 
-    // 4. Simulation Teaser
-    expect(screen.getByText(/Hitung Estimasi Premi Secara Terbuka & Presisi/i)).toBeDefined();
-    expect(screen.getByText(/PREMI INDIKATIF TERBAIK/i)).toBeDefined();
-
-    // 5. 4-Tahap Workflow Underwriting
+    // 4. 4-Tahap Workflow Underwriting
     expect(screen.getByText('Verifikasi KTP Dukcapil')).toBeDefined();
     expect(screen.getByText('Analisis Kemampuan UP')).toBeDefined();
     expect(screen.getByText('Validasi Berkas Digital')).toBeDefined();
     expect(screen.getByText('Kuesioner Kesehatan')).toBeDefined();
     expect(screen.getByText(/95% Aplikasi Disetujui Secara Otomatis dalam 5 Menit/i)).toBeDefined();
 
-    // 6. RAG AI Assistant Section
-    expect(screen.getByText(/Bingung Memilih Polis atau Cara Klaim\? Tanya AI Kami Kapan Saja/i)).toBeDefined();
-
-    // 7. FAQ Accordion
+    // 5. FAQ Accordion
     expect(screen.getByText(/Semua Hal yang Perlu Anda Ketahui/i)).toBeDefined();
 
     // 8. Pre-Footer Banner
@@ -76,38 +69,6 @@ describe('HomePage & HomeWorkbench', () => {
     expect(mockPush).toHaveBeenCalledWith(`/simulation?productId=${featured[0].id}`);
   });
 
-  it('interacts with the simulation teaser controls (age, gender, smoker, category)', async () => {
-    const featured = await productService.getFeaturedProducts();
-    render(<HomeWorkbench initialFeaturedProducts={featured} />);
-
-    // Test age increment / decrement
-    expect(screen.getByText('32 Tahun')).toBeDefined();
-    const plusBtn = screen.getByRole('button', { name: 'Tambah Usia' });
-    fireEvent.click(plusBtn);
-    expect(screen.getByText('33 Tahun')).toBeDefined();
-
-    const minusBtn = screen.getByRole('button', { name: 'Kurangi Usia' });
-    fireEvent.click(minusBtn);
-    expect(screen.getByText('32 Tahun')).toBeDefined();
-
-    // Test category change
-    const healthCatBtn = screen.getByRole('button', { name: 'Health (Kesehatan)' });
-    fireEvent.click(healthCatBtn);
-    expect(healthCatBtn.getAttribute('aria-pressed')).toBe('true');
-
-    // Test gender change
-    const femaleBtn = screen.getByRole('button', { name: 'Wanita' });
-    fireEvent.click(femaleBtn);
-    expect(femaleBtn.getAttribute('aria-pressed')).toBe('true');
-
-    // Test smoker toggle
-    const smokerToggle = screen.getByRole('button', { name: 'Non-Smoker' });
-    fireEvent.click(smokerToggle);
-    expect(smokerToggle.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Perokok')).toBeDefined();
-    expect(screen.getAllByText(/Rp\s\d{3}\.\d{3}/).length).toBeGreaterThan(0);
-  });
-
   it('toggles FAQ accordion items when clicked', async () => {
     const featured = await productService.getFeaturedProducts();
     render(<HomeWorkbench initialFeaturedProducts={featured} />);
@@ -123,29 +84,5 @@ describe('HomePage & HomeWorkbench', () => {
     // Click second FAQ again to close it
     fireEvent.click(secondFaq);
     expect(screen.queryByText(/45 detik hingga 5 menit/i)).toBeNull();
-  });
-
-  it('opens and closes the AI Assistant Drawer via the floating trigger', async () => {
-    const featured = await productService.getFeaturedProducts();
-    render(<HomeWorkbench initialFeaturedProducts={featured} />);
-
-    // FAB button
-    const fabButton = screen.getByRole('button', { name: /Tanya AI InsuRisk/i });
-    expect(fabButton).toBeDefined();
-
-    fireEvent.click(fabButton);
-
-    // Drawer header should appear
-    await waitFor(() => {
-      expect(screen.getByText('AI Insurance Assistant')).toBeDefined();
-    });
-
-    // Close button on drawer
-    const closeBtn = screen.getByRole('button', { name: 'Tutup Asisten' });
-    fireEvent.click(closeBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText('AI Insurance Assistant')).toBeNull();
-    });
   });
 });

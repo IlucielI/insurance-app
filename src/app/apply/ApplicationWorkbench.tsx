@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -65,14 +65,14 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return initialProducts[0] || null;
   }, [initialProducts, initialQuote.productId]);
 
-  const [sumAssured, setSumAssured] = useState<number>(
-    initialQuote.sumAssured || 500_000_000
-  );
-  const [termYears, setTermYears] = useState<number>(
-    initialQuote.termYears || 10
-  );
-  const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
-    initialQuote.frequency || 'annually'
+  const isVehicleCategory = Boolean(
+    selectedProduct?.categoryKey === 'vehicle' ||
+    selectedProduct?.category?.toLowerCase().includes('kendaraan') ||
+    selectedProduct?.category?.toLowerCase().includes('vehicle') ||
+    selectedProduct?.slug?.toLowerCase().includes('auto') ||
+    selectedProduct?.slug?.toLowerCase().includes('vehicle') ||
+    selectedProduct?.id?.toLowerCase().includes('auto') ||
+    selectedProduct?.id?.toLowerCase().includes('vehicle')
   );
 
   const sumAssuredPresets = useMemo(() => {
@@ -100,6 +100,41 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     return [5, 10, 15, 20];
   }, [selectedProduct]);
 
+  const [sumAssured, setSumAssured] = useState<number>(() => {
+    const validPresets =
+      selectedProduct?.sumAssuredPresets && selectedProduct.sumAssuredPresets.length > 0
+        ? selectedProduct.sumAssuredPresets
+        : [100_000_000, 250_000_000, 500_000_000, 1_000_000_000];
+    if (initialQuote.sumAssured && validPresets.includes(initialQuote.sumAssured)) {
+      return initialQuote.sumAssured;
+    }
+    if (validPresets.includes(500_000_000)) {
+      return 500_000_000;
+    }
+    if (validPresets.includes(300_000_000)) {
+      return 300_000_000;
+    }
+    return validPresets[0] ?? 100_000_000;
+  });
+
+  const [termYears, setTermYears] = useState<number>(() => {
+    const validPresets =
+      selectedProduct?.termPresets && selectedProduct.termPresets.length > 0
+        ? selectedProduct.termPresets
+        : [5, 10, 15, 20];
+    if (initialQuote.termYears && validPresets.includes(initialQuote.termYears)) {
+      return initialQuote.termYears;
+    }
+    if (validPresets.includes(10)) {
+      return 10;
+    }
+    return validPresets[0] ?? 1;
+  });
+
+  const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
+    initialQuote.frequency || 'annually'
+  );
+
   const initialAge = initialQuote.applicantAge || 32;
   const initialSmoker = Boolean(initialQuote.isSmoker);
   const initialGender = initialQuote.gender || 'male';
@@ -125,8 +160,19 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const [address, setAddress] = useState<string>(
     'Jl. Sudirman No. 42, RT 003 / RW 007, Setiabudi, Jakarta Selatan 12920'
   );
+
+  // File Upload States & Refs (Real File Upload Support)
+  const ktpInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
+  const incomeDocInputRef = useRef<HTMLInputElement>(null);
+
   const [ktpFileName, setKtpFileName] = useState<string>('KTP_Bayu_Pratama.jpg');
+  const [ktpFileSize, setKtpFileSize] = useState<string>('1.4 MB');
+  const [isKtpUploaded, setIsKtpUploaded] = useState<boolean>(false);
+
   const [selfieFileName, setSelfieFileName] = useState<string>('Selfie_Liveness_Check.jpg');
+  const [selfieFileSize, setSelfieFileSize] = useState<string>('2.1 MB');
+  const [isSelfieUploaded, setIsSelfieUploaded] = useState<boolean>(false);
 
   // Pilar 2: Finansial & Kerja
   const [occupation, setOccupation] = useState<string>('Software Architect (IT / Tech)');
@@ -134,7 +180,43 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const [monthlyIncome, setMonthlyIncome] = useState<number>(30_000_000);
   const [incomeSource, setIncomeSource] = useState<string>('Gaji Tetap Bulanan (Payroll)');
   const [incomeDocName, setIncomeDocName] = useState<string>('Slip_Gaji_3_Bulan_Bayu.pdf');
+  const [incomeDocSize, setIncomeDocSize] = useState<string>('840 KB');
+  const [isIncomeDocUploaded, setIsIncomeDocUploaded] = useState<boolean>(false);
   const [npwp, setNpwp] = useState<string>('09.254.891.2-014.000');
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024 * 1024) {
+      return `${Math.round(bytes / 1024)} KB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setKtpFileName(file.name);
+      setKtpFileSize(formatFileSize(file.size));
+      setIsKtpUploaded(true);
+    }
+  };
+
+  const handleSelfieUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelfieFileName(file.name);
+      setSelfieFileSize(formatFileSize(file.size));
+      setIsSelfieUploaded(true);
+    }
+  };
+
+  const handleIncomeDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIncomeDocName(file.name);
+      setIncomeDocSize(formatFileSize(file.size));
+      setIsIncomeDocUploaded(true);
+    }
+  };
 
   // Pilar 3: Skrining Medis / Risiko Objek
   const [heightCm, setHeightCm] = useState<number>(175);
@@ -183,9 +265,11 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
         sumAssured,
         termYears,
         applicantAge: applicantAgeYears,
-        isSmoker: isSmoker,
-        gender,
-        occupationRisk: initialOccupationRisk,
+        isSmoker: isVehicleCategory ? false : isSmoker,
+        gender: isVehicleCategory ? 'male' : gender,
+        occupationRisk: isVehicleCategory
+          ? (vehicleUsage as 'low' | 'standard' | 'high')
+          : initialOccupationRisk,
         frequency,
         selectedRiderIds: selectedRiders,
       },
@@ -198,6 +282,8 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     applicantAgeYears,
     isSmoker,
     gender,
+    isVehicleCategory,
+    vehicleUsage,
     initialOccupationRisk,
     frequency,
     selectedRiders,
@@ -206,6 +292,8 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const monthlyPremium = quoteResult ? quoteResult.monthlyPremium : 245_000;
   const annualPremium = quoteResult ? quoteResult.annualPremium : 2_760_000;
   const activePremium = frequency === 'annually' ? annualPremium : monthlyPremium;
+  const annualSavings = quoteResult?.annualSavings ?? Math.max(0, monthlyPremium * 12 - annualPremium);
+  const savingsPercent = quoteResult?.breakdown?.annualDiscountPercent ?? 6;
 
   // Dynamic Calculated Metrics
   const calculatedDsr = useMemo(() => {
@@ -219,8 +307,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   }, [weightKg, heightCm]);
 
   const formatRupiah = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
-
-  const isVehicleCategory = selectedProduct?.categoryKey === 'vehicle';
 
   // Dynamic Questionnaire State (kept for optional schema fallback)
   const [fetchedQuestionnaire, setFetchedQuestionnaire] = useState<ProductQuestionnaireDTO | null>(null);
@@ -878,38 +964,60 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* KTP Upload */}
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <input
+                    type="file"
+                    id="ktp-file-input"
+                    ref={ktpInputRef}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                    onChange={handleKtpUpload}
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    aria-label="Upload KTP Asli"
+                  />
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">📷 Foto KTP Asli</span>
-                      <button
-                        type="button"
-                        onClick={() => setKtpFileName('KTP_Bayu_Pratama_New.jpg')}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                      <label
+                        htmlFor="ktp-file-input"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                       >
                         Ganti File ↺
-                      </button>
+                      </label>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{ktpFileName} (1.4 MB)</p>
+                    <label htmlFor="ktp-file-input" className="block cursor-pointer">
+                      <p className="text-[11px] text-slate-700 font-medium truncate">{ktpFileName} ({ktpFileSize})</p>
+                    </label>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      ✓ OCR Score: 99.4% (Nama & NIK Cocok)
+                      {isKtpUploaded ? '✓ File Asli Berhasil Diunggah' : '✓ OCR Score: 99.4% (Nama & NIK Cocok)'}
                     </span>
                   </div>
 
                   {/* Selfie Liveness */}
-                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <input
+                    type="file"
+                    id="selfie-file-input"
+                    ref={selfieInputRef}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                    onChange={handleSelfieUpload}
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    aria-label="Upload Foto Selfie"
+                  />
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">🤳 Foto Selfie Liveness</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelfieFileName('Selfie_Liveness_New.jpg')}
-                        className="text-[10px] text-blue-600 hover:underline font-semibold"
+                      <label
+                        htmlFor="selfie-file-input"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                       >
                         Ganti File ↺
-                      </button>
+                      </label>
                     </div>
-                    <p className="text-[11px] text-slate-600 font-medium">{selfieFileName} (2.1 MB)</p>
+                    <label htmlFor="selfie-file-input" className="block cursor-pointer">
+                      <p className="text-[11px] text-slate-700 font-medium truncate">{selfieFileName} ({selfieFileSize})</p>
+                    </label>
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      ✓ Biometric Liveness Passed 98.1%
+                      {isSelfieUploaded ? '✓ Biometrik Wajah Terverifikasi' : '✓ Biometric Liveness Passed 98.1%'}
                     </span>
                   </div>
                 </div>
@@ -1035,20 +1143,31 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
               </div>
 
               {/* Document Slip Gaji */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <input
+                type="file"
+                id="income-doc-file-input"
+                ref={incomeDocInputRef}
+                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                onChange={handleIncomeDocUpload}
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                className="hidden"
+                aria-label="Upload Bukti Penghasilan"
+              />
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-blue-300 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">📄 Bukti Penghasilan / Slip Gaji</span>
-                  <button
-                    type="button"
-                    onClick={() => setIncomeDocName('Slip_Gaji_Update.pdf')}
-                    className="text-[10px] text-blue-600 hover:underline font-semibold"
+                  <label
+                    htmlFor="income-doc-file-input"
+                    className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
                   >
                     Ganti File ↺
-                  </button>
+                  </label>
                 </div>
-                <p className="text-[11px] text-slate-600 font-medium">{incomeDocName} (840 KB)</p>
+                <label htmlFor="income-doc-file-input" className="block cursor-pointer">
+                  <p className="text-[11px] text-slate-700 font-medium truncate">{incomeDocName} ({incomeDocSize})</p>
+                </label>
                 <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  ✓ Payroll Terverifikasi Digital
+                  {isIncomeDocUploaded ? '✓ Dokumen Penghasilan Asli Terverifikasi' : '✓ Payroll Terverifikasi Digital'}
                 </span>
               </div>
 
@@ -1337,31 +1456,42 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </>
               )}
 
-              {/* Any Extra Dynamic Questionnaire Questions for Step 3 */}
-              {stepQuestions.map((q) => {
-                // Skip if already rendered above
-                if (
-                  ['weight_kg', 'height_cm', 'is_smoker', 'has_critical_illness', 'has_hospitalization_2y', 'occupation_class', 'vehicle_plate'].includes(
-                    q.code
-                  )
-                ) {
-                  return null;
-                }
-                return (
-                  <div key={q.id} className="space-y-1">
-                    <Input
-                      id={q.code}
-                      label={q.label}
-                      placeholder={q.placeholder || ''}
-                      value={customAnswers[q.code] || ''}
-                      onChange={(e) =>
-                        setCustomAnswers((prev) => ({ ...prev, [q.code]: e.target.value }))
-                      }
-                      helperText={q.help_text}
-                    />
-                  </div>
-                );
-              })}
+              {/* Any Extra Dynamic Questionnaire Questions for Step 3 (Life/Health only) */}
+              {!isVehicleCategory &&
+                stepQuestions.map((q) => {
+                  // Skip if already rendered above
+                  if (
+                    [
+                      'weight_kg',
+                      'height_cm',
+                      'is_smoker',
+                      'has_critical_illness',
+                      'critical_illness_details',
+                      'has_hospitalization_2y',
+                      'hospitalization_details',
+                      'has_family_history',
+                      'occupation_class',
+                      'vehicle_plate',
+                      'vehicle_usage',
+                    ].includes(q.code)
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <div key={q.id} className="space-y-1">
+                      <Input
+                        id={q.code}
+                        label={q.label}
+                        placeholder={q.placeholder || ''}
+                        value={customAnswers[q.code] || ''}
+                        onChange={(e) =>
+                          setCustomAnswers((prev) => ({ ...prev, [q.code]: e.target.value }))
+                        }
+                        helperText={q.help_text}
+                      />
+                    </div>
+                  );
+                })}
 
               {/* Buttons */}
               <div className="pt-2 flex items-center gap-3">
@@ -1442,21 +1572,21 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   </span>
                 </div>
 
-                {/* Card 3: Skrining Medis */}
+                {/* Card 3: Skrining Medis / Objek Kendaraan */}
                 <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 text-left">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Skrining Medis
+                    {isVehicleCategory ? 'Objek Kendaraan' : 'Skrining Medis'}
                   </span>
                   <div>
                     <span className="text-sm font-bold text-[#0f172a] block">
-                      {isVehicleCategory ? 'Kendaraan Standar' : `BMI: ${calculatedBmi} (Normal)`}
+                      {isVehicleCategory ? 'Kendaraan Terdaftar' : `BMI: ${calculatedBmi} (Normal)`}
                     </span>
                     <span className="text-xs text-slate-500 block">
                       {isVehicleCategory ? vehiclePlate : (isSmoker ? 'Perokok Aktif (+45%)' : 'Non-Smoker Standard')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                    ✓ {isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab
+                    {isVehicleCategory ? '✓ Plat Terverifikasi' : `✓ ${isSmoker ? 'Surplus Aktif' : 'Non-Smoker'} - Bebas Lab`}
                   </span>
                 </div>
               </div>
@@ -1699,7 +1829,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             {/* Price Box */}
             <div className="p-4 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1.5">
               <span className="block text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
-                PREMI {frequency === 'annually' ? 'TAHUNAN (HEMAT 8%)' : 'BULANAN'}
+                PREMI {frequency === 'annually' ? `TAHUNAN (HEMAT ${savingsPercent}%)` : 'BULANAN'}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold tracking-tight text-white">
@@ -1710,7 +1840,9 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Setara dengan {formatRupiah(monthlyPremium)} per bulan
+                {frequency === 'monthly'
+                  ? `Setara dengan ${formatRupiah(monthlyPremium * 12)} per tahun`
+                  : `Setara dengan ${formatRupiah(Math.round(annualPremium / 12))} per bulan${annualSavings > 0 ? ` (Hemat ${formatRupiah(annualSavings)})` : ''}`}
               </p>
             </div>
 
@@ -1733,10 +1865,6 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   {frequency === 'annually' ? 'Tahunan (Autodebet)' : 'Bulanan'}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Metode Verifikasi</span>
-                <span className="font-semibold text-emerald-400">Automated Underwriting</span>
-              </div>
             </div>
 
             {/* Rincian Faktor Perhitungan Premi Berdasarkan Input Tiap Field */}
@@ -1750,7 +1878,9 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </span>
               </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Nilai Santunan (UP)</span>
+                  <span className="text-slate-400">
+                    {isVehicleCategory ? 'Pertanggungan Kendaraan' : 'Nilai Santunan (UP)'}
+                  </span>
                   <span className="font-semibold text-white">
                     Rp {sumAssured >= 1_000_000_000 ? `${(sumAssured / 1_000_000_000).toFixed(0)} Miliar` : `${(sumAssured / 1_000_000).toFixed(0)} Juta`}
                   </span>
@@ -1767,30 +1897,47 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     {quoteResult?.breakdown?.ageFactor ? `${quoteResult.breakdown.ageFactor}x` : '1.0x'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
-                  <span className="font-semibold text-white">
-                    {quoteResult?.breakdown?.genderFactor ? `${quoteResult.breakdown.genderFactor}x` : '1.0x'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
-                  <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {quoteResult?.breakdown?.smokerFactor ? `${quoteResult.breakdown.smokerFactor}x` : '1.0x'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
-                  <span className="font-semibold text-white">
-                    {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
-                  <span className="font-semibold text-emerald-400">
-                    {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
-                  </span>
-                </div>
+                {!isVehicleCategory && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Jenis Kelamin ({gender === 'male' ? 'Pria' : 'Wanita'})</span>
+                      <span className="font-semibold text-white">
+                        {quoteResult?.breakdown?.genderFactor ? `${quoteResult.breakdown.genderFactor}x` : '1.0x'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Status Merokok ({isSmoker ? 'Perokok' : 'Non-Smoker'})</span>
+                      <span className={`font-semibold ${isSmoker ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {quoteResult?.breakdown?.smokerFactor ? `${quoteResult.breakdown.smokerFactor}x` : '1.0x'}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {!isVehicleCategory ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Risiko Profesi ({initialOccupationRisk})</span>
+                    <span className="font-semibold text-white">
+                      {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">
+                      Penggunaan Kendaraan ({vehicleUsage === 'low' ? 'Pribadi / Santai' : vehicleUsage === 'high' ? 'Komersial / Logistik' : 'Harian Kota'})
+                    </span>
+                    <span className="font-semibold text-white">
+                      {quoteResult?.breakdown?.occupationFactor ? `${quoteResult.breakdown.occupationFactor}x` : '1.0x'}
+                    </span>
+                  </div>
+                )}
+                {!isVehicleCategory && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                    <span className="font-semibold text-emerald-400">
+                      {calculatedBmi} ({calculatedBmi < 18.5 ? 'Kurang' : calculatedBmi <= 24.9 ? 'Ideal 🟢' : calculatedBmi <= 29.9 ? 'Lebih' : 'Obesitas'})
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Rasio Beban Cicilan (DSR)</span>
                   <span className="font-semibold text-emerald-400">{calculatedDsr}% (Aman &lt; 35%)</span>
@@ -1809,55 +1956,85 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 Evaluasi Real-time Underwriting Engine:
               </span>
               <div className="space-y-1.5 text-slate-300">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> Pilar Identitas & KTP
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-400">VERIFIED DUKCAPIL</span>
-                </div>
+                {/* Pilar 1: Identitas & KTP (Terverifikasi setelah Step 1 selesai) */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
                   <span className="flex items-center gap-1.5">
                     <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
                       {currentStep >= 2 ? '✓' : '○'}
                     </span>{' '}
-                    Pilar Profil Finansial
+                    Pilar Identitas & KTP
                   </span>
                   <span
                     className={`text-[10px] font-bold ${
                       currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
-                    {currentStep >= 2 ? `RATIO ${calculatedDsr}% (SAFE)` : 'PENDING'}
+                    {currentStep >= 2 ? 'VERIFIED DUKCAPIL' : 'PENDING'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
-                  <span className="flex items-center gap-1.5">
-                    <span className={currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'}>
-                      {currentStep >= 2 ? '✓' : '○'}
-                    </span>{' '}
-                    Pilar Kelengkapan Berkas
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold ${
-                      currentStep >= 2 ? 'text-emerald-400' : 'text-slate-500'
-                    }`}
-                  >
-                    {currentStep >= 2 ? 'COMPLETE & VALID' : 'PENDING'}
-                  </span>
-                </div>
+
+                {/* Pilar 2: Profil Finansial (Terverifikasi setelah Step 2 selesai) */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
                   <span className="flex items-center gap-1.5">
                     <span className={currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'}>
                       {currentStep >= 3 ? '✓' : '○'}
                     </span>{' '}
-                    {isVehicleCategory ? 'Pilar Objek Kendaraan' : 'Pilar Skrining Medis'}
+                    Pilar Profil Finansial
                   </span>
                   <span
                     className={`text-[10px] font-bold ${
                       currentStep >= 3 ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
-                    {currentStep >= 3 ? 'LOW RISK LEVEL' : 'PENDING'}
+                    {currentStep >= 3 ? `RATIO ${calculatedDsr}% (SAFE)` : 'PENDING'}
+                  </span>
+                </div>
+
+                {/* Pilar 3: Skrining Medis / Objek Kendaraan (Terverifikasi setelah Step 3 selesai) */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span className={currentStep >= 4 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {currentStep >= 4 ? '✓' : '○'}
+                    </span>{' '}
+                    {isVehicleCategory ? 'Pilar Objek Kendaraan' : 'Pilar Skrining Medis'}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep >= 4 ? 'text-emerald-400' : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep >= 4
+                      ? isVehicleCategory
+                        ? 'KENDARAAN VALID'
+                        : 'LOW RISK LEVEL'
+                      : 'PENDING'}
+                  </span>
+                </div>
+
+                {/* Pilar 4: Dokumen & Legalitas E-Sign (Terverifikasi saat Step 4 disetujui) */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1e293b]">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={
+                        currentStep === 4 && agreeTerms && agreeTruth
+                          ? 'text-emerald-400'
+                          : 'text-slate-500'
+                      }
+                    >
+                      {currentStep === 4 && agreeTerms && agreeTruth ? '✓' : '○'}
+                    </span>{' '}
+                    Pilar Dokumen & E-Sign
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      currentStep === 4 && agreeTerms && agreeTruth
+                        ? 'text-emerald-400'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    {currentStep === 4 && agreeTerms && agreeTruth
+                      ? 'COMPLETE & VALID'
+                      : 'PENDING'}
                   </span>
                 </div>
               </div>
@@ -1866,12 +2043,12 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             {/* Decision Status Box */}
             <div className="p-3.5 rounded-2xl bg-[#1e293b] border border-slate-700/60 space-y-1 text-xs">
               <span className="text-[#38bdf8] font-bold block">
-                {currentStep === 4
+                {currentStep === 4 && agreeTerms && agreeTruth
                   ? '⚡ Estimasi Keputusan: INSTANT APPROVAL'
                   : '⚡ Estimasi Keputusan Sistem: IN PROGRESS'}
               </span>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                {currentStep === 4
+                {currentStep === 4 && agreeTerms && agreeTruth
                   ? 'Seluruh 4 pilar checks terpenuhi! Polis elektronik (E-Polis) siap diterbitkan secara instan setelah pengajuan dikirim.'
                   : 'Sistem memvalidasi data Anda secara real-time. Lanjutkan ke langkah berikutnya untuk melengkapi underwriting.'}
               </p>
