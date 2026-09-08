@@ -66,6 +66,22 @@ describe('ApplicationService', () => {
     expect(checks[3].status).toBe('PASSED'); // Beneficiary
   });
 
+  it('evaluates Pilar 3 as Objek Pertanggungan Kendaraan for vehicle products', () => {
+    const vehicleDTO: CreateApplicationDTO = {
+      ...validDTO,
+      productId: 'prod_auto_comprehensive',
+      productName: 'Auto Shield Comprehensive',
+      answers: [
+        { code: 'vehicle_plate', value: 'B 9999 XYZ' },
+      ],
+    };
+
+    const checks = service.evaluatePillars(vehicleDTO);
+    expect(checks[2].title).toBe('Objek Pertanggungan Kendaraan');
+    expect(checks[2].statusText).toBe('✓ Plat Terverifikasi (B 9999 XYZ)');
+    expect(checks[2].status).toBe('PASSED');
+  });
+
   it('flags Pilar 1 if NIK is invalid or incomplete', () => {
     const invalidNikDTO: CreateApplicationDTO = {
       ...validDTO,

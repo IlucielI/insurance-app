@@ -230,6 +230,20 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
     apiApp: CoreApiApplication,
     original?: PolicyApplication
   ): PolicyApplication {
+    const isVehicle = Boolean(
+      apiApp.product_id?.toLowerCase().includes('auto') ||
+      apiApp.product_id?.toLowerCase().includes('vehicle') ||
+      apiApp.product?.slug?.toLowerCase().includes('auto') ||
+      apiApp.product?.slug?.toLowerCase().includes('vehicle') ||
+      apiApp.product?.name?.toLowerCase().includes('auto') ||
+      apiApp.product?.name?.toLowerCase().includes('kendaraan') ||
+      original?.productId?.toLowerCase().includes('auto') ||
+      original?.productId?.toLowerCase().includes('vehicle') ||
+      original?.productName?.toLowerCase().includes('auto') ||
+      original?.productName?.toLowerCase().includes('kendaraan') ||
+      original?.answers?.some((a) => a.code === 'vehicle_plate')
+    );
+
     const pillarChecks: PillarCheck[] =
       apiApp.review_checks && apiApp.review_checks.length > 0
         ? apiApp.review_checks.map((rc, idx) => {
@@ -242,13 +256,13 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
             return {
               pillarNumber: idx + 1,
               pillarType,
-              title: this.getPillarTitle(pillarType),
+              title: this.getPillarTitle(pillarType, isVehicle),
               description: rc.notes || 'Pemeriksaan otomatis kriteria underwriting OJK',
               status,
               statusText: rc.status === 'passed' ? '✓ Terverifikasi Otomatis' : '⚠️ Perlu Peninjauan Lanjutan',
             };
           })
-        : original?.pillarChecks || this.getDefaultPillarChecks();
+        : original?.pillarChecks || this.getDefaultPillarChecks(isVehicle);
 
     const overallStatus: ApplicationStatus =
       apiApp.status === 'approved'
@@ -310,14 +324,14 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
     };
   }
 
-  private getPillarTitle(pillarType: string): string {
+  private getPillarTitle(pillarType: string, isVehicle?: boolean): string {
     switch (pillarType) {
       case 'identity_verified':
         return 'Identitas Dukcapil';
       case 'income_verified':
         return 'Finansial & Rasio DSR';
       case 'medical_required':
-        return 'Skrining Medis & Gaya Hidup';
+        return isVehicle ? 'Objek Pertanggungan Kendaraan' : 'Skrining Medis & Gaya Hidup';
       case 'documents_complete':
         return 'Legalitas & Dokumen';
       default:
@@ -325,7 +339,7 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
     }
   }
 
-  private getDefaultPillarChecks(): PillarCheck[] {
+  private getDefaultPillarChecks(isVehicle?: boolean): PillarCheck[] {
     return [
       {
         pillarNumber: 1,
@@ -346,10 +360,12 @@ export class CoreApiApplicationRepository implements IApplicationRepository {
       {
         pillarNumber: 3,
         pillarType: 'medical_required',
-        title: 'Skrining Medis & Gaya Hidup',
-        description: 'Kuesioner riwayat kesehatan dan gaya hidup.',
+        title: isVehicle ? 'Objek Pertanggungan Kendaraan' : 'Skrining Medis & Gaya Hidup',
+        description: isVehicle
+          ? 'Verifikasi pelat nomor kendaraan, riwayat klaim, dan data registrasi digital.'
+          : 'Kuesioner riwayat kesehatan dan gaya hidup.',
         status: 'PASSED',
-        statusText: '✓ Evaluasi Risiko Kesehatan Selesai',
+        statusText: isVehicle ? '✓ Plat Terverifikasi' : '✓ Evaluasi Risiko Kesehatan Selesai',
       },
       {
         pillarNumber: 4,

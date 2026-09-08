@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import ApplyPage from './page';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { productService } from '@/server/di';
+import { InsuranceProduct } from '@/server/repositories/product.repository.interface';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -120,7 +121,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // Submit form
     const submitBtn = screen.getByRole('button', {
-      name: /Kirim Pengajuan & Terbitkan Polis Instan/i,
+      name: /^Kirim Pengajuan$/i,
     });
     fireEvent.click(submitBtn);
 
@@ -133,12 +134,10 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     expect(screen.getByText(/Nomor Referensi Aplikasi/i)).toBeDefined();
     expect(screen.getByText(/APPROVED & ACTIVE/i)).toBeDefined();
 
-    // Click tracking button
-    const trackingBtn = screen.getByRole('button', { name: /Lacak Status di Tracking Portal/i });
-    fireEvent.click(trackingBtn);
-
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls[0][0]).toContain('/tracking?query=');
+    // Check Kembali ke Beranda button/link
+    const homeLink = screen.getByRole('link', { name: /Kembali ke Beranda/i });
+    expect(homeLink).toBeDefined();
+    expect(homeLink.getAttribute('href')).toBe('/');
   });
 
   it('allows user to navigate back to previous steps using the back button', async () => {
@@ -219,7 +218,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
       target: { value: '' },
     });
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
     expect(screen.getByText(/Nama lengkap ahli waris wajib diisi/i)).toBeDefined();
     expect(screen.getByText(/Pernyataan kebenaran data wajib disetujui/i)).toBeDefined();
@@ -333,7 +332,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
 
     // Submit
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
 
     await waitFor(() => {
@@ -405,7 +404,7 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     fireEvent.click(screen.getByLabelText(/Persetujuan Klausul Polis & Izin Autodebet/i));
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Kirim Pengajuan & Terbitkan Polis Instan/i })
+      screen.getByRole('button', { name: /^Kirim Pengajuan$/i })
     );
 
     await waitFor(() => {
@@ -475,5 +474,118 @@ describe('ApplyPage & ApplicationWorkbench', () => {
     const tenor20Btn = screen.getByRole('button', { name: /^20 Tahun$/i });
     fireEvent.click(tenor20Btn);
     expect(screen.getByText(/20 Thn \(1.15x\)/i)).toBeDefined();
+  });
+
+  it('correctly clamps sumAssured and termYears when switching from Secure Life Plus to Auto Shield Comprehensive', async () => {
+    const mockProducts: InsuranceProduct[] = [
+      {
+        id: 'prod_secure_life_plus',
+        slug: 'secure-life-plus',
+        categoryKey: 'life',
+        category: 'Asuransi Jiwa',
+        title: 'Secure Life Plus',
+        description: 'Proteksi jiwa komprehensif',
+        startingPrice: 'Rp 185.000 / bln',
+        coverageAmount: 'Hingga Rp 1.000.000.000',
+        coverageTerm: '5 - 20 Tahun',
+        baseRate: 0.0035,
+        minAge: 18,
+        maxAge: 60,
+        minSumAssured: 100_000_000,
+        maxSumAssured: 1_000_000_000,
+        minTermYears: 5,
+        maxTermYears: 20,
+        sumAssuredPresets: [100_000_000, 250_000_000, 500_000_000, 1_000_000_000],
+        termPresets: [5, 10, 15, 20],
+        waitingPeriodDays: 0,
+        claimMethod: 'instant_transfer',
+        underwritingNote: '',
+        features: ['Proteksi jiwa komprehensif'],
+        benefitsDetailed: [],
+        riders: [],
+      },
+      {
+        id: 'prod_auto_shield_comprehensive',
+        slug: 'auto-shield-comprehensive',
+        categoryKey: 'vehicle',
+        category: 'Asuransi Kendaraan',
+        title: 'Auto Shield Comprehensive',
+        description: 'Proteksi all-risk kendaraan',
+        startingPrice: 'Rp 95.000 / bln',
+        coverageAmount: 'Hingga Rp 750.000.000',
+        coverageTerm: '1 - 5 Tahun',
+        baseRate: 0.012,
+        minAge: 18,
+        maxAge: 60,
+        minSumAssured: 75_000_000,
+        maxSumAssured: 750_000_000,
+        minTermYears: 1,
+        maxTermYears: 5,
+        sumAssuredPresets: [75_000_000, 150_000_000, 300_000_000, 750_000_000],
+        termPresets: [1, 2, 3, 5],
+        waitingPeriodDays: 0,
+        claimMethod: 'cashless',
+        underwritingNote: '',
+        features: ['Proteksi all-risk kendaraan'],
+        benefitsDetailed: [],
+        riders: [],
+      },
+    ];
+
+    render(
+      <ApplicationWorkbench
+        initialProducts={mockProducts}
+        initialQuote={{
+          productId: 'prod_secure_life_plus',
+          sumAssured: 500_000_000,
+          termYears: 10,
+          applicantAge: 30,
+        }}
+      />
+    );
+
+    // Initial state with Secure Life Plus
+    expect(screen.getAllByText(/Secure Life Plus/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/10 Tahun/i)).toBeDefined();
+
+    // Advance to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 2: Finansial & Kerja →/i }));
+
+    // Advance to Step 3
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 3: Skrining Medis →/i }));
+    expect(screen.getByText(/Pilar 3: Skrining Medis & Deklarasi Kesehatan Mandiri/i)).toBeDefined();
+
+    // Now switch product to Auto Shield Comprehensive via product dropdown
+    const productSelect = screen.getByLabelText(/Pilih Produk Asuransi/i);
+    fireEvent.change(productSelect, { target: { value: 'prod_auto_shield_comprehensive' } });
+
+    // Step 3 should now show vehicle object questions
+    await waitFor(() => {
+      expect(screen.getByText(/Pilar 3: Objek Pertanggungan Kendaraan/i)).toBeDefined();
+    });
+    expect(screen.getByLabelText(/Nomor Plat Polisi Kendaraan:/i)).toBeDefined();
+
+    // Right panel should have clamped values for Auto Shield (UP clamped to 300jt preset, tenor clamped to 5 years)
+    expect(screen.getAllByText(/5 Tahun/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Rp 300\.000\.000/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/10 Tahun/i)).toBeNull();
+
+    // Fill vehicle plate and advance to Step 4
+    fireEvent.change(screen.getByLabelText(/Nomor Plat Polisi Kendaraan:/i), {
+      target: { value: 'B 1234 XYZ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut ke Step 4: Review & Polis →/i }));
+
+    // In Step 4, verify UP Display box and Slider exist
+    expect(screen.getByText(/Pilar 4: Review & Persetujuan Polis/i)).toBeDefined();
+    expect(screen.getByLabelText(/Uang Pertanggungan Santunan Tunai/i)).toBeDefined();
+
+    // Verify active preset button is 300 Juta with checkmark
+    const activeUpBtn = screen.getByRole('button', { name: /✓ Rp 300 Juta/i });
+    expect(activeUpBtn).toBeDefined();
+
+    // Verify active tenor button is 5 Tahun with checkmark
+    const activeTenorBtn = screen.getByRole('button', { name: /✓ 5 Tahun/i });
+    expect(activeTenorBtn).toBeDefined();
   });
 });

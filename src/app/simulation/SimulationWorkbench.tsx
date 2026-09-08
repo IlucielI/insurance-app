@@ -98,6 +98,42 @@ export function getDefaultQuestionsForProduct(product?: InsuranceProduct): Produ
         { value: 'high', label: 'Tinggi', multiplier: product?.occupationFactors?.high ?? 1.4 },
       ],
     },
+    {
+      id: `q_${prodId}_critical_illness`,
+      questionnaire_id: `quest_${prodId}`,
+      step_number: 1,
+      pillar_type: 'medical_history',
+      code: 'has_critical_illness',
+      label: 'Riwayat Penyakit Kritis',
+      help_text: 'Pernahkah didiagnosis kanker, serangan jantung, stroke, ginjal, atau diabetes?',
+      input_type: 'radio',
+      order_index: 4,
+      pricing_rule_id: 'pr_life_critical_illness',
+      affects_pricing_field: 'critical_illness',
+      is_active: true,
+      options: [
+        { value: 'no', label: 'Tidak Pernah', multiplier: 1.0 },
+        { value: 'yes', label: 'Pernah', multiplier: 1.30 },
+      ],
+    },
+    {
+      id: `q_${prodId}_hospitalization`,
+      questionnaire_id: `quest_${prodId}`,
+      step_number: 1,
+      pillar_type: 'medical_history',
+      code: 'has_hospitalization_2y',
+      label: 'Riwayat Rawat Inap (Opname) 2 Tahun Terakhir',
+      help_text: 'Apakah pernah menjalani rawat inap di rumah sakit atau operasi bedah dalam 24 bulan terakhir?',
+      input_type: 'radio',
+      order_index: 5,
+      pricing_rule_id: 'pr_life_hospitalization',
+      affects_pricing_field: 'hospitalization',
+      is_active: true,
+      options: [
+        { value: 'no', label: 'Tidak Pernah', multiplier: 1.0 },
+        { value: 'yes', label: 'Pernah', multiplier: 1.20 },
+      ],
+    },
   ];
 }
 
@@ -181,6 +217,8 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
     gender: 'male',
     is_smoker: 'no',
     occupation_class: 'low',
+    has_critical_illness: 'no',
+    has_hospitalization_2y: 'no',
   });
   const [dynamicMultipliers, setDynamicMultipliers] = useState<Record<string, number>>({});
 
@@ -210,7 +248,10 @@ export const SimulationWorkbench: React.FC<SimulationWorkbenchProps> = ({
         const questionnaire = await productRepository.getQuestionnaire(currentSlug);
         if (isMounted && questionnaire && questionnaire.questions && questionnaire.questions.length > 0) {
           let pricingQuestions = questionnaire.questions.filter(
-            (q) => q.pricing_rule_id || q.affects_pricing_field
+            (q) =>
+              q.pricing_rule_id ||
+              q.affects_pricing_field ||
+              ['has_critical_illness', 'has_hospitalization_2y'].includes(q.code)
           );
           if (isVehicle) {
             // For vehicle insurance, exclude human life factors (gender, smoker)

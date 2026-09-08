@@ -19,6 +19,7 @@ import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
 import { Checkbox } from '@/components/atoms/Checkbox';
 import { Button } from '@/components/atoms/Button';
+import { Slider } from '@/components/atoms/Slider';
 
 export interface InitialQuoteParams {
   productId?: string;
@@ -50,9 +51,24 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
   const router = useRouter();
 
   // Selected Product & Actuarial Quote Resolution
-  const selectedProduct = useMemo(() => {
+  const [selectedProductId, setSelectedProductId] = useState<string>(() => {
     if (initialQuote.productId) {
       const target = initialQuote.productId.toLowerCase();
+      const found = initialProducts.find(
+        (p) =>
+          p.id.toLowerCase() === target ||
+          p.slug.toLowerCase() === target ||
+          p.categoryKey.toLowerCase() === target ||
+          p.title.toLowerCase().includes(target)
+      );
+      if (found) return found.id;
+    }
+    return initialProducts[0]?.id || '';
+  });
+
+  const selectedProduct = useMemo(() => {
+    if (selectedProductId) {
+      const target = selectedProductId.toLowerCase();
       const found = initialProducts.find(
         (p) =>
           p.id.toLowerCase() === target ||
@@ -63,7 +79,33 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
       if (found) return found;
     }
     return initialProducts[0] || null;
-  }, [initialProducts, initialQuote.productId]);
+  }, [initialProducts, selectedProductId]);
+
+  const prevInitialProductIdRef = useRef(initialQuote.productId);
+
+  // Sync when initialQuote.productId prop changes (e.g. from URL navigation)
+  useEffect(() => {
+    if (initialQuote.productId !== prevInitialProductIdRef.current) {
+      prevInitialProductIdRef.current = initialQuote.productId;
+      if (initialQuote.productId) {
+        const target = initialQuote.productId.toLowerCase();
+        const found = initialProducts.find(
+          (p) =>
+            p.id.toLowerCase() === target ||
+            p.slug.toLowerCase() === target ||
+            p.categoryKey.toLowerCase() === target ||
+            p.title.toLowerCase().includes(target)
+        );
+        if (found) {
+          setSelectedProductId(found.id);
+        }
+      }
+    }
+  }, [initialQuote.productId, initialProducts]);
+
+  const handleProductChange = (newProductId: string) => {
+    setSelectedProductId(newProductId);
+  };
 
   const isVehicleCategory = Boolean(
     selectedProduct?.categoryKey === 'vehicle' ||
@@ -130,6 +172,54 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
     }
     return validPresets[0] ?? 1;
   });
+
+  const prevProductIdRef = useRef<string | undefined>(selectedProduct?.id);
+
+  // Auto-clamp and re-validate sumAssured and termYears when selected product changes
+  useEffect(() => {
+    if (!selectedProduct) return;
+
+    if (prevProductIdRef.current !== selectedProduct.id) {
+      prevProductIdRef.current = selectedProduct.id;
+
+      // 1. Re-validate & clamp sumAssured to valid presets or bounds of the newly selected product
+      const validSumPresets = selectedProduct.sumAssuredPresets || [];
+      if (validSumPresets.length > 0) {
+        setSumAssured((prev) =>
+          validSumPresets.includes(prev)
+            ? prev
+            : validSumPresets.find((p) => p === 300_000_000) ||
+              validSumPresets.find((p) => p === 500_000_000) ||
+              validSumPresets[0]
+        );
+      } else {
+        setSumAssured((prev) =>
+          Math.max(selectedProduct.minSumAssured, Math.min(prev, selectedProduct.maxSumAssured))
+        );
+      }
+
+      // 2. Re-validate & clamp termYears to valid presets or bounds of the newly selected product
+      const validTerms = selectedProduct.termPresets || [];
+      if (validTerms.length > 0) {
+        setTermYears((prev) => {
+          if (validTerms.includes(prev)) return prev;
+          const minTerm = selectedProduct.minTermYears || validTerms[0];
+          const maxTerm = selectedProduct.maxTermYears || validTerms[validTerms.length - 1];
+          const clamped = Math.max(minTerm, Math.min(prev, maxTerm));
+          return validTerms.reduce((closest, curr) =>
+            Math.abs(curr - clamped) < Math.abs(closest - clamped) ? curr : closest
+          );
+        });
+      } else {
+        const minT = selectedProduct.minTermYears || 1;
+        const maxT = selectedProduct.maxTermYears || 30;
+        setTermYears((prev) => Math.max(minT, Math.min(prev, maxT)));
+      }
+
+      // 3. Clear any stale validation errors from previous product category
+      setErrors({});
+    }
+  }, [selectedProduct]);
 
   const [frequency, setFrequency] = useState<'annually' | 'monthly'>(
     initialQuote.frequency || 'annually'
@@ -643,24 +733,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-            <Button
-              size="lg"
-              variant="primary"
-              className="w-full sm:w-auto font-bold bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl shadow-md"
-              onClick={() =>
-                router.push(
-                  `/tracking?query=${encodeURIComponent(
-                    submissionResult.applicationId || 'APP-2026-8819'
-                  )}`
-                )
-              }
-            >
-              🔍 Lacak Status di Tracking Portal
-            </Button>
+          <div className="flex items-center justify-center pt-4">
             <Link
               href="/"
-              className="w-full sm:w-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-6 py-3.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-center"
+              className="w-full sm:w-auto font-bold bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl shadow-md text-center text-sm"
             >
               Kembali ke Beranda
             </Link>
@@ -696,13 +772,32 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
           <span className="text-blue-600 font-bold">Pengajuan Aplikasi</span>
         </nav>
 
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight">
-            Pengajuan Aplikasi Polis Digital
-          </h1>
-          <p className="text-sm sm:text-base text-slate-500 mt-1 max-w-3xl">
-            Lengkapi 4 tahap terverifikasi untuk evaluasi underwriting otomatis berbasis kuesioner dinamis OJK.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight">
+              Pengajuan Aplikasi Polis Digital
+            </h1>
+            <p className="text-sm sm:text-base text-slate-500 mt-1 max-w-3xl">
+              Lengkapi 4 tahap terverifikasi untuk evaluasi underwriting otomatis berbasis kuesioner dinamis OJK.
+            </p>
+          </div>
+          {initialProducts && initialProducts.length > 1 && (
+            <div className="shrink-0 flex items-center gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 pl-1">Pilihan Produk:</span>
+              <select
+                aria-label="Pilih Produk Asuransi"
+                value={selectedProduct.id}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="text-xs font-bold text-[#0f172a] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                {initialProducts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -899,10 +994,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     type="button"
                     onClick={() => setGender('male')}
                     aria-pressed={gender === 'male'}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                       gender === 'male'
-                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     {gender === 'male' ? '✓ ' : ''}Pria (Laki-laki)
@@ -911,10 +1006,10 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     type="button"
                     onClick={() => setGender('female')}
                     aria-pressed={gender === 'female'}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all text-center flex items-center justify-center gap-1.5 ${
                       gender === 'female'
-                        ? 'bg-blue-50 text-blue-600 border-blue-600 ring-1 ring-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     {gender === 'female' ? '✓ ' : ''}Wanita (Perempuan)
@@ -1234,22 +1329,28 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {[
-                        { id: 'low', label: 'Pribadi / Santai (0.95x)', mult: '0.95x' },
-                        { id: 'standard', label: 'Harian Kota (1.0x)', mult: '1.0x' },
-                        { id: 'high', label: 'Komersial / Logistik (1.15x)', mult: '1.15x' },
+                        { id: 'low', label: 'Pribadi / Santai', mult: '0.95x' },
+                        { id: 'standard', label: 'Harian Kota', mult: '1.0x' },
+                        { id: 'high', label: 'Komersial / Logistik', mult: '1.15x' },
                       ].map((opt) => (
                         <button
                           key={opt.id}
                           type="button"
                           onClick={() => setVehicleUsage(opt.id)}
+                          aria-pressed={vehicleUsage === opt.id}
                           className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
                             vehicleUsage === opt.id
-                              ? 'bg-blue-50 border-blue-600 text-blue-900 ring-1 ring-blue-600'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              ? 'bg-[#0f172a] border-[#0f172a] text-white shadow-xs'
+                              : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
-                          <span className="block font-bold">{opt.label}</span>
-                          <span className="text-[10px] text-slate-500">Faktor Aktuaria: {opt.mult}</span>
+                          <span className="block font-bold">
+                            {vehicleUsage === opt.id ? '✓ ' : ''}
+                            {opt.label}
+                          </span>
+                          <span className={`text-[10px] ${vehicleUsage === opt.id ? 'text-slate-300' : 'text-slate-500'}`}>
+                            Faktor Aktuaria: {opt.mult}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1308,28 +1409,30 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         Termasuk rokok konvensional maupun elektrik (vape) dalam 12 bulan terakhir.
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => setIsSmoker(false)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        aria-pressed={!isSmoker}
+                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                           !isSmoker
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-white text-slate-600 border-slate-200'
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        Bukan Perokok
+                        {!isSmoker ? '✓ ' : ''}Bukan Perokok
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsSmoker(true)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        aria-pressed={isSmoker}
+                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                           isSmoker
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-white text-slate-600 border-slate-200'
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        Perokok Aktif
+                        {isSmoker ? '✓ ' : ''}Perokok Aktif
                       </button>
                     </div>
                   </div>
@@ -1349,24 +1452,26 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         <button
                           type="button"
                           onClick={() => setHasCriticalIllness(false)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={!hasCriticalIllness}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             !hasCriticalIllness
-                              ? 'bg-[#0f172a] text-white border-[#0f172a]'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Tidak Pernah
+                          {!hasCriticalIllness ? '✓ ' : ''}Tidak Pernah
                         </button>
                         <button
                           type="button"
                           onClick={() => setHasCriticalIllness(true)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={hasCriticalIllness}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             hasCriticalIllness
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Pernah
+                          {hasCriticalIllness ? '✓ ' : ''}Pernah
                         </button>
                       </div>
                     </div>
@@ -1401,24 +1506,26 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                         <button
                           type="button"
                           onClick={() => setHasHospitalization(false)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={!hasHospitalization}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             !hasHospitalization
-                              ? 'bg-[#0f172a] text-white border-[#0f172a]'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Tidak Pernah
+                          {!hasHospitalization ? '✓ ' : ''}Tidak Pernah
                         </button>
                         <button
                           type="button"
                           onClick={() => setHasHospitalization(true)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                          aria-pressed={hasHospitalization}
+                          className={`py-2 px-3.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             hasHospitalization
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-slate-600 border-slate-200'
+                              ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          Pernah
+                          {hasHospitalization ? '✓ ' : ''}Pernah
                         </button>
                       </div>
                     </div>
@@ -1602,12 +1709,33 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                   </p>
                 </div>
 
-                {/* UP Presets */}
-                <div className="space-y-1.5">
+                {/* UP Display Box, Slider & Presets */}
+                <div className="space-y-2">
                   <span className="block text-xs font-semibold text-slate-700">
                     Uang Pertanggungan (Nilai Santunan):
                   </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xl sm:text-2xl font-extrabold text-[#0f172a]">
+                      {formatRupiah(sumAssured)}
+                    </span>
+                  </div>
+
+                  <div className="pt-1">
+                    <Slider
+                      label="Uang Pertanggungan Santunan Tunai"
+                      min={selectedProduct.minSumAssured}
+                      max={selectedProduct.maxSumAssured}
+                      step={25_000_000}
+                      value={sumAssured}
+                      onChange={setSumAssured}
+                      formatValue={(val) => `Rp ${(val / 1_000_000).toLocaleString('id-ID')} Juta`}
+                      minLabel={formatRupiah(selectedProduct.minSumAssured)}
+                      maxLabel={formatRupiah(selectedProduct.maxSumAssured)}
+                    />
+                  </div>
+
+                  {/* UP Presets */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                     {sumAssuredPresets.map((preset) => {
                       const isActive = sumAssured === preset.value;
                       return (
@@ -1630,7 +1758,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                 </div>
 
                 {/* Tenor Presets */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 pt-1">
                   <span className="block text-xs font-semibold text-slate-700">
                     Masa Pembayaran Premi (Tenor):
                   </span>
@@ -1797,7 +1925,7 @@ export const ApplicationWorkbench: React.FC<ApplicationWorkbenchProps> = ({
                       Memproses Evaluasi Polis...
                     </span>
                   ) : (
-                    `Kirim Pengajuan & Terbitkan Polis Instan (${formatRupiah(activePremium)})`
+                    'Kirim Pengajuan'
                   )}
                 </Button>
               </div>
