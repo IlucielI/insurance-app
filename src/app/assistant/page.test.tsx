@@ -366,10 +366,11 @@ describe('AssistantPage & AssistantWorkbench', () => {
       },
     });
 
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
       body: mockStream,
     });
+    global.fetch = fetchMock;
 
     render(
       <AssistantWorkbench
@@ -385,9 +386,11 @@ describe('AssistantPage & AssistantWorkbench', () => {
     fireEvent.change(input, { target: { value: 'Tes real-time streaming' } });
     fireEvent.click(sendBtn);
 
+    expect(fetchMock).toHaveBeenCalled();
+
     await waitFor(() => {
       expect(screen.getByText(/Halo streaming/i)).toBeDefined();
-      expect(screen.getByText(/📚 Polis Baku Bab I/i)).toBeDefined();
+      expect(screen.getByText(/Rujukan Resmi: Polis Baku Bab I/i)).toBeDefined();
     });
   });
 

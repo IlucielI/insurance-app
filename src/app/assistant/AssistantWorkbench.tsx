@@ -915,7 +915,7 @@ export const AssistantWorkbench: React.FC<AssistantWorkbenchProps> = ({
                                 key={cit.id}
                                 className="inline-flex items-center gap-1 text-[11px] text-blue-700 font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md"
                               >
-                                📚 {cit.source}
+                                📚 {cit.source.startsWith('Rujukan Resmi:') ? cit.source : `Rujukan Resmi: ${cit.source}`}
                               </span>
                             ))}
                           </div>
