@@ -38,6 +38,8 @@ function getHumanReadableToolName(toolName: string): string {
       return 'Spesifikasi Manfaat Polis';
     case 'track_claim_status':
       return 'Pelacakan Status Klaim';
+    case 'submit_application':
+      return 'Pendaftaran Polis Asuransi';
     case 'create_lead_consultation':
       return 'Jadwal Konsultasi Underwriting';
     default:

@@ -300,19 +300,6 @@ export const RFIPortalWorkbench: React.FC<RFIPortalWorkbenchProps> = ({
                   Kembali ke Beranda Aplikasi Nasabah 🏠
                 </Button>
               </Link>
-              <Link href={`/tracking?id=${currentApp.id}`} className="w-full sm:w-auto">
-                <Button variant="outline" size="md" className="w-full sm:w-auto">
-                  Pantau di Portal Lacak Aplikasi 🔍
-                </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={() => setIsSubmittedSuccess(false)}
-                className="w-full sm:w-auto text-xs text-slate-500"
-              >
-                Unggah Dokumen Lain
-              </Button>
             </div>
 
             {/* Support Footnote */}
